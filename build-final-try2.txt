@@ -1,0 +1,1811 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Type-safe project accessors is an incubating feature.
+Project accessors enabled, but root project name not explicitly set for 'buildSrc'. Checking out the project in different folders will impact the generated code and implicitly the buildscript classpath, breaking caching.
+> Task :buildSrc:checkKotlinGradlePluginConfigurationErrors
+> Task :buildSrc:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :buildSrc:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :buildSrc:compilePluginsBlocks UP-TO-DATE
+> Task :buildSrc:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :buildSrc:generateScriptPluginAdapters UP-TO-DATE
+> Task :buildSrc:compileKotlin UP-TO-DATE
+> Task :buildSrc:compileJava NO-SOURCE
+> Task :buildSrc:compileGroovy NO-SOURCE
+> Task :buildSrc:pluginDescriptors UP-TO-DATE
+> Task :buildSrc:processResources UP-TO-DATE
+> Task :buildSrc:classes UP-TO-DATE
+> Task :buildSrc:jar UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :feature:accounts:preBuild UP-TO-DATE
+> Task :feature:accounts:preDebugBuild UP-TO-DATE
+> Task :feature:accounts:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:attributions:preBuild UP-TO-DATE
+> Task :feature:attributions:preDebugBuild UP-TO-DATE
+> Task :feature:attributions:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:balance:preBuild UP-TO-DATE
+> Task :feature:balance:preDebugBuild UP-TO-DATE
+> Task :feature:balance:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:budgets:preBuild UP-TO-DATE
+> Task :feature:budgets:preDebugBuild UP-TO-DATE
+> Task :feature:budgets:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:categories:preBuild UP-TO-DATE
+> Task :feature:categories:preDebugBuild UP-TO-DATE
+> Task :feature:categories:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:contributors:preBuild UP-TO-DATE
+> Task :feature:contributors:preDebugBuild UP-TO-DATE
+> Task :feature:contributors:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:disclaimer:preBuild UP-TO-DATE
+> Task :feature:disclaimer:preDebugBuild UP-TO-DATE
+> Task :feature:disclaimer:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:edit-transaction:preBuild UP-TO-DATE
+> Task :feature:edit-transaction:preDebugBuild UP-TO-DATE
+> Task :feature:edit-transaction:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:exchange-rates:preBuild UP-TO-DATE
+> Task :feature:exchange-rates:preDebugBuild UP-TO-DATE
+> Task :feature:exchange-rates:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:features:preBuild UP-TO-DATE
+> Task :feature:features:preDebugBuild UP-TO-DATE
+> Task :feature:features:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:home:preBuild UP-TO-DATE
+> Task :feature:home:preDebugBuild UP-TO-DATE
+> Task :feature:home:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:import-data:preBuild UP-TO-DATE
+> Task :feature:import-data:preDebugBuild UP-TO-DATE
+> Task :feature:import-data:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:loans:preBuild UP-TO-DATE
+> Task :feature:loans:preDebugBuild UP-TO-DATE
+> Task :feature:loans:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:main:preBuild UP-TO-DATE
+> Task :feature:main:preDebugBuild UP-TO-DATE
+> Task :feature:main:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:onboarding:preBuild UP-TO-DATE
+> Task :feature:onboarding:preDebugBuild UP-TO-DATE
+> Task :feature:onboarding:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:piechart:preBuild UP-TO-DATE
+> Task :feature:piechart:preDebugBuild UP-TO-DATE
+> Task :feature:piechart:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:planned-payments:preBuild UP-TO-DATE
+> Task :feature:planned-payments:preDebugBuild UP-TO-DATE
+> Task :feature:planned-payments:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:releases:preBuild UP-TO-DATE
+> Task :feature:releases:preDebugBuild UP-TO-DATE
+> Task :feature:releases:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:reports:preBuild UP-TO-DATE
+> Task :feature:reports:preDebugBuild UP-TO-DATE
+> Task :feature:reports:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:search:preBuild UP-TO-DATE
+> Task :feature:search:preDebugBuild UP-TO-DATE
+> Task :feature:search:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:settings:preBuild UP-TO-DATE
+> Task :feature:settings:preDebugBuild UP-TO-DATE
+> Task :feature:settings:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:transactions:preBuild UP-TO-DATE
+> Task :feature:transactions:preDebugBuild UP-TO-DATE
+> Task :feature:transactions:writeDebugAarMetadata UP-TO-DATE
+> Task :shared:base:preBuild UP-TO-DATE
+> Task :shared:base:preDebugBuild UP-TO-DATE
+> Task :shared:base:writeDebugAarMetadata UP-TO-DATE
+> Task :shared:domain:preBuild UP-TO-DATE
+> Task :shared:domain:preDebugBuild UP-TO-DATE
+> Task :shared:domain:writeDebugAarMetadata UP-TO-DATE
+> Task :temp:legacy-code:preBuild UP-TO-DATE
+> Task :temp:legacy-code:preDebugBuild UP-TO-DATE
+> Task :temp:legacy-code:writeDebugAarMetadata UP-TO-DATE
+> Task :temp:old-design:preBuild UP-TO-DATE
+> Task :temp:old-design:preDebugBuild UP-TO-DATE
+> Task :temp:old-design:writeDebugAarMetadata UP-TO-DATE
+> Task :widget:add-transaction:preBuild UP-TO-DATE
+> Task :widget:add-transaction:preDebugBuild UP-TO-DATE
+> Task :widget:add-transaction:writeDebugAarMetadata UP-TO-DATE
+> Task :widget:balance:preBuild UP-TO-DATE
+> Task :widget:balance:preDebugBuild UP-TO-DATE
+> Task :widget:balance:writeDebugAarMetadata UP-TO-DATE
+> Task :widget:shared-base:preBuild UP-TO-DATE
+> Task :widget:shared-base:preDebugBuild UP-TO-DATE
+> Task :widget:shared-base:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:poll:impl:preBuild UP-TO-DATE
+> Task :feature:poll:impl:preDebugBuild UP-TO-DATE
+> Task :feature:poll:impl:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:poll:public:preBuild UP-TO-DATE
+> Task :feature:poll:public:preDebugBuild UP-TO-DATE
+> Task :feature:poll:public:writeDebugAarMetadata UP-TO-DATE
+> Task :shared:data:core:preBuild UP-TO-DATE
+> Task :shared:data:core:preDebugBuild UP-TO-DATE
+> Task :shared:data:core:writeDebugAarMetadata UP-TO-DATE
+> Task :shared:data:model:preBuild UP-TO-DATE
+> Task :shared:data:model:preDebugBuild UP-TO-DATE
+> Task :shared:data:model:writeDebugAarMetadata UP-TO-DATE
+> Task :shared:ui:core:preBuild UP-TO-DATE
+> Task :shared:ui:core:preDebugBuild UP-TO-DATE
+> Task :shared:ui:core:writeDebugAarMetadata UP-TO-DATE
+> Task :shared:ui:navigation:preBuild UP-TO-DATE
+> Task :shared:ui:navigation:preDebugBuild UP-TO-DATE
+> Task :shared:ui:navigation:writeDebugAarMetadata UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:injectCrashlyticsMappingFileIdDebug UP-TO-DATE
+> Task :app:processDebugGoogleServices UP-TO-DATE
+> Task :feature:accounts:generateDebugResValues UP-TO-DATE
+> Task :feature:accounts:generateDebugResources UP-TO-DATE
+> Task :feature:accounts:packageDebugResources UP-TO-DATE
+> Task :feature:attributions:generateDebugResValues UP-TO-DATE
+> Task :feature:attributions:generateDebugResources UP-TO-DATE
+> Task :feature:attributions:packageDebugResources UP-TO-DATE
+> Task :feature:balance:generateDebugResValues UP-TO-DATE
+> Task :feature:balance:generateDebugResources UP-TO-DATE
+> Task :feature:balance:packageDebugResources UP-TO-DATE
+> Task :feature:budgets:generateDebugResValues UP-TO-DATE
+> Task :feature:budgets:generateDebugResources UP-TO-DATE
+> Task :feature:budgets:packageDebugResources UP-TO-DATE
+> Task :feature:categories:generateDebugResValues UP-TO-DATE
+> Task :feature:categories:generateDebugResources UP-TO-DATE
+> Task :feature:categories:packageDebugResources UP-TO-DATE
+> Task :feature:contributors:generateDebugResValues UP-TO-DATE
+> Task :feature:contributors:generateDebugResources UP-TO-DATE
+> Task :feature:contributors:packageDebugResources UP-TO-DATE
+> Task :feature:disclaimer:generateDebugResValues UP-TO-DATE
+> Task :feature:disclaimer:generateDebugResources UP-TO-DATE
+> Task :feature:disclaimer:packageDebugResources UP-TO-DATE
+> Task :feature:edit-transaction:generateDebugResValues UP-TO-DATE
+> Task :feature:edit-transaction:generateDebugResources UP-TO-DATE
+> Task :feature:edit-transaction:packageDebugResources UP-TO-DATE
+> Task :feature:exchange-rates:generateDebugResValues UP-TO-DATE
+> Task :feature:exchange-rates:generateDebugResources UP-TO-DATE
+> Task :feature:exchange-rates:packageDebugResources UP-TO-DATE
+> Task :feature:features:generateDebugResValues UP-TO-DATE
+> Task :feature:features:generateDebugResources UP-TO-DATE
+> Task :feature:features:packageDebugResources UP-TO-DATE
+> Task :feature:home:generateDebugResValues UP-TO-DATE
+> Task :feature:home:generateDebugResources UP-TO-DATE
+> Task :feature:home:packageDebugResources UP-TO-DATE
+> Task :feature:import-data:generateDebugResValues UP-TO-DATE
+> Task :feature:import-data:generateDebugResources UP-TO-DATE
+> Task :feature:import-data:packageDebugResources UP-TO-DATE
+> Task :feature:loans:generateDebugResValues UP-TO-DATE
+> Task :feature:loans:generateDebugResources UP-TO-DATE
+> Task :feature:loans:packageDebugResources UP-TO-DATE
+> Task :feature:main:generateDebugResValues UP-TO-DATE
+> Task :feature:main:generateDebugResources UP-TO-DATE
+> Task :feature:main:packageDebugResources UP-TO-DATE
+> Task :feature:onboarding:generateDebugResValues UP-TO-DATE
+> Task :feature:onboarding:generateDebugResources UP-TO-DATE
+> Task :feature:onboarding:packageDebugResources UP-TO-DATE
+> Task :feature:piechart:generateDebugResValues UP-TO-DATE
+> Task :feature:piechart:generateDebugResources UP-TO-DATE
+> Task :feature:piechart:packageDebugResources UP-TO-DATE
+> Task :feature:planned-payments:generateDebugResValues UP-TO-DATE
+> Task :feature:planned-payments:generateDebugResources UP-TO-DATE
+> Task :feature:planned-payments:packageDebugResources UP-TO-DATE
+> Task :feature:releases:generateDebugResValues UP-TO-DATE
+> Task :feature:releases:generateDebugResources UP-TO-DATE
+> Task :feature:releases:packageDebugResources UP-TO-DATE
+> Task :feature:reports:generateDebugResValues UP-TO-DATE
+> Task :feature:reports:generateDebugResources UP-TO-DATE
+> Task :feature:reports:packageDebugResources UP-TO-DATE
+> Task :feature:search:generateDebugResValues UP-TO-DATE
+> Task :feature:search:generateDebugResources UP-TO-DATE
+> Task :feature:search:packageDebugResources UP-TO-DATE
+> Task :feature:settings:generateDebugResValues UP-TO-DATE
+> Task :feature:settings:generateDebugResources UP-TO-DATE
+> Task :feature:settings:packageDebugResources UP-TO-DATE
+> Task :feature:transactions:generateDebugResValues UP-TO-DATE
+> Task :feature:transactions:generateDebugResources UP-TO-DATE
+> Task :feature:transactions:packageDebugResources UP-TO-DATE
+> Task :shared:base:generateDebugResValues UP-TO-DATE
+> Task :shared:base:generateDebugResources UP-TO-DATE
+> Task :shared:base:packageDebugResources UP-TO-DATE
+> Task :shared:domain:generateDebugResValues UP-TO-DATE
+> Task :shared:domain:generateDebugResources UP-TO-DATE
+> Task :shared:domain:packageDebugResources UP-TO-DATE
+> Task :temp:legacy-code:generateDebugResValues UP-TO-DATE
+> Task :temp:legacy-code:generateDebugResources UP-TO-DATE
+> Task :temp:legacy-code:packageDebugResources UP-TO-DATE
+> Task :temp:old-design:generateDebugResValues UP-TO-DATE
+> Task :temp:old-design:generateDebugResources UP-TO-DATE
+> Task :temp:old-design:packageDebugResources UP-TO-DATE
+> Task :widget:add-transaction:generateDebugResValues UP-TO-DATE
+> Task :widget:add-transaction:generateDebugResources UP-TO-DATE
+> Task :widget:add-transaction:packageDebugResources UP-TO-DATE
+> Task :widget:balance:generateDebugResValues UP-TO-DATE
+> Task :widget:balance:generateDebugResources UP-TO-DATE
+> Task :widget:balance:packageDebugResources UP-TO-DATE
+> Task :widget:shared-base:generateDebugResValues UP-TO-DATE
+> Task :widget:shared-base:generateDebugResources UP-TO-DATE
+> Task :widget:shared-base:packageDebugResources UP-TO-DATE
+> Task :feature:poll:impl:generateDebugResValues UP-TO-DATE
+> Task :feature:poll:impl:generateDebugResources UP-TO-DATE
+> Task :feature:poll:impl:packageDebugResources UP-TO-DATE
+> Task :feature:poll:public:generateDebugResValues UP-TO-DATE
+> Task :feature:poll:public:generateDebugResources UP-TO-DATE
+> Task :feature:poll:public:packageDebugResources UP-TO-DATE
+> Task :shared:data:core:generateDebugResValues UP-TO-DATE
+> Task :shared:data:core:generateDebugResources UP-TO-DATE
+> Task :shared:data:core:packageDebugResources UP-TO-DATE
+> Task :shared:data:model:generateDebugResValues UP-TO-DATE
+> Task :shared:data:model:generateDebugResources UP-TO-DATE
+> Task :shared:data:model:packageDebugResources UP-TO-DATE
+> Task :shared:ui:core:generateDebugResValues UP-TO-DATE
+> Task :shared:ui:core:generateDebugResources UP-TO-DATE
+> Task :shared:ui:core:packageDebugResources UP-TO-DATE
+> Task :shared:ui:navigation:generateDebugResValues UP-TO-DATE
+> Task :shared:ui:navigation:generateDebugResources UP-TO-DATE
+> Task :shared:ui:navigation:packageDebugResources UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:accounts:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:attributions:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:balance:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:budgets:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:categories:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:contributors:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:disclaimer:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:edit-transaction:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:exchange-rates:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:features:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:home:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:import-data:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:loans:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:main:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:onboarding:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:piechart:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:planned-payments:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:releases:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:reports:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:search:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:settings:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:transactions:extractDebugSupportedLocales UP-TO-DATE
+> Task :shared:base:extractDebugSupportedLocales UP-TO-DATE
+> Task :shared:domain:extractDebugSupportedLocales UP-TO-DATE
+> Task :temp:legacy-code:extractDebugSupportedLocales UP-TO-DATE
+> Task :temp:old-design:extractDebugSupportedLocales UP-TO-DATE
+> Task :widget:add-transaction:extractDebugSupportedLocales UP-TO-DATE
+> Task :widget:balance:extractDebugSupportedLocales UP-TO-DATE
+> Task :widget:shared-base:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:poll:impl:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:poll:public:extractDebugSupportedLocales UP-TO-DATE
+> Task :shared:data:core:extractDebugSupportedLocales UP-TO-DATE
+> Task :shared:data:model:extractDebugSupportedLocales UP-TO-DATE
+> Task :shared:ui:core:extractDebugSupportedLocales UP-TO-DATE
+> Task :shared:ui:navigation:extractDebugSupportedLocales UP-TO-DATE
+> Task :app:generateDebugLocaleConfig UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:accounts:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:accounts:processDebugManifest UP-TO-DATE
+> Task :feature:attributions:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:attributions:processDebugManifest UP-TO-DATE
+> Task :feature:balance:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:balance:processDebugManifest UP-TO-DATE
+> Task :feature:budgets:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:budgets:processDebugManifest UP-TO-DATE
+> Task :feature:categories:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:categories:processDebugManifest UP-TO-DATE
+> Task :feature:contributors:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:contributors:processDebugManifest UP-TO-DATE
+> Task :feature:disclaimer:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:disclaimer:processDebugManifest UP-TO-DATE
+> Task :feature:edit-transaction:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:edit-transaction:processDebugManifest UP-TO-DATE
+> Task :feature:exchange-rates:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:exchange-rates:processDebugManifest UP-TO-DATE
+> Task :feature:features:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:features:processDebugManifest UP-TO-DATE
+> Task :feature:home:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:home:processDebugManifest UP-TO-DATE
+> Task :feature:import-data:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:import-data:processDebugManifest UP-TO-DATE
+> Task :feature:loans:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:loans:processDebugManifest UP-TO-DATE
+> Task :feature:main:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:main:processDebugManifest UP-TO-DATE
+> Task :feature:onboarding:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:onboarding:processDebugManifest UP-TO-DATE
+> Task :feature:piechart:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:piechart:processDebugManifest UP-TO-DATE
+> Task :feature:planned-payments:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:planned-payments:processDebugManifest UP-TO-DATE
+> Task :feature:releases:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:releases:processDebugManifest UP-TO-DATE
+> Task :feature:reports:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:reports:processDebugManifest UP-TO-DATE
+> Task :feature:search:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:search:processDebugManifest UP-TO-DATE
+> Task :feature:settings:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:settings:processDebugManifest UP-TO-DATE
+> Task :feature:transactions:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:transactions:processDebugManifest UP-TO-DATE
+> Task :shared:base:extractDeepLinksDebug UP-TO-DATE
+> Task :shared:base:processDebugManifest UP-TO-DATE
+> Task :shared:domain:extractDeepLinksDebug UP-TO-DATE
+> Task :shared:domain:processDebugManifest UP-TO-DATE
+> Task :temp:legacy-code:extractDeepLinksDebug UP-TO-DATE
+> Task :temp:legacy-code:processDebugManifest UP-TO-DATE
+> Task :temp:old-design:extractDeepLinksDebug UP-TO-DATE
+> Task :temp:old-design:processDebugManifest UP-TO-DATE
+> Task :widget:add-transaction:extractDeepLinksDebug UP-TO-DATE
+> Task :widget:add-transaction:processDebugManifest UP-TO-DATE
+> Task :widget:balance:extractDeepLinksDebug UP-TO-DATE
+> Task :widget:balance:processDebugManifest UP-TO-DATE
+> Task :widget:shared-base:extractDeepLinksDebug UP-TO-DATE
+> Task :widget:shared-base:processDebugManifest UP-TO-DATE
+> Task :feature:poll:impl:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:poll:impl:processDebugManifest UP-TO-DATE
+> Task :feature:poll:public:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:poll:public:processDebugManifest UP-TO-DATE
+> Task :shared:data:core:extractDeepLinksDebug UP-TO-DATE
+> Task :shared:data:core:processDebugManifest UP-TO-DATE
+> Task :shared:data:model:extractDeepLinksDebug UP-TO-DATE
+> Task :shared:data:model:processDebugManifest UP-TO-DATE
+> Task :shared:ui:core:extractDeepLinksDebug UP-TO-DATE
+> Task :shared:ui:core:processDebugManifest UP-TO-DATE
+> Task :shared:ui:navigation:extractDeepLinksDebug UP-TO-DATE
+> Task :shared:ui:navigation:processDebugManifest UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :feature:accounts:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:accounts:parseDebugLocalResources UP-TO-DATE
+> Task :feature:accounts:generateDebugRFile UP-TO-DATE
+> Task :feature:attributions:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:attributions:parseDebugLocalResources UP-TO-DATE
+> Task :feature:attributions:generateDebugRFile UP-TO-DATE
+> Task :feature:balance:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:balance:parseDebugLocalResources UP-TO-DATE
+> Task :feature:balance:generateDebugRFile UP-TO-DATE
+> Task :feature:budgets:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:budgets:parseDebugLocalResources UP-TO-DATE
+> Task :feature:budgets:generateDebugRFile UP-TO-DATE
+> Task :feature:categories:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:categories:parseDebugLocalResources UP-TO-DATE
+> Task :feature:categories:generateDebugRFile UP-TO-DATE
+> Task :feature:contributors:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:contributors:parseDebugLocalResources UP-TO-DATE
+> Task :feature:contributors:generateDebugRFile UP-TO-DATE
+> Task :feature:disclaimer:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:disclaimer:parseDebugLocalResources UP-TO-DATE
+> Task :feature:disclaimer:generateDebugRFile UP-TO-DATE
+> Task :feature:edit-transaction:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:edit-transaction:parseDebugLocalResources UP-TO-DATE
+> Task :feature:edit-transaction:generateDebugRFile UP-TO-DATE
+> Task :feature:exchange-rates:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:exchange-rates:parseDebugLocalResources UP-TO-DATE
+> Task :feature:exchange-rates:generateDebugRFile UP-TO-DATE
+> Task :feature:features:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:features:parseDebugLocalResources UP-TO-DATE
+> Task :feature:features:generateDebugRFile UP-TO-DATE
+> Task :feature:home:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:home:parseDebugLocalResources UP-TO-DATE
+> Task :feature:home:generateDebugRFile UP-TO-DATE
+> Task :feature:import-data:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:import-data:parseDebugLocalResources UP-TO-DATE
+> Task :feature:import-data:generateDebugRFile UP-TO-DATE
+> Task :feature:loans:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:loans:parseDebugLocalResources UP-TO-DATE
+> Task :feature:loans:generateDebugRFile UP-TO-DATE
+> Task :feature:main:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:main:parseDebugLocalResources UP-TO-DATE
+> Task :feature:main:generateDebugRFile UP-TO-DATE
+> Task :feature:onboarding:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:onboarding:parseDebugLocalResources UP-TO-DATE
+> Task :feature:onboarding:generateDebugRFile UP-TO-DATE
+> Task :feature:piechart:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:piechart:parseDebugLocalResources UP-TO-DATE
+> Task :feature:piechart:generateDebugRFile UP-TO-DATE
+> Task :feature:planned-payments:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:planned-payments:parseDebugLocalResources UP-TO-DATE
+> Task :feature:planned-payments:generateDebugRFile UP-TO-DATE
+> Task :feature:releases:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:releases:parseDebugLocalResources UP-TO-DATE
+> Task :feature:releases:generateDebugRFile UP-TO-DATE
+> Task :feature:reports:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:reports:parseDebugLocalResources UP-TO-DATE
+> Task :feature:reports:generateDebugRFile UP-TO-DATE
+> Task :feature:search:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:search:parseDebugLocalResources UP-TO-DATE
+> Task :feature:search:generateDebugRFile UP-TO-DATE
+> Task :feature:settings:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:settings:parseDebugLocalResources UP-TO-DATE
+> Task :feature:settings:generateDebugRFile UP-TO-DATE
+> Task :feature:transactions:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:transactions:parseDebugLocalResources UP-TO-DATE
+> Task :feature:transactions:generateDebugRFile UP-TO-DATE
+> Task :shared:base:compileDebugLibraryResources UP-TO-DATE
+> Task :shared:base:parseDebugLocalResources UP-TO-DATE
+> Task :shared:base:generateDebugRFile UP-TO-DATE
+> Task :shared:domain:compileDebugLibraryResources UP-TO-DATE
+> Task :shared:domain:parseDebugLocalResources UP-TO-DATE
+> Task :shared:domain:generateDebugRFile UP-TO-DATE
+> Task :temp:legacy-code:compileDebugLibraryResources UP-TO-DATE
+> Task :temp:legacy-code:parseDebugLocalResources UP-TO-DATE
+> Task :temp:legacy-code:generateDebugRFile UP-TO-DATE
+> Task :temp:old-design:compileDebugLibraryResources UP-TO-DATE
+> Task :temp:old-design:parseDebugLocalResources UP-TO-DATE
+> Task :temp:old-design:generateDebugRFile UP-TO-DATE
+> Task :widget:add-transaction:compileDebugLibraryResources UP-TO-DATE
+> Task :widget:add-transaction:parseDebugLocalResources UP-TO-DATE
+> Task :widget:add-transaction:generateDebugRFile UP-TO-DATE
+> Task :widget:balance:compileDebugLibraryResources UP-TO-DATE
+> Task :widget:balance:parseDebugLocalResources UP-TO-DATE
+> Task :widget:balance:generateDebugRFile UP-TO-DATE
+> Task :widget:shared-base:compileDebugLibraryResources UP-TO-DATE
+> Task :widget:shared-base:parseDebugLocalResources UP-TO-DATE
+> Task :widget:shared-base:generateDebugRFile UP-TO-DATE
+> Task :feature:poll:impl:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:poll:impl:parseDebugLocalResources UP-TO-DATE
+> Task :feature:poll:impl:generateDebugRFile UP-TO-DATE
+> Task :feature:poll:public:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:poll:public:parseDebugLocalResources UP-TO-DATE
+> Task :feature:poll:public:generateDebugRFile UP-TO-DATE
+> Task :shared:data:core:compileDebugLibraryResources UP-TO-DATE
+> Task :shared:data:core:parseDebugLocalResources UP-TO-DATE
+> Task :shared:data:core:generateDebugRFile UP-TO-DATE
+> Task :shared:data:model:compileDebugLibraryResources UP-TO-DATE
+> Task :shared:data:model:parseDebugLocalResources UP-TO-DATE
+> Task :shared:data:model:generateDebugRFile UP-TO-DATE
+> Task :shared:ui:core:compileDebugLibraryResources UP-TO-DATE
+> Task :shared:ui:core:parseDebugLocalResources UP-TO-DATE
+> Task :shared:ui:core:generateDebugRFile UP-TO-DATE
+> Task :shared:ui:navigation:compileDebugLibraryResources UP-TO-DATE
+> Task :shared:ui:navigation:parseDebugLocalResources UP-TO-DATE
+> Task :shared:ui:navigation:generateDebugRFile UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :feature:attributions:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:base:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:base:kspDebugKotlin UP-TO-DATE
+> Task :shared:base:compileDebugKotlin UP-TO-DATE
+> Task :shared:base:javaPreCompileDebug UP-TO-DATE
+> Task :shared:base:compileDebugJavaWithJavac UP-TO-DATE
+> Task :shared:base:transformDebugClassesWithAsm UP-TO-DATE
+> Task :shared:base:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :shared:base:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :shared:domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:data:core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:data:model:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:data:model:kspDebugKotlin UP-TO-DATE
+> Task :shared:data:model:compileDebugKotlin UP-TO-DATE
+> Task :shared:data:model:javaPreCompileDebug UP-TO-DATE
+> Task :shared:data:model:compileDebugJavaWithJavac NO-SOURCE
+> Task :shared:data:model:transformDebugClassesWithAsm UP-TO-DATE
+> Task :shared:data:model:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :shared:data:core:kspDebugKotlin UP-TO-DATE
+> Task :shared:data:core:compileDebugKotlin UP-TO-DATE
+> Task :shared:data:core:javaPreCompileDebug UP-TO-DATE
+> Task :shared:data:core:compileDebugJavaWithJavac UP-TO-DATE
+> Task :shared:data:core:copyRoomSchemas NO-SOURCE
+> Task :shared:data:model:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :shared:data:core:transformDebugClassesWithAsm UP-TO-DATE
+> Task :shared:data:core:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :shared:domain:kspDebugKotlin UP-TO-DATE
+> Task :shared:domain:compileDebugKotlin UP-TO-DATE
+> Task :shared:domain:javaPreCompileDebug UP-TO-DATE
+> Task :shared:domain:compileDebugJavaWithJavac UP-TO-DATE
+> Task :shared:domain:copyRoomSchemas NO-SOURCE
+> Task :shared:data:core:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :shared:domain:transformDebugClassesWithAsm UP-TO-DATE
+> Task :shared:domain:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :shared:domain:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :shared:ui:core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:ui:core:kspDebugKotlin UP-TO-DATE
+> Task :shared:ui:core:compileDebugKotlin UP-TO-DATE
+> Task :shared:ui:core:javaPreCompileDebug UP-TO-DATE
+> Task :shared:ui:core:compileDebugJavaWithJavac UP-TO-DATE
+> Task :shared:ui:core:transformDebugClassesWithAsm UP-TO-DATE
+> Task :shared:ui:core:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :shared:ui:core:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :shared:ui:navigation:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:ui:navigation:kspDebugKotlin UP-TO-DATE
+> Task :shared:ui:navigation:compileDebugKotlin UP-TO-DATE
+> Task :shared:ui:navigation:javaPreCompileDebug UP-TO-DATE
+> Task :shared:ui:navigation:compileDebugJavaWithJavac UP-TO-DATE
+> Task :shared:ui:navigation:transformDebugClassesWithAsm UP-TO-DATE
+> Task :shared:ui:navigation:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:attributions:kspDebugKotlin UP-TO-DATE
+> Task :feature:attributions:compileDebugKotlin UP-TO-DATE
+> Task :feature:attributions:javaPreCompileDebug UP-TO-DATE
+> Task :feature:attributions:compileDebugJavaWithJavac UP-TO-DATE
+> Task :shared:ui:navigation:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :feature:attributions:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature:attributions:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:balance:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :temp:legacy-code:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :temp:old-design:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :temp:old-design:kspDebugKotlin UP-TO-DATE
+> Task :temp:old-design:compileDebugKotlin UP-TO-DATE
+> Task :temp:old-design:javaPreCompileDebug UP-TO-DATE
+> Task :temp:old-design:compileDebugJavaWithJavac NO-SOURCE
+> Task :temp:old-design:transformDebugClassesWithAsm UP-TO-DATE
+> Task :temp:old-design:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :temp:legacy-code:kspDebugKotlin UP-TO-DATE
+> Task :temp:legacy-code:compileDebugKotlin UP-TO-DATE
+> Task :temp:legacy-code:javaPreCompileDebug UP-TO-DATE
+> Task :temp:legacy-code:compileDebugJavaWithJavac UP-TO-DATE
+> Task :temp:legacy-code:copyRoomSchemas NO-SOURCE
+> Task :temp:old-design:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :temp:legacy-code:transformDebugClassesWithAsm UP-TO-DATE
+> Task :temp:legacy-code:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:balance:kspDebugKotlin UP-TO-DATE
+> Task :feature:balance:compileDebugKotlin UP-TO-DATE
+> Task :feature:balance:javaPreCompileDebug UP-TO-DATE
+> Task :feature:balance:compileDebugJavaWithJavac UP-TO-DATE
+> Task :temp:legacy-code:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :feature:balance:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature:balance:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:budgets:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature:budgets:kspDebugKotlin UP-TO-DATE
+> Task :feature:budgets:compileDebugKotlin UP-TO-DATE
+> Task :feature:budgets:javaPreCompileDebug UP-TO-DATE
+> Task :feature:budgets:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature:budgets:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature:budgets:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:categories:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature:categories:kspDebugKotlin UP-TO-DATE
+> Task :feature:categories:compileDebugKotlin UP-TO-DATE
+> Task :feature:categories:javaPreCompileDebug UP-TO-DATE
+> Task :feature:categories:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature:categories:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature:categories:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:contributors:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature:contributors:kspDebugKotlin UP-TO-DATE
+> Task :feature:contributors:compileDebugKotlin UP-TO-DATE
+> Task :feature:contributors:javaPreCompileDebug UP-TO-DATE
+> Task :feature:contributors:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature:contributors:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature:contributors:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:disclaimer:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature:disclaimer:kspDebugKotlin UP-TO-DATE
+> Task :feature:disclaimer:compileDebugKotlin UP-TO-DATE
+> Task :feature:disclaimer:javaPreCompileDebug UP-TO-DATE
+> Task :feature:disclaimer:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature:disclaimer:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature:disclaimer:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:edit-transaction:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :widget:balance:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :widget:shared-base:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :widget:shared-base:kspDebugKotlin UP-TO-DATE
+> Task :widget:shared-base:compileDebugKotlin UP-TO-DATE
+> Task :widget:shared-base:javaPreCompileDebug UP-TO-DATE
+> Task :widget:shared-base:compileDebugJavaWithJavac NO-SOURCE
+> Task :widget:shared-base:transformDebugClassesWithAsm UP-TO-DATE
+> Task :widget:shared-base:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :widget:balance:kspDebugKotlin UP-TO-DATE
+> Task :widget:balance:compileDebugKotlin UP-TO-DATE
+> Task :widget:balance:javaPreCompileDebug UP-TO-DATE
+> Task :widget:balance:compileDebugJavaWithJavac UP-TO-DATE
+> Task :widget:shared-base:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :widget:balance:transformDebugClassesWithAsm UP-TO-DATE
+> Task :widget:balance:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:edit-transaction:kspDebugKotlin UP-TO-DATE
+> Task :feature:edit-transaction:compileDebugKotlin UP-TO-DATE
+> Task :feature:edit-transaction:javaPreCompileDebug UP-TO-DATE
+> Task :feature:edit-transaction:compileDebugJavaWithJavac UP-TO-DATE
+> Task :widget:balance:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :feature:edit-transaction:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature:edit-transaction:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:exchange-rates:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature:exchange-rates:kspDebugKotlin UP-TO-DATE
+> Task :feature:exchange-rates:compileDebugKotlin UP-TO-DATE
+> Task :feature:exchange-rates:javaPreCompileDebug UP-TO-DATE
+> Task :feature:exchange-rates:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature:exchange-rates:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature:exchange-rates:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:features:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature:features:kspDebugKotlin UP-TO-DATE
+> Task :feature:features:compileDebugKotlin UP-TO-DATE
+> Task :feature:features:javaPreCompileDebug UP-TO-DATE
+> Task :feature:features:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature:features:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature:features:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:home:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :widget:add-transaction:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :widget:add-transaction:kspDebugKotlin UP-TO-DATE
+> Task :widget:add-transaction:compileDebugKotlin UP-TO-DATE
+> Task :widget:add-transaction:javaPreCompileDebug UP-TO-DATE
+> Task :widget:add-transaction:compileDebugJavaWithJavac UP-TO-DATE
+> Task :widget:add-transaction:transformDebugClassesWithAsm UP-TO-DATE
+> Task :widget:add-transaction:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:poll:public:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature:poll:public:kspDebugKotlin UP-TO-DATE
+> Task :feature:poll:public:compileDebugKotlin UP-TO-DATE
+> Task :feature:poll:public:javaPreCompileDebug UP-TO-DATE
+> Task :feature:poll:public:compileDebugJavaWithJavac NO-SOURCE
+> Task :feature:poll:public:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature:poll:public:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:home:kspDebugKotlin UP-TO-DATE
+> Task :feature:home:compileDebugKotlin UP-TO-DATE
+> Task :feature:home:javaPreCompileDebug UP-TO-DATE
+> Task :feature:home:compileDebugJavaWithJavac UP-TO-DATE
+> Task :widget:add-transaction:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :feature:poll:public:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :feature:home:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature:home:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:import-data:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature:onboarding:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature:onboarding:kspDebugKotlin UP-TO-DATE
+> Task :feature:onboarding:compileDebugKotlin UP-TO-DATE
+> Task :feature:onboarding:javaPreCompileDebug UP-TO-DATE
+> Task :feature:onboarding:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature:onboarding:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature:onboarding:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:import-data:kspDebugKotlin UP-TO-DATE
+> Task :feature:import-data:compileDebugKotlin UP-TO-DATE
+> Task :feature:import-data:javaPreCompileDebug UP-TO-DATE
+> Task :feature:import-data:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature:onboarding:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :feature:import-data:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature:import-data:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature:loans:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :feature:loans:kspDebugKotlin UP-TO-DATE
+
+> Task :feature:loans:compileDebugKotlin
+e: Failed connecting to the daemon in 4 retries
+e: Daemon compilation failed: Could not connect to Kotlin compile daemon
+java.lang.RuntimeException: Could not connect to Kotlin compile daemon
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemon(GradleKotlinCompilerWork.kt:214)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemonOrFallbackImpl(GradleKotlinCompilerWork.kt:159)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.run(GradleKotlinCompilerWork.kt:111)
+	at org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction.execute(GradleCompilerRunnerWithWorkers.kt:76)
+	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:63)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:66)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:62)
+	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:100)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:62)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
+	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:174)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:187)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:120)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:162)
+	at org.gradle.internal.Factories$1.create(Factories.java:31)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:264)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:128)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:133)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:157)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:126)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+Failed to compile with Kotlin daemon: java.lang.RuntimeException: Could not connect to Kotlin compile daemon
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemon(GradleKotlinCompilerWork.kt:214)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemonOrFallbackImpl(GradleKotlinCompilerWork.kt:159)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.run(GradleKotlinCompilerWork.kt:111)
+	at org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction.execute(GradleCompilerRunnerWithWorkers.kt:76)
+	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:63)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:66)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:62)
+	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:100)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:62)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
+	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:174)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:187)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:120)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:162)
+	at org.gradle.internal.Factories$1.create(Factories.java:31)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:264)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:128)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:133)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:157)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:126)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+Using fallback strategy: Compile without Kotlin daemon
+Try ./gradlew --stop if this issue persists
+If it does not look related to your configuration, please file an issue with logs to https://kotl.in/issue
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:30:8: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.design.l0_system.UI
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:60:25: warning: 'fun pureBlur(): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .background(pureBlur())
+exception:                         ^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:79:29: warning: 'val Green: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             selectedColor = Green
+exception:                             ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:85:22: warning: 'fun ivyWalletCtx(): IvyWalletCtx' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val ivyContext = ivyWalletCtx()
+exception:                      ^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:86:32: warning: 'var screenWidth: Int' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val fabStartX = ivyContext.screenWidth / 2 - FAB_BUTTON_SIZE.toDensityPx() / 2
+exception:                                ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:86:66: warning: 'fun Dp.toDensityPx(): Float' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val fabStartX = ivyContext.screenWidth / 2 - FAB_BUTTON_SIZE.toDensityPx() / 2
+exception:                                                                  ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:87:32: warning: 'var screenHeight: Int' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val fabStartY = ivyContext.screenHeight - navigationBarInset() -
+exception:                                ^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:87:47: warning: 'fun navigationBarInset(): Int' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val fabStartY = ivyContext.screenHeight - navigationBarInset() -
+exception:                                               ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:88:19: warning: 'fun Dp.toDensityPx(): Float' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             30.dp.toDensityPx() - FAB_BUTTON_SIZE.toDensityPx()
+exception:                   ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:88:51: warning: 'fun Dp.toDensityPx(): Float' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             30.dp.toDensityPx() - FAB_BUTTON_SIZE.toDensityPx()
+exception:                                                   ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:90:5: warning: 'fun IvyCircleButton(modifier: Modifier = ..., backgroundPadding: Dp = ..., backgroundGradient: Gradient = ..., horizontalGradient: Boolean = ..., icon: Int, tint: Color = ..., enabled: Boolean = ..., hasShadow: Boolean = ..., onClick: () -> Unit): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     IvyCircleButton(
+exception:     ^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:107:16: warning: 'val White: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         tint = White
+exception:                ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:124:19: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .clip(UI.shapes.rFull)
+exception:                   ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:131:9: warning: 'fun IvyIcon(modifier: Modifier = ..., icon: Int, tint: Color = ..., contentDescription: String = ...): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         IvyIcon(
+exception:         ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:133:53: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             tint = if (selected) selectedColor else UI.colors.pureInverse
+exception:                                                     ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:141:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.c.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:141:35: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.c.style(
+exception:                                   ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:153:5: warning: 'fun IvyWalletPreview(theme: Theme = ..., content: @Composable() ComposableFunction1<BoxWithConstraintsScope, Unit>): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     IvyWalletPreview {
+exception:     ^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanBottomBar.kt:157:29: warning: 'val Blue: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 .background(Blue)
+exception:                             ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanScreenState.kt:3:8: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.Account
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanScreenState.kt:5:8: warning: 'data class LoanModalData : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.wallet.ui.theme.modal.LoanModalData
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanScreenState.kt:13:33: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     val accounts: ImmutableList<Account>,
+exception:                                 ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanScreenState.kt:14:26: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     val selectedAccount: Account?,
+exception:                          ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanScreenState.kt:15:24: warning: 'data class LoanModalData : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val loanModalData: LoanModalData?,
+exception:                        ^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:10:8: warning: 'class SharedPrefs : Any' is deprecated. Use IvyWalletDataStore instead.
+exception: import com.ivy.base.legacy.SharedPrefs
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:20:8: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception: import com.ivy.frp.test.TestIdlingResource
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:21:8: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.Account
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:22:8: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.Loan
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:36:8: warning: 'data class LoanModalData : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.wallet.ui.theme.modal.LoanModalData
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:54:30: warning: 'class SharedPrefs : Any' is deprecated. Use IvyWalletDataStore instead.
+exception:     private val sharedPrefs: SharedPrefs,
+exception:                              ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:69:58: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     private var accounts by mutableStateOf<ImmutableList<Account>>(persistentListOf())
+exception:                                                          ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:70:51: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     private var selectedAccount by mutableStateOf<Account?>(null)
+exception:                                                   ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:71:49: warning: 'data class LoanModalData : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     private var loanModalData by mutableStateOf<LoanModalData?>(null)
+exception:                                                 ^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:153:33: warning: 'constructor(loan: Loan?, baseCurrency: String, selectedAccount: Account? = ..., autoFocusKeyboard: Boolean = ..., autoOpenAmountModal: Boolean = ..., createLoanTransaction: Boolean = ..., id: UUID = ...): LoanModalData' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 loanModalData = LoanModalData(
+exception:                                 ^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:197:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:197:32: warning: 'fun increment(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:249:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:249:32: warning: 'fun decrement(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:320:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:320:32: warning: 'fun increment(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:330:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:330:32: warning: 'fun decrement(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:336:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:336:32: warning: 'fun increment(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:350:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:350:32: warning: 'fun decrement(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:364:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:364:32: warning: 'fun increment(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:370:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:370:32: warning: 'fun decrement(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:375:24: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:         accounts: List<Account>,
+exception:                        ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:376:8: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     ): Account? {
+exception:        ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:378:35: warning: 'class SharedPrefs : Any' is deprecated. Use IvyWalletDataStore instead.
+exception:             sharedPrefs.getString(SharedPrefs.LAST_SELECTED_ACCOUNT_ID, null)?.let {
+exception:                                   ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:389:49: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     private fun findCurrencyCode(accounts: List<Account>, accountId: UUID?): String {
+exception:                                                 ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoanViewModel.kt:399:65: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     private suspend fun calculateAmountPaidAndTotalAmount(loan: Loan): Pair<Double, Double> {
+exception:                                                                 ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:35:8: warning: 'enum class Theme : Enum<Theme>' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.base.legacy.Theme
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:37:8: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.design.l0_system.UI
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:40:8: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.Loan
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:114:44: warning: 'fun ivyWalletCtx(): IvyWalletCtx' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             initialFirstVisibleItemIndex = ivyWalletCtx()
+exception:                                            ^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:115:18: warning: 'var loanListState: LazyListState?' is deprecated. Legacy code. Don't use it, please.
+exception:                 .loanListState?.firstVisibleItemIndex ?: 0,
+exception:                  ^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:116:51: warning: 'fun ivyWalletCtx(): IvyWalletCtx' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             initialFirstVisibleItemScrollOffset = ivyWalletCtx()
+exception:                                                   ^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:117:18: warning: 'var loanListState: LazyListState?' is deprecated. Legacy code. Don't use it, please.
+exception:                 .loanListState?.firstVisibleItemScrollOffset ?: 0
+exception:                  ^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:168:5: warning: 'fun <T : Reorderable> BoxScope.ReorderModalSingleType(visible: Boolean, id: UUID = ..., TitleContent: @Composable() ComposableFunction1<ColumnScope, Unit> = ..., initialItems: List<T>, dismiss: () -> Unit, onUpdateItemOrderNum: (@ParameterName(...) T, @ParameterName(...) Double) -> Unit = ..., onReordered: ((List<T>) -> Unit)? = ..., ItemContent: @Composable() ComposableFunction2<Int, T, Unit>): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     ReorderModalSingleType(
+exception:     ^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:184:21: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b1.style(
+exception:                     ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:184:32: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b1.style(
+exception:                                ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:185:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 color = UI.colors.pureInverse,
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:192:9: warning: 'fun BoxWithConstraintsScope.LoanModal(modal: LoanModalData?, dateTime: Instant, onSetDate: () -> Unit, onSetTime: () -> Unit, onCreateLoan: (CreateLoanData) -> Unit, onEditLoan: (Loan, Boolean) -> Unit, accounts: List<Account> = ..., onCreateAccount: (CreateAccountData) -> Unit = ..., onPerformCalculations: () -> Unit = ..., dismiss: () -> Unit): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         LoanModal(
+exception:         ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:234:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.h2.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:234:36: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.h2.style(
+exception:                                    ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:235:29: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     color = UI.colors.pureInverse,
+exception:                             ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:257:9: warning: 'fun CircleButtonFilled(modifier: Modifier = ..., icon: Int, contentDescription: String = ..., backgroundColor: Color = ..., tint: Color? = ..., clickAreaPadding: Dp = ..., onClick: () -> Unit): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         CircleButtonFilled(
+exception:         ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:279:25: warning: 'fun findContrastTextColor(backgroundColor: Color): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val contrastColor = findContrastTextColor(loan.color.toComposeColor())
+exception:                         ^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:279:58: warning: 'fun Int.toComposeColor(): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val contrastColor = findContrastTextColor(loan.color.toComposeColor())
+exception:                                                          ^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:285:19: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .clip(UI.shapes.r4)
+exception:                   ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:286:27: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .border(2.dp, UI.colors.medium, UI.shapes.r4)
+exception:                           ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:286:45: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .border(2.dp, UI.colors.medium, UI.shapes.r4)
+exception:                                             ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:317:36: warning: 'fun Int.toComposeColor(): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .background(loan.color.toComposeColor(), UI.shapes.r4Top)
+exception:                                    ^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:317:54: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .background(loan.color.toComposeColor(), UI.shapes.r4Top)
+exception:                                                      ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:326:13: warning: 'fun ItemIconSDefaultIcon(modifier: Modifier = ..., iconName: String?, tint: Color = ..., defaultIcon: Int): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             ItemIconSDefaultIcon(
+exception:             ^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:336:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.b1.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:336:36: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.b1.style(
+exception:                                    ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:345:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.c.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:345:35: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.c.style(
+exception:                                   ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:346:40: warning: 'fun Int.toComposeColor(): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     color = loan.color.toComposeColor().dynamicContrast()
+exception:                                        ^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:346:57: warning: 'fun Color.dynamicContrast(): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     color = loan.color.toComposeColor().dynamicContrast()
+exception:                                                         ^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:380:17: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         style = UI.typo.nB2.style(
+exception:                 ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:380:29: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         style = UI.typo.nB2.style(
+exception:                             ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:388:5: warning: 'fun ProgressBar(modifier: Modifier = ..., notFilledColor: Color = ..., positiveProgress: Boolean = ..., percent: Double): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     ProgressBar(
+exception:     ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:393:26: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         notFilledColor = UI.colors.medium,
+exception:                          ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:410:9: warning: 'fun IvyIcon(modifier: Modifier = ..., icon: Int, tint: Color = ..., contentDescription: String = ...): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         IvyIcon(
+exception:         ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:412:20: warning: 'val Gray: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             tint = Gray
+exception:                    ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:419:21: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b1.style(
+exception:                     ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:419:32: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b1.style(
+exception:                                ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:420:25: warning: 'val Gray: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 color = Gray,
+exception:                         ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:430:21: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b2.style(
+exception:                     ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:430:32: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b2.style(
+exception:                                ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:431:25: warning: 'val Gray: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 color = Gray,
+exception:                         ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:446:28: warning: 'enum class Theme : Enum<Theme>' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: private fun Preview(theme: Theme = Theme.LIGHT) {
+exception:                            ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:446:36: warning: 'enum class Theme : Enum<Theme>' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: private fun Preview(theme: Theme = Theme.LIGHT) {
+exception:                                    ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:452:24: warning: 'constructor(name: String, amount: Double, type: LoanType, color: Int = ..., icon: String? = ..., orderNum: Double = ..., accountId: UUID? = ..., note: String? = ..., isSynced: Boolean = ..., isDeleted: Boolean = ..., dateTime: LocalDateTime? = ..., id: UUID = ...): Loan' is deprecated. Legacy data model. Will be deleted.
+exception:                 loan = Loan(
+exception:                        ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:455:29: warning: 'val Blue: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     color = Blue.toArgb(),
+exception:                             ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:467:24: warning: 'constructor(name: String, amount: Double, type: LoanType, color: Int = ..., icon: String? = ..., orderNum: Double = ..., accountId: UUID? = ..., note: String? = ..., isSynced: Boolean = ..., isDeleted: Boolean = ..., dateTime: LocalDateTime? = ..., id: UUID = ...): Loan' is deprecated. Legacy data model. Will be deleted.
+exception:                 loan = Loan(
+exception:                        ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:470:29: warning: 'val Blue: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     color = Blue.toArgb(),
+exception:                             ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:489:5: warning: 'fun IvyWalletPreview(theme: Theme = ..., content: @Composable() ComposableFunction1<BoxWithConstraintsScope, Unit>): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     IvyWalletPreview(theme) {
+exception:     ^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:500:17: warning: 'enum class Theme : Enum<Theme>' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         true -> Theme.DARK
+exception:                 ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\LoansScreen.kt:501:18: warning: 'enum class Theme : Enum<Theme>' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         false -> Theme.LIGHT
+exception:                  ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\data\DisplayLoan.kt:3:8: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.Loan
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\data\DisplayLoan.kt:8:15: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     val loan: Loan,
+exception:               ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\data\DisplayLoanRecord.kt:3:8: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.Account
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\data\DisplayLoanRecord.kt:4:8: warning: 'data class LoanRecord : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.LoanRecord
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\data\DisplayLoanRecord.kt:7:21: warning: 'data class LoanRecord : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     val loanRecord: LoanRecord,
+exception:                     ^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loan\data\DisplayLoanRecord.kt:8:18: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     val account: Account? = null,
+exception:                  ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:38:8: warning: 'enum class Theme : Enum<Theme>' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.base.legacy.Theme
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:44:8: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.design.l0_system.UI
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:47:8: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.Account
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:48:8: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.Loan
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:49:8: warning: 'data class LoanRecord : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.LoanRecord
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:73:8: warning: 'data class Gradient : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.wallet.ui.theme.Gradient
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:114:40: warning: 'fun Int.toComposeColor(): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val itemColor = state.loan?.color?.toComposeColor() ?: Gray
+exception:                                        ^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:114:60: warning: 'val Gray: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val itemColor = state.loan?.color?.toComposeColor() ?: Gray
+exception:                                                            ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:129:27: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     .clip(UI.shapes.r1Top)
+exception:                           ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:130:33: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     .background(UI.colors.pure),
+exception:                                 ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:170:41: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                             .background(UI.colors.pure, UI.shapes.r1Top)
+exception:                                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:170:57: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                             .background(UI.colors.pure, UI.shapes.r1Top)
+exception:                                                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:221:28: warning: 'fun findContrastTextColor(backgroundColor: Color): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             contentColor = findContrastTextColor(itemColor)
+exception:                            ^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:225:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.h2.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:225:36: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.h2.style(
+exception:                                    ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:227:29: warning: 'fun findContrastTextColor(backgroundColor: Color): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     color = findContrastTextColor(itemColor)
+exception:                             ^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:233:5: warning: 'fun BoxWithConstraintsScope.LoanModal(modal: LoanModalData?, dateTime: Instant, onSetDate: () -> Unit, onSetTime: () -> Unit, onCreateLoan: (CreateLoanData) -> Unit, onEditLoan: (Loan, Boolean) -> Unit, accounts: List<Account> = ..., onCreateAccount: (CreateAccountData) -> Unit = ..., onPerformCalculations: () -> Unit = ..., dismiss: () -> Unit): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     LoanModal(
+exception:     ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:253:5: warning: 'fun BoxWithConstraintsScope.LoanRecordModal(modal: LoanRecordModalData?, dateTime: Instant, onSetDate: () -> Unit, onSetTime: () -> Unit, onCreate: (CreateLoanRecordData) -> Unit, onEdit: (EditLoanRecordData) -> Unit, onDelete: (LoanRecord) -> Unit, dismiss: () -> Unit, accounts: List<Account> = ..., onCreateAccount: (CreateAccountData) -> Unit = ...): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     LoanRecordModal(
+exception:     ^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:274:5: warning: 'fun BoxWithConstraintsScope.DeleteModal(title: String, description: String, visible: Boolean, dismiss: () -> Unit, id: UUID = ..., buttonText: String = ..., iconStart: Int = ..., onDelete: () -> Unit): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     DeleteModal(
+exception:     ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:285:5: warning: 'fun BoxWithConstraintsScope.ProgressModal(id: UUID = ..., title: String, description: String, visible: Boolean, color: Color = ..., dismiss: () -> Unit = ...): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     ProgressModal(
+exception:     ^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:305:11: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     loan: Loan,
+exception:           ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:314:26: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     selectedLoanAccount: Account? = null,
+exception:                          ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:317:25: warning: 'fun findContrastTextColor(backgroundColor: Color): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val contrastColor = findContrastTextColor(itemColor)
+exception:                         ^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:319:21: warning: 'fun isDarkColor(color: Color): Boolean' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val darkColor = isDarkColor(itemColor)
+exception:                     ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:320:5: warning: 'fun setStatusBarDarkTextCompat(darkText: Boolean): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     setStatusBarDarkTextCompat(darkText = !darkColor)
+exception:     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:327:9: warning: 'fun ItemStatisticToolbar(contrastColor: Color, onEdit: () -> Unit, showEditButton: Boolean = ..., showDeleteButton: Boolean = ..., onDelete: () -> Unit): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         ItemStatisticToolbar(
+exception:         ^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:346:18: warning: 'fun Modifier.clickableNoIndication(interactionSource: MutableInteractionSource, onClick: () -> Unit): Modifier' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 .clickableNoIndication(rememberInteractionSource()) {
+exception:                  ^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:372:11: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     loan: Loan,
+exception:           ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:380:14: warning: 'fun Modifier.clickableNoIndication(interactionSource: MutableInteractionSource, onClick: () -> Unit): Modifier' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .clickableNoIndication(rememberInteractionSource()) {
+exception:              ^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:385:9: warning: 'fun ItemIconMDefaultIcon(modifier: Modifier = ..., iconName: String?, tint: Color = ..., defaultIcon: Int): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         ItemIconMDefaultIcon(
+exception:         ^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:400:29: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     style = UI.typo.b1.style(
+exception:                             ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:400:40: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     style = UI.typo.b1.style(
+exception:                                        ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:410:29: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     style = UI.typo.c.style(
+exception:                             ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:410:39: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     style = UI.typo.c.style(
+exception:                                       ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:411:44: warning: 'fun Int.toComposeColor(): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         color = loan.color.toComposeColor().dynamicContrast()
+exception:                                            ^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:411:61: warning: 'fun Color.dynamicContrast(): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         color = loan.color.toComposeColor().dynamicContrast()
+exception:                                                             ^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:418:31: warning: 'fun LocalDateTime.formatNicely(noWeekDay: Boolean = ..., zone: ZoneId = ...): String' is deprecated. Use the TimeConverter interface via DI.
+exception:                     text = it.formatNicely(
+exception:                               ^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:421:29: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     style = UI.typo.nC.style(
+exception:                             ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:421:40: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     style = UI.typo.nC.style(
+exception:                                        ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:433:11: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     loan: Loan,
+exception:           ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:438:26: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     selectedLoanAccount: Account? = null,
+exception:                          ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:442:31: warning: 'fun isDarkColor(color: Int): Boolean' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val backgroundColor = if (isDarkColor(loan.color)) {
+exception:                               ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:443:9: warning: 'val MediumBlack: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         MediumBlack.copy(alpha = 0.9f)
+exception:         ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:445:9: warning: 'val MediumWhite: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         MediumWhite.copy(alpha = 0.9f)
+exception:         ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:448:25: warning: 'fun findContrastTextColor(backgroundColor: Color): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val contrastColor = findContrastTextColor(backgroundColor)
+exception:                         ^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:458:14: warning: 'fun Modifier.drawColoredShadow(color: Color, alpha: Float = ..., borderRadius: Dp = ..., shadowRadius: Dp = ..., offsetX: Dp = ..., offsetY: Dp = ...): Modifier' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .drawColoredShadow(
+exception:              ^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:462:42: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .background(backgroundColor, UI.shapes.r2),
+exception:                                          ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:472:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.c.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:472:35: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.c.style(
+exception:                                   ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:478:17: warning: 'fun IvyButton(modifier: Modifier = ..., text: String, backgroundGradient: Gradient = ..., textStyle: TextStyle = ..., iconStart: Int? = ..., iconEnd: Int? = ..., iconTint: Color = ..., enabled: Boolean = ..., shadowAlpha: Float = ..., wrapContentMode: Boolean = ..., hasGlow: Boolean = ..., padding: Dp = ..., iconEdgePadding: Dp = ..., iconTextPadding: Dp = ..., onClick: () -> Unit): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 IvyButton(
+exception:                 ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:480:42: warning: 'data class Gradient : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     backgroundGradient = Gradient.solid(loan.color.toComposeColor()),
+exception:                                          ^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:480:51: warning: 'fun solid(color: Color): Gradient' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     backgroundGradient = Gradient.solid(loan.color.toComposeColor()),
+exception:                                                   ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:480:68: warning: 'fun Int.toComposeColor(): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     backgroundGradient = Gradient.solid(loan.color.toComposeColor()),
+exception:                                                                    ^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:484:33: warning: 'fun getCustomIconIdS(iconName: String?, defaultIcon: Int): Int' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     iconStart = getCustomIconIdS(
+exception:                                 ^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:488:33: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     textStyle = UI.typo.c.style(
+exception:                                 ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:488:43: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     textStyle = UI.typo.c.style(
+exception:                                           ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:515:21: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.nB1.style(
+exception:                     ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:515:33: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.nB1.style(
+exception:                                 ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:523:21: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b2.style(
+exception:                     ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:523:32: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b2.style(
+exception:                                ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:540:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.nB1.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:540:37: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.nB1.style(
+exception:                                     ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:555:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.nB2.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:555:37: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.nB2.style(
+exception:                                     ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:556:29: warning: 'val Gray: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     color = Gray,
+exception:                             ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:564:9: warning: 'fun ProgressBar(modifier: Modifier = ..., notFilledColor: Color = ..., positiveProgress: Boolean = ..., percent: Double): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         ProgressBar(
+exception:         ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:569:30: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             notFilledColor = UI.colors.pure,
+exception:                              ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:574:13: warning: 'fun Divider(modifier: Modifier = ..., thickness: Dp = ..., color: Color = ...): Unit' is deprecated. Renamed to HorizontalDivider.
+exception:             Divider(
+exception:             ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:585:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.c.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:585:35: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.c.style(
+exception:                                   ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:602:29: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     style = UI.typo.nB1.style(
+exception:                             ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:602:41: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     style = UI.typo.nB1.style(
+exception:                                         ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:617:29: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     style = UI.typo.nB2.style(
+exception:                             ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:617:41: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     style = UI.typo.nB2.style(
+exception:                                         ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:618:33: warning: 'val Gray: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         color = Gray,
+exception:                                 ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:626:13: warning: 'fun ProgressBar(modifier: Modifier = ..., notFilledColor: Color = ..., positiveProgress: Boolean = ..., percent: Double): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             ProgressBar(
+exception:             ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:631:34: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 notFilledColor = UI.colors.pure,
+exception:                                  ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:638:9: warning: 'fun IvyButton(modifier: Modifier = ..., text: String, backgroundGradient: Gradient = ..., textStyle: TextStyle = ..., iconStart: Int? = ..., iconEnd: Int? = ..., iconTint: Color = ..., enabled: Boolean = ..., shadowAlpha: Float = ..., wrapContentMode: Boolean = ..., hasGlow: Boolean = ..., padding: Dp = ..., iconEdgePadding: Dp = ..., iconTextPadding: Dp = ..., onClick: () -> Unit): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         IvyButton(
+exception:         ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:645:34: warning: 'data class Gradient : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             backgroundGradient = Gradient.solid(contrastColor),
+exception:                                  ^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:645:43: warning: 'fun solid(color: Color): Gradient' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             backgroundGradient = Gradient.solid(contrastColor),
+exception:                                           ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:646:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             textStyle = UI.typo.b2.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:646:36: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             textStyle = UI.typo.b2.style(
+exception:                                    ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:647:25: warning: 'fun findContrastTextColor(backgroundColor: Color): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 color = findContrastTextColor(contrastColor),
+exception:                         ^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:660:11: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     loan: Loan,
+exception:           ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:681:11: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     loan: Loan,
+exception:           ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:682:17: warning: 'data class LoanRecord : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     loanRecord: LoanRecord,
+exception:                 ^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:685:14: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     account: Account? = null,
+exception:              ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:693:19: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .clip(UI.shapes.r4)
+exception:                   ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:697:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .background(UI.colors.medium, UI.shapes.r4)
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:697:43: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .background(UI.colors.medium, UI.shapes.r4)
+exception:                                           ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:703:21: warning: 'fun IvyButton(modifier: Modifier = ..., text: String, backgroundGradient: Gradient = ..., textStyle: TextStyle = ..., iconStart: Int? = ..., iconEnd: Int? = ..., iconTint: Color = ..., enabled: Boolean = ..., shadowAlpha: Float = ..., wrapContentMode: Boolean = ..., hasGlow: Boolean = ..., padding: Dp = ..., iconEdgePadding: Dp = ..., iconTextPadding: Dp = ..., onClick: () -> Unit): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     IvyButton(
+exception:                     ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:704:46: warning: 'data class Gradient : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         backgroundGradient = Gradient.solid(UI.colors.pure),
+exception:                                              ^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:704:55: warning: 'fun solid(color: Color): Gradient' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         backgroundGradient = Gradient.solid(UI.colors.pure),
+exception:                                                       ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:704:61: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         backgroundGradient = Gradient.solid(UI.colors.pure),
+exception:                                                             ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:706:36: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         iconTint = UI.colors.pureInverse,
+exception:                                    ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:708:37: warning: 'fun getCustomIconIdS(iconName: String?, defaultIcon: Int): Int' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         iconStart = getCustomIconIdS(
+exception:                                     ^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:712:37: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         textStyle = UI.typo.c.style(
+exception:                                     ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:712:47: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         textStyle = UI.typo.c.style(
+exception:                                               ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:713:37: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                             color = UI.colors.pureInverse,
+exception:                                     ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:731:45: warning: 'fun isDarkColor(color: Int): Boolean' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     val textIconColor = if (isDarkColor(loan.color)) MediumWhite else MediumBlack
+exception:                                             ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:731:70: warning: 'val MediumWhite: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     val textIconColor = if (isDarkColor(loan.color)) MediumWhite else MediumBlack
+exception:                                                                      ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:731:87: warning: 'val MediumBlack: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     val textIconColor = if (isDarkColor(loan.color)) MediumWhite else MediumBlack
+exception:                                                                                       ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:733:21: warning: 'fun IvyButton(modifier: Modifier = ..., text: String, backgroundGradient: Gradient = ..., textStyle: TextStyle = ..., iconStart: Int? = ..., iconEnd: Int? = ..., iconTint: Color = ..., enabled: Boolean = ..., shadowAlpha: Float = ..., wrapContentMode: Boolean = ..., hasGlow: Boolean = ..., padding: Dp = ..., iconEdgePadding: Dp = ..., iconTextPadding: Dp = ..., onClick: () -> Unit): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     IvyButton(
+exception:                     ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:735:46: warning: 'data class Gradient : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         backgroundGradient = Gradient.solid(loan.color.toComposeColor()),
+exception:                                              ^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:735:55: warning: 'fun solid(color: Color): Gradient' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         backgroundGradient = Gradient.solid(loan.color.toComposeColor()),
+exception:                                                       ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:735:72: warning: 'fun Int.toComposeColor(): Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         backgroundGradient = Gradient.solid(loan.color.toComposeColor()),
+exception:                                                                        ^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:739:37: warning: 'fun getCustomIconIdS(iconName: String?, defaultIcon: Int): Int' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         iconStart = getCustomIconIdS(
+exception:                                     ^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:743:37: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         textStyle = UI.typo.c.style(
+exception:                                     ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:743:47: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                         textStyle = UI.typo.c.style(
+exception:                                               ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:758:29: warning: 'val LocalTimeFormatter: ProvidableCompositionLocal<TimeFormatter>' is deprecated. Used only for time migration to Instant. Never use it in new code!.
+exception:         val timeFormatter = LocalTimeFormatter.current
+exception:                             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:766:21: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.nC.style(
+exception:                     ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:766:32: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.nC.style(
+exception:                                ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:767:25: warning: 'val Gray: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 color = Gray,
+exception:                         ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:776:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.b1.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:776:36: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.b1.style(
+exception:                                    ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:778:29: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     color = UI.colors.pureInverse
+exception:                             ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:812:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.nB2.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:812:37: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.nB2.style(
+exception:                                     ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:813:29: warning: 'val Gray: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     color = Gray,
+exception:                             ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:825:11: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     loan: Loan,
+exception:           ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:833:19: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .clip(UI.shapes.r4)
+exception:                   ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:834:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .background(UI.colors.medium, UI.shapes.r4)
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:834:43: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .background(UI.colors.medium, UI.shapes.r4)
+exception:                                           ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:837:9: warning: 'fun IvyButton(modifier: Modifier = ..., text: String, backgroundGradient: Gradient = ..., textStyle: TextStyle = ..., iconStart: Int? = ..., iconEnd: Int? = ..., iconTint: Color = ..., enabled: Boolean = ..., shadowAlpha: Float = ..., wrapContentMode: Boolean = ..., hasGlow: Boolean = ..., padding: Dp = ..., iconEdgePadding: Dp = ..., iconTextPadding: Dp = ..., onClick: () -> Unit): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         IvyButton(
+exception:         ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:839:34: warning: 'data class Gradient : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             backgroundGradient = Gradient.solid(UI.colors.pure),
+exception:                                  ^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:839:43: warning: 'fun solid(color: Color): Gradient' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             backgroundGradient = Gradient.solid(UI.colors.pure),
+exception:                                           ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:839:49: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             backgroundGradient = Gradient.solid(UI.colors.pure),
+exception:                                                 ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:841:24: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             iconTint = UI.colors.pureInverse,
+exception:                        ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:842:25: warning: 'fun getCustomIconIdS(iconName: String?, defaultIcon: Int): Int' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             iconStart = getCustomIconIdS(
+exception:                         ^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:846:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             textStyle = UI.typo.c.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:846:35: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             textStyle = UI.typo.c.style(
+exception:                                   ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:847:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 color = UI.colors.pureInverse,
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:853:29: warning: 'val LocalTimeFormatter: ProvidableCompositionLocal<TimeFormatter>' is deprecated. Used only for time migration to Instant. Never use it in new code!.
+exception:         val timeFormatter = LocalTimeFormatter.current
+exception:                             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:863:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.nC.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:863:36: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.nC.style(
+exception:                                    ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:864:29: warning: 'val Gray: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     color = Gray,
+exception:                             ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:874:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.b1.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:874:36: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.b1.style(
+exception:                                    ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:876:29: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     color = UI.colors.pureInverse
+exception:                             ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:903:9: warning: 'fun IvyIcon(modifier: Modifier = ..., icon: Int, tint: Color = ..., contentDescription: String = ...): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         IvyIcon(
+exception:         ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:905:20: warning: 'val Gray: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             tint = Gray
+exception:                    ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:912:21: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b1.style(
+exception:                     ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:912:32: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b1.style(
+exception:                                ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:913:25: warning: 'val Gray: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 color = Gray,
+exception:                         ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:923:21: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b2.style(
+exception:                     ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:923:32: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b2.style(
+exception:                                ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:924:25: warning: 'val Gray: Color' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 color = Gray,
+exception:                         ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:935:5: warning: 'fun IvyWalletPreview(theme: Theme = ..., content: @Composable() ComposableFunction1<BoxWithConstraintsScope, Unit>): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     IvyWalletPreview {
+exception:     ^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:939:24: warning: 'constructor(name: String, amount: Double, type: LoanType, color: Int = ..., icon: String? = ..., orderNum: Double = ..., accountId: UUID? = ..., note: String? = ..., isSynced: Boolean = ..., isDeleted: Boolean = ..., dateTime: LocalDateTime? = ..., id: UUID = ...): Loan' is deprecated. Legacy data model. Will be deleted.
+exception:                 loan = Loan(
+exception:                        ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:969:36: warning: 'enum class Theme : Enum<Theme>' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: private fun Preview_Records(theme: Theme = Theme.LIGHT) {
+exception:                                    ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:969:44: warning: 'enum class Theme : Enum<Theme>' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: private fun Preview_Records(theme: Theme = Theme.LIGHT) {
+exception:                                            ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:970:5: warning: 'fun IvyWalletPreview(theme: Theme = ..., content: @Composable() ComposableFunction1<BoxWithConstraintsScope, Unit>): Unit' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     IvyWalletPreview(theme) {
+exception:     ^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:974:24: warning: 'constructor(name: String, amount: Double, type: LoanType, color: Int = ..., icon: String? = ..., orderNum: Double = ..., accountId: UUID? = ..., note: String? = ..., isSynced: Boolean = ..., isDeleted: Boolean = ..., dateTime: LocalDateTime? = ..., id: UUID = ...): Loan' is deprecated. Legacy data model. Will be deleted.
+exception:                 loan = Loan(
+exception:                        ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:983:25: warning: 'constructor(loanId: UUID, amount: Double, note: String? = ..., dateTime: Instant, interest: Boolean = ..., accountId: UUID? = ..., convertedAmount: Double? = ..., loanRecordType: LoanRecordType, isSynced: Boolean = ..., isDeleted: Boolean = ..., id: UUID = ...): LoanRecord' is deprecated. Legacy data model. Will be deleted.
+exception:                         LoanRecord(
+exception:                         ^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:992:25: warning: 'constructor(loanId: UUID, amount: Double, note: String? = ..., dateTime: Instant, interest: Boolean = ..., accountId: UUID? = ..., convertedAmount: Double? = ..., loanRecordType: LoanRecordType, isSynced: Boolean = ..., isDeleted: Boolean = ..., id: UUID = ...): LoanRecord' is deprecated. Legacy data model. Will be deleted.
+exception:                         LoanRecord(
+exception:                         ^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:1000:25: warning: 'constructor(loanId: UUID, amount: Double, note: String? = ..., dateTime: Instant, interest: Boolean = ..., accountId: UUID? = ..., convertedAmount: Double? = ..., loanRecordType: LoanRecordType, isSynced: Boolean = ..., isDeleted: Boolean = ..., id: UUID = ...): LoanRecord' is deprecated. Legacy data model. Will be deleted.
+exception:                         LoanRecord(
+exception:                         ^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:1030:17: warning: 'enum class Theme : Enum<Theme>' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         true -> Theme.DARK
+exception:                 ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreen.kt:1031:18: warning: 'enum class Theme : Enum<Theme>' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         false -> Theme.LIGHT
+exception:                  ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreenState.kt:4:8: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.Account
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreenState.kt:5:8: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.Loan
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreenState.kt:8:8: warning: 'data class LoanModalData : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.wallet.ui.theme.modal.LoanModalData
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreenState.kt:9:8: warning: 'data class LoanRecordModalData : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.wallet.ui.theme.modal.LoanRecordModalData
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreenState.kt:15:15: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     val loan: Loan?,
+exception:               ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreenState.kt:21:33: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     val accounts: ImmutableList<Account>,
+exception:                                 ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreenState.kt:22:30: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     val selectedLoanAccount: Account?,
+exception:                              ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreenState.kt:24:24: warning: 'data class LoanModalData : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val loanModalData: LoanModalData?,
+exception:                        ^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsScreenState.kt:25:30: warning: 'data class LoanRecordModalData : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     val loanRecordModalData: LoanRecordModalData?,
+exception:                              ^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:9:8: warning: 'data class Transaction : TransactionHistoryItem' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.base.legacy.Transaction
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:21:8: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception: import com.ivy.frp.test.TestIdlingResource
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:22:8: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.Account
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:23:8: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.Loan
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:24:8: warning: 'data class LoanRecord : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.LoanRecord
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:48:8: warning: 'data class LoanModalData : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.wallet.ui.theme.modal.LoanModalData
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:49:8: warning: 'data class LoanRecordModalData : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.wallet.ui.theme.modal.LoanRecordModalData
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:81:39: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     private val loan = mutableStateOf<Loan?>(null)
+exception:                                       ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:88:57: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     private val accounts = mutableStateOf<ImmutableList<Account>>(persistentListOf())
+exception:                                                         ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:90:54: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     private val selectedLoanAccount = mutableStateOf<Account?>(null)
+exception:                                                      ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:91:40: warning: 'data class Transaction : TransactionHistoryItem' is deprecated. Legacy data model. Will be deleted.
+exception:     private var associatedTransaction: Transaction? = null
+exception:                                        ^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:94:48: warning: 'data class LoanModalData : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     private val loanModalData = mutableStateOf<LoanModalData?>(null)
+exception:                                                ^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:95:54: warning: 'data class LoanRecordModalData : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:     private val loanRecordModalData = mutableStateOf<LoanRecordModalData?>(null)
+exception:                                                      ^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:135:13: warning: check for instance is always 'true'.
+exception:             is LoanDetailsScreenEvent -> handleLoanDetailsScreenEvents(event)
+exception:             ^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:142:45: warning: 'constructor(loanRecord: LoanRecord?, baseCurrency: String, loanAccountCurrencyCode: String? = ..., selectedAccount: Account? = ..., createLoanRecordTransaction: Boolean = ..., isLoanInterest: Boolean = ..., id: UUID = ...): LoanRecordModalData' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 loanRecordModalData.value = LoanRecordModalData(
+exception:                                             ^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:224:39: warning: 'constructor(loan: Loan?, baseCurrency: String, selectedAccount: Account? = ..., autoFocusKeyboard: Boolean = ..., autoOpenAmountModal: Boolean = ..., createLoanTransaction: Boolean = ..., id: UUID = ...): LoanModalData' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 loanModalData.value = LoanModalData(
+exception:                                       ^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:235:39: warning: 'constructor(loan: Loan?, baseCurrency: String, selectedAccount: Account? = ..., autoFocusKeyboard: Boolean = ..., autoOpenAmountModal: Boolean = ..., createLoanTransaction: Boolean = ..., id: UUID = ...): LoanModalData' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 loanModalData.value = LoanModalData(
+exception:                                       ^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:245:45: warning: 'constructor(loanRecord: LoanRecord?, baseCurrency: String, loanAccountCurrencyCode: String? = ..., selectedAccount: Account? = ..., createLoanRecordTransaction: Boolean = ..., isLoanInterest: Boolean = ..., id: UUID = ...): LoanRecordModalData' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 loanRecordModalData.value = LoanRecordModalData(
+exception:                                             ^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:294:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:294:32: warning: 'fun increment(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:388:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:388:32: warning: 'fun decrement(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:417:24: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     fun editLoan(loan: Loan, createLoanTransaction: Boolean = false) {
+exception:                        ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:419:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:419:32: warning: 'fun increment(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:439:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:439:32: warning: 'fun decrement(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:447:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:447:32: warning: 'fun increment(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:456:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:456:32: warning: 'fun decrement(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:466:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:466:32: warning: 'fun increment(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:490:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:490:32: warning: 'fun decrement(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:497:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:497:32: warning: 'fun increment(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:499:28: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception:             val localLoan: Loan = loan.value ?: return@launch
+exception:                            ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:521:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:521:32: warning: 'fun decrement(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:525:46: warning: 'data class LoanRecord : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     private fun deleteLoanRecord(loanRecord: LoanRecord) {
+exception:                                              ^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:529:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:529:32: warning: 'fun increment(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:537:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:537:32: warning: 'fun decrement(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:629:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:629:32: warning: 'fun increment(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.increment()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:635:13: warning: 'object TestIdlingResource : Any' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:             ^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:635:32: warning: 'fun decrement(): Unit' is deprecated. Legacy code. Don't use it, please.
+exception:             TestIdlingResource.decrement()
+exception:                                ^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:640:24: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:         accounts: List<Account>,
+exception:                        ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\LoanDetailsViewModel.kt:642:8: warning: 'data class Account : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     ): Account? {
+exception:        ^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\events\LoanModalEvent.kt:3:8: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.Loan
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\events\LoanModalEvent.kt:7:42: warning: 'data class Loan : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     data class OnEditLoanModal(val loan: Loan, val createLoanTransaction: Boolean) :
+exception:                                          ^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\events\LoanRecordModalEvent.kt:3:8: warning: 'data class LoanRecord : Any' is deprecated. Legacy data model. Will be deleted.
+exception: import com.ivy.legacy.datamodel.LoanRecord
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\events\LoanRecordModalEvent.kt:13:51: warning: 'data class LoanRecord : Any' is deprecated. Legacy data model. Will be deleted.
+exception:     data class OnDeleteLoanRecord(val loanRecord: LoanRecord) : LoanRecordModalEvent
+exception:                                                   ^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:16:8: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.design.l0_system.UI
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:33:19: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .clip(UI.shapes.r4)
+exception:                   ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:34:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .background(UI.colors.medium, UI.shapes.r4)
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:34:43: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             .background(UI.colors.medium, UI.shapes.r4)
+exception:                                           ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:42:32: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 checkedColor = UI.colors.pureInverse,
+exception:                                ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:43:34: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 uncheckedColor = UI.colors.pureInverse.copy(alpha = 0.6f)
+exception:                                  ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:54:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.b1.style(
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:54:36: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 style = UI.typo.b1.style(
+exception:                                    ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:56:29: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                     color = UI.colors.pureInverse
+exception:                             ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:63:21: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b1.style(
+exception:                     ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:63:32: warning: 'fun TextStyle.style(color: Color = ..., fontWeight: FontWeight = ..., textAlign: TextAlign = ...): TextStyle' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:             style = UI.typo.b1.style(
+exception:                                ^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:65:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 color = UI.colors.pureInverse
+exception:                         ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:75:24: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 tint = UI.colors.pureInverse,
+exception:                        ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemCard.kt:84:24: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 tint = UI.colors.pureInverse,
+exception:                        ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemModal.kt:12:8: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception: import com.ivy.design.l0_system.UI
+exception:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemModal.kt:29:26: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:         containerColor = UI.colors.pure,
+exception:                          ^^
+exception: feature\loans\src\main\java\com\ivy\loans\loandetails\ui\LoanItemModal.kt:40:25: warning: 'object UI : Any' is deprecated. Old design system. Use `:ivy-design` and Material3.
+exception:                 color = UI.colors.pureInverse
+exception:                         ^^
+
+> Task :feature:loans:javaPreCompileDebug UP-TO-DATE
+> Task :feature:loans:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature:loans:transformDebugClassesWithAsm FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':feature:loans:transformDebugClassesWithAsm'.
+> Unable to delete directory 'D:\Projects\Coding\VSCode\Mobile\ivy-wallet\feature\loans\build\intermediates\classes\debug\transformDebugClassesWithAsm\dirs'
+    New files were found. This might happen because a process is still writing to the target directory.
+    - D:\Projects\Coding\VSCode\Mobile\ivy-wallet\feature\loans\build\intermediates\classes\debug\transformDebugClassesWithAsm\dirs\hilt_aggregated_deps
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.8/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 2m 30s
+536 actionable tasks: 3 executed, 533 up-to-date

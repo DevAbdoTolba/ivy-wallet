@@ -1,0 +1,486 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Type-safe project accessors is an incubating feature.
+Project accessors enabled, but root project name not explicitly set for 'buildSrc'. Checking out the project in different folders will impact the generated code and implicitly the buildscript classpath, breaking caching.
+> Task :buildSrc:checkKotlinGradlePluginConfigurationErrors
+> Task :buildSrc:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :buildSrc:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :buildSrc:compilePluginsBlocks UP-TO-DATE
+> Task :buildSrc:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :buildSrc:generateScriptPluginAdapters UP-TO-DATE
+> Task :buildSrc:compileKotlin UP-TO-DATE
+> Task :buildSrc:compileJava NO-SOURCE
+> Task :buildSrc:compileGroovy NO-SOURCE
+> Task :buildSrc:pluginDescriptors UP-TO-DATE
+> Task :buildSrc:processResources UP-TO-DATE
+> Task :buildSrc:classes UP-TO-DATE
+> Task :buildSrc:jar UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig
+> Task :feature:accounts:preBuild UP-TO-DATE
+> Task :feature:accounts:preDebugBuild UP-TO-DATE
+> Task :feature:accounts:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:attributions:preBuild UP-TO-DATE
+> Task :feature:attributions:preDebugBuild UP-TO-DATE
+> Task :feature:attributions:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:balance:preBuild UP-TO-DATE
+> Task :feature:balance:preDebugBuild UP-TO-DATE
+> Task :feature:balance:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:budgets:preBuild UP-TO-DATE
+> Task :feature:budgets:preDebugBuild UP-TO-DATE
+> Task :feature:budgets:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:categories:preBuild UP-TO-DATE
+> Task :feature:categories:preDebugBuild UP-TO-DATE
+> Task :feature:categories:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:contributors:preBuild UP-TO-DATE
+> Task :feature:contributors:preDebugBuild UP-TO-DATE
+> Task :feature:contributors:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:disclaimer:preBuild UP-TO-DATE
+> Task :feature:disclaimer:preDebugBuild UP-TO-DATE
+> Task :feature:disclaimer:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:edit-transaction:preBuild UP-TO-DATE
+> Task :feature:edit-transaction:preDebugBuild UP-TO-DATE
+> Task :feature:edit-transaction:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:exchange-rates:preBuild UP-TO-DATE
+> Task :feature:exchange-rates:preDebugBuild UP-TO-DATE
+> Task :feature:exchange-rates:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:features:preBuild UP-TO-DATE
+> Task :feature:features:preDebugBuild UP-TO-DATE
+> Task :feature:features:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:home:preBuild UP-TO-DATE
+> Task :feature:home:preDebugBuild UP-TO-DATE
+> Task :feature:home:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:import-data:preBuild UP-TO-DATE
+> Task :feature:import-data:preDebugBuild UP-TO-DATE
+> Task :feature:import-data:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:loans:preBuild UP-TO-DATE
+> Task :feature:loans:preDebugBuild UP-TO-DATE
+> Task :feature:loans:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:main:preBuild UP-TO-DATE
+> Task :feature:main:preDebugBuild UP-TO-DATE
+> Task :feature:main:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:onboarding:preBuild UP-TO-DATE
+> Task :feature:onboarding:preDebugBuild UP-TO-DATE
+> Task :feature:onboarding:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:piechart:preBuild UP-TO-DATE
+> Task :feature:piechart:preDebugBuild UP-TO-DATE
+> Task :feature:piechart:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:planned-payments:preBuild UP-TO-DATE
+> Task :feature:planned-payments:preDebugBuild UP-TO-DATE
+> Task :feature:planned-payments:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:releases:preBuild UP-TO-DATE
+> Task :feature:releases:preDebugBuild UP-TO-DATE
+> Task :feature:releases:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:reports:preBuild UP-TO-DATE
+> Task :feature:reports:preDebugBuild UP-TO-DATE
+> Task :feature:reports:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:search:preBuild UP-TO-DATE
+> Task :feature:search:preDebugBuild UP-TO-DATE
+> Task :feature:search:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:settings:preBuild UP-TO-DATE
+> Task :feature:settings:preDebugBuild UP-TO-DATE
+> Task :feature:settings:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:transactions:preBuild UP-TO-DATE
+> Task :feature:transactions:preDebugBuild UP-TO-DATE
+> Task :feature:transactions:writeDebugAarMetadata UP-TO-DATE
+> Task :shared:base:preBuild UP-TO-DATE
+> Task :shared:base:preDebugBuild UP-TO-DATE
+> Task :shared:base:writeDebugAarMetadata UP-TO-DATE
+> Task :shared:domain:preBuild UP-TO-DATE
+> Task :shared:domain:preDebugBuild UP-TO-DATE
+> Task :shared:domain:writeDebugAarMetadata UP-TO-DATE
+> Task :temp:legacy-code:preBuild UP-TO-DATE
+> Task :temp:legacy-code:preDebugBuild UP-TO-DATE
+> Task :temp:legacy-code:writeDebugAarMetadata UP-TO-DATE
+> Task :temp:old-design:preBuild UP-TO-DATE
+> Task :temp:old-design:preDebugBuild UP-TO-DATE
+> Task :temp:old-design:writeDebugAarMetadata UP-TO-DATE
+> Task :widget:add-transaction:preBuild UP-TO-DATE
+> Task :widget:add-transaction:preDebugBuild UP-TO-DATE
+> Task :widget:add-transaction:writeDebugAarMetadata UP-TO-DATE
+> Task :widget:balance:preBuild UP-TO-DATE
+> Task :widget:balance:preDebugBuild UP-TO-DATE
+> Task :widget:balance:writeDebugAarMetadata UP-TO-DATE
+> Task :widget:shared-base:preBuild UP-TO-DATE
+> Task :widget:shared-base:preDebugBuild UP-TO-DATE
+> Task :widget:shared-base:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:poll:impl:preBuild UP-TO-DATE
+> Task :feature:poll:impl:preDebugBuild UP-TO-DATE
+> Task :feature:poll:impl:writeDebugAarMetadata UP-TO-DATE
+> Task :feature:poll:public:preBuild UP-TO-DATE
+> Task :feature:poll:public:preDebugBuild UP-TO-DATE
+> Task :feature:poll:public:writeDebugAarMetadata UP-TO-DATE
+> Task :shared:data:core:preBuild UP-TO-DATE
+> Task :shared:data:core:preDebugBuild UP-TO-DATE
+> Task :shared:data:core:writeDebugAarMetadata UP-TO-DATE
+> Task :shared:data:model:preBuild UP-TO-DATE
+> Task :shared:data:model:preDebugBuild UP-TO-DATE
+> Task :shared:data:model:writeDebugAarMetadata UP-TO-DATE
+> Task :shared:ui:core:preBuild UP-TO-DATE
+> Task :shared:ui:core:preDebugBuild UP-TO-DATE
+> Task :shared:ui:core:writeDebugAarMetadata UP-TO-DATE
+> Task :shared:ui:navigation:preBuild UP-TO-DATE
+> Task :shared:ui:navigation:preDebugBuild UP-TO-DATE
+> Task :shared:ui:navigation:writeDebugAarMetadata UP-TO-DATE
+> Task :app:checkDebugAarMetadata
+> Task :app:generateDebugResValues
+> Task :app:injectCrashlyticsMappingFileIdDebug
+> Task :app:processDebugGoogleServices
+> Task :feature:accounts:generateDebugResValues UP-TO-DATE
+> Task :feature:accounts:generateDebugResources UP-TO-DATE
+> Task :feature:accounts:packageDebugResources UP-TO-DATE
+> Task :feature:attributions:generateDebugResValues UP-TO-DATE
+> Task :feature:attributions:generateDebugResources UP-TO-DATE
+> Task :feature:attributions:packageDebugResources UP-TO-DATE
+> Task :feature:balance:generateDebugResValues UP-TO-DATE
+> Task :feature:balance:generateDebugResources UP-TO-DATE
+> Task :feature:balance:packageDebugResources UP-TO-DATE
+> Task :feature:budgets:generateDebugResValues UP-TO-DATE
+> Task :feature:budgets:generateDebugResources UP-TO-DATE
+> Task :feature:budgets:packageDebugResources UP-TO-DATE
+> Task :feature:categories:generateDebugResValues UP-TO-DATE
+> Task :feature:categories:generateDebugResources UP-TO-DATE
+> Task :feature:categories:packageDebugResources UP-TO-DATE
+> Task :feature:contributors:generateDebugResValues UP-TO-DATE
+> Task :feature:contributors:generateDebugResources UP-TO-DATE
+> Task :feature:contributors:packageDebugResources UP-TO-DATE
+> Task :feature:disclaimer:generateDebugResValues UP-TO-DATE
+> Task :feature:disclaimer:generateDebugResources UP-TO-DATE
+> Task :feature:disclaimer:packageDebugResources UP-TO-DATE
+> Task :feature:edit-transaction:generateDebugResValues UP-TO-DATE
+> Task :feature:edit-transaction:generateDebugResources UP-TO-DATE
+> Task :feature:edit-transaction:packageDebugResources UP-TO-DATE
+> Task :feature:exchange-rates:generateDebugResValues UP-TO-DATE
+> Task :feature:exchange-rates:generateDebugResources UP-TO-DATE
+> Task :feature:exchange-rates:packageDebugResources UP-TO-DATE
+> Task :feature:features:generateDebugResValues UP-TO-DATE
+> Task :feature:features:generateDebugResources UP-TO-DATE
+> Task :feature:features:packageDebugResources UP-TO-DATE
+> Task :feature:home:generateDebugResValues UP-TO-DATE
+> Task :feature:home:generateDebugResources UP-TO-DATE
+> Task :feature:home:packageDebugResources UP-TO-DATE
+> Task :feature:import-data:generateDebugResValues UP-TO-DATE
+> Task :feature:import-data:generateDebugResources UP-TO-DATE
+> Task :feature:import-data:packageDebugResources UP-TO-DATE
+> Task :feature:loans:generateDebugResValues UP-TO-DATE
+> Task :feature:loans:generateDebugResources UP-TO-DATE
+> Task :feature:loans:packageDebugResources UP-TO-DATE
+> Task :feature:main:generateDebugResValues UP-TO-DATE
+> Task :feature:main:generateDebugResources UP-TO-DATE
+> Task :feature:main:packageDebugResources UP-TO-DATE
+> Task :feature:onboarding:generateDebugResValues UP-TO-DATE
+> Task :feature:onboarding:generateDebugResources UP-TO-DATE
+> Task :feature:onboarding:packageDebugResources UP-TO-DATE
+> Task :feature:piechart:generateDebugResValues UP-TO-DATE
+> Task :feature:piechart:generateDebugResources UP-TO-DATE
+> Task :feature:piechart:packageDebugResources UP-TO-DATE
+> Task :feature:planned-payments:generateDebugResValues UP-TO-DATE
+> Task :feature:planned-payments:generateDebugResources UP-TO-DATE
+> Task :feature:planned-payments:packageDebugResources UP-TO-DATE
+> Task :feature:releases:generateDebugResValues UP-TO-DATE
+> Task :feature:releases:generateDebugResources UP-TO-DATE
+> Task :feature:releases:packageDebugResources UP-TO-DATE
+> Task :feature:reports:generateDebugResValues UP-TO-DATE
+> Task :feature:reports:generateDebugResources UP-TO-DATE
+> Task :feature:reports:packageDebugResources UP-TO-DATE
+> Task :feature:search:generateDebugResValues UP-TO-DATE
+> Task :feature:search:generateDebugResources UP-TO-DATE
+> Task :feature:search:packageDebugResources UP-TO-DATE
+> Task :feature:settings:generateDebugResValues UP-TO-DATE
+> Task :feature:settings:generateDebugResources UP-TO-DATE
+> Task :feature:settings:packageDebugResources UP-TO-DATE
+> Task :feature:transactions:generateDebugResValues UP-TO-DATE
+> Task :feature:transactions:generateDebugResources UP-TO-DATE
+> Task :feature:transactions:packageDebugResources UP-TO-DATE
+> Task :shared:base:generateDebugResValues UP-TO-DATE
+> Task :shared:base:generateDebugResources UP-TO-DATE
+> Task :shared:base:packageDebugResources UP-TO-DATE
+> Task :shared:domain:generateDebugResValues UP-TO-DATE
+> Task :shared:domain:generateDebugResources UP-TO-DATE
+> Task :shared:domain:packageDebugResources UP-TO-DATE
+> Task :temp:legacy-code:generateDebugResValues UP-TO-DATE
+> Task :temp:legacy-code:generateDebugResources UP-TO-DATE
+> Task :temp:legacy-code:packageDebugResources UP-TO-DATE
+> Task :temp:old-design:generateDebugResValues UP-TO-DATE
+> Task :temp:old-design:generateDebugResources UP-TO-DATE
+> Task :temp:old-design:packageDebugResources UP-TO-DATE
+> Task :widget:add-transaction:generateDebugResValues UP-TO-DATE
+> Task :widget:add-transaction:generateDebugResources UP-TO-DATE
+> Task :widget:add-transaction:packageDebugResources UP-TO-DATE
+> Task :widget:balance:generateDebugResValues UP-TO-DATE
+> Task :widget:balance:generateDebugResources UP-TO-DATE
+> Task :widget:balance:packageDebugResources UP-TO-DATE
+> Task :widget:shared-base:generateDebugResValues UP-TO-DATE
+> Task :widget:shared-base:generateDebugResources UP-TO-DATE
+> Task :widget:shared-base:packageDebugResources UP-TO-DATE
+> Task :feature:poll:impl:generateDebugResValues UP-TO-DATE
+> Task :feature:poll:impl:generateDebugResources UP-TO-DATE
+> Task :feature:poll:impl:packageDebugResources UP-TO-DATE
+> Task :feature:poll:public:generateDebugResValues UP-TO-DATE
+> Task :feature:poll:public:generateDebugResources UP-TO-DATE
+> Task :feature:poll:public:packageDebugResources UP-TO-DATE
+> Task :shared:data:core:generateDebugResValues UP-TO-DATE
+> Task :shared:data:core:generateDebugResources UP-TO-DATE
+> Task :shared:data:core:packageDebugResources UP-TO-DATE
+> Task :shared:data:model:generateDebugResValues UP-TO-DATE
+> Task :shared:data:model:generateDebugResources UP-TO-DATE
+> Task :shared:data:model:packageDebugResources UP-TO-DATE
+> Task :shared:ui:core:generateDebugResValues UP-TO-DATE
+> Task :shared:ui:core:generateDebugResources UP-TO-DATE
+> Task :shared:ui:core:packageDebugResources UP-TO-DATE
+> Task :shared:ui:navigation:generateDebugResValues UP-TO-DATE
+> Task :shared:ui:navigation:generateDebugResources UP-TO-DATE
+> Task :shared:ui:navigation:packageDebugResources UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths
+> Task :app:extractDebugSupportedLocales
+> Task :feature:accounts:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:attributions:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:balance:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:budgets:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:categories:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:contributors:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:disclaimer:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:edit-transaction:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:exchange-rates:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:features:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:home:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:import-data:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:loans:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:main:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:onboarding:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:piechart:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:planned-payments:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:releases:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:reports:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:search:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:settings:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:transactions:extractDebugSupportedLocales UP-TO-DATE
+> Task :shared:base:extractDebugSupportedLocales UP-TO-DATE
+> Task :shared:domain:extractDebugSupportedLocales UP-TO-DATE
+> Task :temp:legacy-code:extractDebugSupportedLocales UP-TO-DATE
+> Task :temp:old-design:extractDebugSupportedLocales UP-TO-DATE
+> Task :widget:add-transaction:extractDebugSupportedLocales UP-TO-DATE
+> Task :widget:balance:extractDebugSupportedLocales UP-TO-DATE
+> Task :widget:shared-base:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:poll:impl:extractDebugSupportedLocales UP-TO-DATE
+> Task :feature:poll:public:extractDebugSupportedLocales UP-TO-DATE
+> Task :shared:data:core:extractDebugSupportedLocales UP-TO-DATE
+> Task :shared:data:model:extractDebugSupportedLocales UP-TO-DATE
+> Task :shared:ui:core:extractDebugSupportedLocales UP-TO-DATE
+> Task :shared:ui:navigation:extractDebugSupportedLocales UP-TO-DATE
+> Task :app:generateDebugLocaleConfig
+> Task :app:generateDebugResources
+> Task :app:mergeDebugResources
+> Task :app:packageDebugResources
+> Task :app:parseDebugLocalResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :feature:accounts:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:accounts:processDebugManifest UP-TO-DATE
+> Task :feature:attributions:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:attributions:processDebugManifest UP-TO-DATE
+> Task :feature:balance:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:balance:processDebugManifest UP-TO-DATE
+> Task :feature:budgets:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:budgets:processDebugManifest UP-TO-DATE
+> Task :feature:categories:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:categories:processDebugManifest UP-TO-DATE
+> Task :feature:contributors:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:contributors:processDebugManifest UP-TO-DATE
+> Task :feature:disclaimer:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:disclaimer:processDebugManifest UP-TO-DATE
+> Task :feature:edit-transaction:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:edit-transaction:processDebugManifest UP-TO-DATE
+> Task :feature:exchange-rates:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:exchange-rates:processDebugManifest UP-TO-DATE
+> Task :feature:features:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:features:processDebugManifest UP-TO-DATE
+> Task :feature:home:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:home:processDebugManifest UP-TO-DATE
+> Task :feature:import-data:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:import-data:processDebugManifest UP-TO-DATE
+> Task :feature:loans:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:loans:processDebugManifest UP-TO-DATE
+> Task :feature:main:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:main:processDebugManifest UP-TO-DATE
+> Task :feature:onboarding:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:onboarding:processDebugManifest UP-TO-DATE
+> Task :feature:piechart:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:piechart:processDebugManifest UP-TO-DATE
+> Task :feature:planned-payments:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:planned-payments:processDebugManifest UP-TO-DATE
+> Task :feature:releases:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:releases:processDebugManifest UP-TO-DATE
+> Task :feature:reports:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:reports:processDebugManifest UP-TO-DATE
+> Task :feature:search:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:search:processDebugManifest UP-TO-DATE
+> Task :feature:settings:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:settings:processDebugManifest UP-TO-DATE
+> Task :feature:transactions:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:transactions:processDebugManifest UP-TO-DATE
+> Task :shared:base:extractDeepLinksDebug UP-TO-DATE
+> Task :shared:base:processDebugManifest UP-TO-DATE
+> Task :shared:domain:extractDeepLinksDebug UP-TO-DATE
+> Task :shared:domain:processDebugManifest UP-TO-DATE
+> Task :temp:legacy-code:extractDeepLinksDebug UP-TO-DATE
+> Task :temp:legacy-code:processDebugManifest UP-TO-DATE
+> Task :temp:old-design:extractDeepLinksDebug UP-TO-DATE
+> Task :temp:old-design:processDebugManifest UP-TO-DATE
+> Task :widget:add-transaction:extractDeepLinksDebug UP-TO-DATE
+> Task :widget:add-transaction:processDebugManifest UP-TO-DATE
+> Task :widget:balance:extractDeepLinksDebug UP-TO-DATE
+> Task :widget:balance:processDebugManifest UP-TO-DATE
+> Task :widget:shared-base:extractDeepLinksDebug UP-TO-DATE
+> Task :widget:shared-base:processDebugManifest UP-TO-DATE
+> Task :feature:poll:impl:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:poll:impl:processDebugManifest UP-TO-DATE
+> Task :feature:poll:public:extractDeepLinksDebug UP-TO-DATE
+> Task :feature:poll:public:processDebugManifest UP-TO-DATE
+> Task :shared:data:core:extractDeepLinksDebug UP-TO-DATE
+> Task :shared:data:core:processDebugManifest UP-TO-DATE
+> Task :shared:data:model:extractDeepLinksDebug UP-TO-DATE
+> Task :shared:data:model:processDebugManifest UP-TO-DATE
+> Task :shared:ui:core:extractDeepLinksDebug UP-TO-DATE
+> Task :shared:ui:core:processDebugManifest UP-TO-DATE
+> Task :shared:ui:navigation:extractDeepLinksDebug UP-TO-DATE
+> Task :shared:ui:navigation:processDebugManifest UP-TO-DATE
+
+> Task :app:processDebugMainManifest
+package="com.ivy.wallet" found in source AndroidManifest.xml: D:\Projects\Coding\VSCode\Mobile\ivy-wallet\app\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="com.ivy.wallet" from the source AndroidManifest.xml: D:\Projects\Coding\VSCode\Mobile\ivy-wallet\app\src\main\AndroidManifest.xml.
+
+> Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
+> Task :feature:accounts:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:accounts:parseDebugLocalResources UP-TO-DATE
+> Task :feature:accounts:generateDebugRFile UP-TO-DATE
+> Task :feature:attributions:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:attributions:parseDebugLocalResources UP-TO-DATE
+> Task :feature:attributions:generateDebugRFile UP-TO-DATE
+> Task :feature:balance:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:balance:parseDebugLocalResources UP-TO-DATE
+> Task :feature:balance:generateDebugRFile UP-TO-DATE
+> Task :feature:budgets:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:budgets:parseDebugLocalResources UP-TO-DATE
+> Task :feature:budgets:generateDebugRFile UP-TO-DATE
+> Task :feature:categories:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:categories:parseDebugLocalResources UP-TO-DATE
+> Task :feature:categories:generateDebugRFile UP-TO-DATE
+> Task :feature:contributors:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:contributors:parseDebugLocalResources UP-TO-DATE
+> Task :feature:contributors:generateDebugRFile UP-TO-DATE
+> Task :feature:disclaimer:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:disclaimer:parseDebugLocalResources UP-TO-DATE
+> Task :feature:disclaimer:generateDebugRFile UP-TO-DATE
+> Task :feature:edit-transaction:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:edit-transaction:parseDebugLocalResources UP-TO-DATE
+> Task :feature:edit-transaction:generateDebugRFile UP-TO-DATE
+> Task :feature:exchange-rates:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:exchange-rates:parseDebugLocalResources UP-TO-DATE
+> Task :feature:exchange-rates:generateDebugRFile UP-TO-DATE
+> Task :feature:features:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:features:parseDebugLocalResources UP-TO-DATE
+> Task :feature:features:generateDebugRFile UP-TO-DATE
+> Task :feature:home:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:home:parseDebugLocalResources UP-TO-DATE
+> Task :feature:home:generateDebugRFile UP-TO-DATE
+> Task :feature:import-data:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:import-data:parseDebugLocalResources UP-TO-DATE
+> Task :feature:import-data:generateDebugRFile UP-TO-DATE
+> Task :feature:loans:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:loans:parseDebugLocalResources UP-TO-DATE
+> Task :feature:loans:generateDebugRFile UP-TO-DATE
+> Task :feature:main:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:main:parseDebugLocalResources UP-TO-DATE
+> Task :feature:main:generateDebugRFile UP-TO-DATE
+> Task :feature:onboarding:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:onboarding:parseDebugLocalResources UP-TO-DATE
+> Task :feature:onboarding:generateDebugRFile UP-TO-DATE
+> Task :feature:piechart:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:piechart:parseDebugLocalResources UP-TO-DATE
+> Task :feature:piechart:generateDebugRFile UP-TO-DATE
+> Task :feature:planned-payments:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:planned-payments:parseDebugLocalResources UP-TO-DATE
+> Task :feature:planned-payments:generateDebugRFile UP-TO-DATE
+> Task :feature:releases:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:releases:parseDebugLocalResources UP-TO-DATE
+> Task :feature:releases:generateDebugRFile UP-TO-DATE
+> Task :feature:reports:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:reports:parseDebugLocalResources UP-TO-DATE
+> Task :feature:reports:generateDebugRFile UP-TO-DATE
+> Task :feature:search:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:search:parseDebugLocalResources UP-TO-DATE
+> Task :feature:search:generateDebugRFile UP-TO-DATE
+> Task :feature:settings:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:settings:parseDebugLocalResources UP-TO-DATE
+> Task :feature:settings:generateDebugRFile UP-TO-DATE
+> Task :feature:transactions:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:transactions:parseDebugLocalResources UP-TO-DATE
+> Task :feature:transactions:generateDebugRFile UP-TO-DATE
+> Task :shared:base:compileDebugLibraryResources UP-TO-DATE
+> Task :shared:base:parseDebugLocalResources UP-TO-DATE
+> Task :shared:base:generateDebugRFile UP-TO-DATE
+> Task :shared:domain:compileDebugLibraryResources UP-TO-DATE
+> Task :shared:domain:parseDebugLocalResources UP-TO-DATE
+> Task :shared:domain:generateDebugRFile UP-TO-DATE
+> Task :temp:legacy-code:compileDebugLibraryResources UP-TO-DATE
+> Task :temp:legacy-code:parseDebugLocalResources UP-TO-DATE
+> Task :temp:legacy-code:generateDebugRFile UP-TO-DATE
+> Task :temp:old-design:compileDebugLibraryResources UP-TO-DATE
+> Task :temp:old-design:parseDebugLocalResources UP-TO-DATE
+> Task :temp:old-design:generateDebugRFile UP-TO-DATE
+> Task :widget:add-transaction:compileDebugLibraryResources UP-TO-DATE
+> Task :widget:add-transaction:parseDebugLocalResources UP-TO-DATE
+> Task :widget:add-transaction:generateDebugRFile UP-TO-DATE
+> Task :widget:balance:compileDebugLibraryResources UP-TO-DATE
+> Task :widget:balance:parseDebugLocalResources UP-TO-DATE
+> Task :widget:balance:generateDebugRFile UP-TO-DATE
+> Task :widget:shared-base:compileDebugLibraryResources UP-TO-DATE
+> Task :widget:shared-base:parseDebugLocalResources UP-TO-DATE
+> Task :widget:shared-base:generateDebugRFile UP-TO-DATE
+> Task :feature:poll:impl:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:poll:impl:parseDebugLocalResources UP-TO-DATE
+> Task :feature:poll:impl:generateDebugRFile UP-TO-DATE
+> Task :feature:poll:public:compileDebugLibraryResources UP-TO-DATE
+> Task :feature:poll:public:parseDebugLocalResources UP-TO-DATE
+> Task :feature:poll:public:generateDebugRFile UP-TO-DATE
+> Task :shared:data:core:compileDebugLibraryResources UP-TO-DATE
+> Task :shared:data:core:parseDebugLocalResources UP-TO-DATE
+> Task :shared:data:core:generateDebugRFile UP-TO-DATE
+> Task :shared:data:model:compileDebugLibraryResources UP-TO-DATE
+> Task :shared:data:model:parseDebugLocalResources UP-TO-DATE
+> Task :shared:data:model:generateDebugRFile UP-TO-DATE
+> Task :shared:ui:core:compileDebugLibraryResources
+> Task :shared:ui:core:parseDebugLocalResources
+> Task :shared:ui:core:generateDebugRFile
+> Task :shared:ui:navigation:compileDebugLibraryResources
+> Task :shared:ui:navigation:parseDebugLocalResources
+> Task :shared:ui:navigation:generateDebugRFile
+> Task :app:processDebugResources FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:processDebugResources'.
+> Cannot access output property 'RClassOutputJar' of task ':app:processDebugResources'. Accessing unreadable inputs or outputs is not supported. Declare the task as untracked by using Task.doNotTrackState(). For more information, please refer to https://docs.gradle.org/8.8/userguide/incremental_build.html#sec:disable-state-tracking in the Gradle documentation.
+   > Failed to create MD5 hash for file 'D:\Projects\Coding\VSCode\Mobile\ivy-wallet\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\debug\processDebugResources\R.jar' as it does not exist.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.8/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 2m 18s
+378 actionable tasks: 25 executed, 353 up-to-date

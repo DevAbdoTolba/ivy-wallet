@@ -3,24 +3,29 @@ package com.ivy.wallet.domain.deprecated.logic
 import androidx.compose.ui.graphics.toArgb
 import com.ivy.data.db.dao.read.LoanDao
 import com.ivy.data.db.dao.write.WriteLoanDao
+import com.ivy.data.model.LoanId
+import com.ivy.data.model.LoanItem
+import com.ivy.data.repository.LoanRepository
 import com.ivy.legacy.datamodel.Loan
 import com.ivy.legacy.utils.ioThread
 import com.ivy.wallet.domain.deprecated.logic.model.CreateLoanData
 import com.ivy.wallet.domain.pure.util.nextOrderNum
+import kotlinx.coroutines.coroutineScope
 import java.util.UUID
 import javax.inject.Inject
 
 class LoanCreator @Inject constructor(
     private val dao: LoanDao,
     private val loanWriter: WriteLoanDao,
+    private val loanRepository: LoanRepository,
 ) {
     suspend fun create(
         data: CreateLoanData,
         onRefreshUI: suspend (Loan) -> Unit
-    ): UUID? {
+    ): UUID? = coroutineScope {
         val name = data.name
-        if (name.isBlank()) return null
-        if (data.amount <= 0) return null
+        if (name.isBlank()) return@coroutineScope null
+        if (data.amount <= 0) return@coroutineScope null
 
         var loanId: UUID? = null
 
@@ -43,12 +48,22 @@ class LoanCreator @Inject constructor(
                 item
             }
 
+            // Create initial checklist item
+            loanRepository.saveLoanItem(
+                LoanItem(
+                    contactId = LoanId(loanId!!),
+                    amount = data.amount,
+                    title = "Initial Balance",
+                    isSettled = false
+                )
+            )
+
             onRefreshUI(newItem)
         } catch (e: Exception) {
             e.printStackTrace()
         }
 
-        return loanId
+        loanId
     }
 
     suspend fun edit(

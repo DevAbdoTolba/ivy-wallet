@@ -3,6 +3,7 @@ package com.ivy.loans.loandetails
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Divider
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -56,6 +58,8 @@ import com.ivy.legacy.utils.isNotNullOrBlank
 import com.ivy.legacy.utils.rememberInteractionSource
 import com.ivy.legacy.utils.setStatusBarDarkTextCompat
 import com.ivy.loans.loan.data.DisplayLoanRecord
+import com.ivy.loans.loandetails.ui.LoanItemCard
+import com.ivy.loans.loandetails.ui.LoanItemModal
 import com.ivy.loans.loandetails.events.DeleteLoanModalEvent
 import com.ivy.loans.loandetails.events.LoanDetailsScreenEvent
 import com.ivy.loans.loandetails.events.LoanModalEvent
@@ -96,9 +100,6 @@ fun BoxWithConstraintsScope.LoanDetailsScreen(screen: LoanDetailsScreen) {
     viewModel.screen = screen
     val state = viewModel.uiState()
 
-import androidx.compose.material3.FloatingActionButton
-import com.ivy.loans.loandetails.ui.LoanItemCard
-...
     UI(
         state = state,
         onEventHandler = viewModel::onEvent
@@ -219,9 +220,12 @@ private fun BoxWithConstraintsScope.UI(
             containerColor = itemColor,
             contentColor = findContrastTextColor(itemColor)
         ) {
-            IvyIcon(
-                iconName = "ic_add", // Assuming ic_add exists or use a standard one
-                tint = findContrastTextColor(itemColor)
+            Text(
+                text = "+",
+                style = UI.typo.h2.style(
+                    fontWeight = FontWeight.Bold,
+                    color = findContrastTextColor(itemColor)
+                )
             )
         }
     }
@@ -278,9 +282,6 @@ private fun BoxWithConstraintsScope.UI(
         onEventHandler.invoke(DeleteLoanModalEvent.OnDeleteLoan)
     }
 
-import com.ivy.loans.loandetails.ui.LoanItemCard
-import com.ivy.loans.loandetails.ui.LoanItemModal
-...
     ProgressModal(
         title = stringResource(R.string.confirm_account_change),
         description = stringResource(R.string.confirm_account_loan_change),
@@ -943,6 +944,7 @@ private fun Preview_Empty() {
                     dateTime = LocalDateTime.now()
                 ),
                 displayLoanRecords = persistentListOf(),
+                displayLoanItems = persistentListOf(),
                 amountPaid = 3821.00,
                 loanTotalAmount = 4023.54,
                 loanAmountPaid = 100.0,
@@ -1004,6 +1006,7 @@ private fun Preview_Records(theme: Theme = Theme.LIGHT) {
                         )
                     ),
                 ),
+                displayLoanItems = persistentListOf(),
                 loanTotalAmount = 4023.54,
                 amountPaid = 3821.00,
                 loanAmountPaid = 100.0,

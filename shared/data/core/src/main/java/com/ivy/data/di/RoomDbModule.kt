@@ -7,6 +7,7 @@ import com.ivy.data.db.dao.read.BudgetDao
 import com.ivy.data.db.dao.read.CategoryDao
 import com.ivy.data.db.dao.read.ExchangeRatesDao
 import com.ivy.data.db.dao.read.LoanDao
+import com.ivy.data.db.dao.read.LoanItemDao
 import com.ivy.data.db.dao.read.LoanRecordDao
 import com.ivy.data.db.dao.read.PlannedPaymentRuleDao
 import com.ivy.data.db.dao.read.SettingsDao
@@ -19,6 +20,7 @@ import com.ivy.data.db.dao.write.WriteBudgetDao
 import com.ivy.data.db.dao.write.WriteCategoryDao
 import com.ivy.data.db.dao.write.WriteExchangeRatesDao
 import com.ivy.data.db.dao.write.WriteLoanDao
+import com.ivy.data.db.dao.write.WriteLoanItemDao
 import com.ivy.data.db.dao.write.WriteLoanRecordDao
 import com.ivy.data.db.dao.write.WritePlannedPaymentRuleDao
 import com.ivy.data.db.dao.write.WriteSettingsDao
@@ -144,6 +146,11 @@ object RoomDbModule {
     }
 
     @Provides
+    fun provideWriteLoanItemDao(db: IvyRoomDatabase): WriteLoanItemDao {
+        return db.writeLoanItemDao
+    }
+
+    @Provides
     fun provideWriteLoanRecordDao(db: IvyRoomDatabase): WriteLoanRecordDao {
         return db.writeLoanRecordDao
     }
@@ -166,8 +173,5 @@ object RoomDbModule {
     @Provides
     fun provideWriteTagAssociationDao(db: IvyRoomDatabase): WriteTagAssociationDao {
         return db.writeTagAssociationDao
-    }
-}
-ionDao
     }
 }

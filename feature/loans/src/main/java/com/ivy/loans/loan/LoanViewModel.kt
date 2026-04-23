@@ -39,6 +39,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDateTime
@@ -393,31 +394,15 @@ class LoanViewModel @Inject constructor(
     }
 
     /**
-     *  Calculates the total amount paid and the total loan amount including any changes made to the loan.
+     *  Calculates the total amount paid and the total loan amount based on checklist items.
      *  @return A Pair containing the total amount paid and the total loan amount.
      */
     private suspend fun calculateAmountPaidAndTotalAmount(loan: Loan): Pair<Double, Double> {
-        val unsettledSum = loanRepository.getUnsettledSum(LoanId(loan.id))
+        val items = loanRepository.getLoanItems(LoanId(loan.id)).first()
+        val loanTotalAmount = items.sumOf { it.amount }
+        val amountPaid = items.filter { it.isSettled }.sumOf { it.amount }
         
-        val loanRecords = ioThread { loanRecordDao.findAllByLoanId(loanId = loan.id) }
-        val (amountPaid, loanTotalAmount) = loanRecords.fold(0.0 to loan.amount) { value, loanRecord ->
-            val (currentAmountPaid, currentLoanTotalAmount) = value
-            if (loanRecord.interest) return@fold value
-            val convertedAmount = loanRecord.convertedAmount ?: loanRecord.amount
-
-            loanRecord.loanRecordType.processByType(
-                decreaseAction = { currentAmountPaid + convertedAmount to currentLoanTotalAmount },
-                increaseAction = { currentAmountPaid to currentLoanTotalAmount + convertedAmount }
-            )
-        }
-        
-        // If unsettledSum is 0, it means all checklist items are settled.
-        // We consider the loan fully paid in this case.
-        return if (unsettledSum == 0.0) {
-            loanTotalAmount to loanTotalAmount
-        } else {
-            amountPaid to loanTotalAmount
-        }
+        return amountPaid to loanTotalAmount
     }
 
     private fun updatePaidOffLoanVisibility() {

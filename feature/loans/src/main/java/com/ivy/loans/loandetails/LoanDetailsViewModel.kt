@@ -319,8 +319,13 @@ class LoanDetailsViewModel @Inject constructor(
             launch {
                 loanRepository.getLoanItems(LoanId(loanId)).collect { items ->
                     displayLoanItems.value = items.map { DisplayLoanItem(it) }.toImmutableList()
-                    // Total amount is now the sum of unsettled items
-                    loanTotalAmount.doubleValue = items.filter { !it.isSettled }.sumOf { it.amount }
+                    
+                    // NEW: Calculate total and paid based on checklist items
+                    val total = items.sumOf { it.amount }
+                    val paid = items.filter { it.isSettled }.sumOf { it.amount }
+                    
+                    loanTotalAmount.doubleValue = total
+                    amountPaid.doubleValue = paid
                 }
             }
 
@@ -349,29 +354,20 @@ class LoanDetailsViewModel @Inject constructor(
                     }.toImmutableList()
             }
 
+            // amountPaid and loanInterestAmountPaid calculation logic for header
             computationThread {
-                // Using a local variable to calculate the amount and then reassigning to
-                // the State variable to reduce the amount of compose re-draws
-                var amtPaid = 0.0
+                // Keep this for interest tracking if needed, 
+                // but main balance logic is now handled in the launch block above
                 var loanInterestAmtPaid = 0.0
                 displayLoanRecords.value.forEach {
-                    // We do not want to calculate records that increase loan.
-                    if (it.loanRecord.loanRecordType == LoanRecordType.INCREASE) {
-                        return@forEach
-                    }
+                    if (it.loanRecord.loanRecordType == LoanRecordType.INCREASE) return@forEach
                     val convertedAmount = it.loanRecord.convertedAmount ?: it.loanRecord.amount
-                    if (!it.loanRecord.interest) {
-                        amtPaid += convertedAmount
-                    } else {
+                    if (it.loanRecord.interest) {
                         loanInterestAmtPaid += convertedAmount
                     }
                 }
-
-                amountPaid.doubleValue = amtPaid
                 loanInterestAmountPaid.doubleValue = loanInterestAmtPaid
             }
-
-            // Note: loanTotalAmount is now updated reactively from loan items Flow in the launch block above.
 
             associatedTransaction = ioThread {
                 transactionRepository.findLoanTransaction(loanId = loan.value!!.id).let {

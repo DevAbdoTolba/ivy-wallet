@@ -291,6 +291,7 @@ private fun BoxWithConstraintsScope.UI(
     LoanItemModal(
         visible = state.loanItemModalVisible,
         loanItem = state.selectedLoanItem,
+        baseCurrency = state.baseCurrency,
         onSave = { title, amount ->
             onEventHandler.invoke(LoanDetailsScreenEvent.OnSaveLoanItem(title, amount))
         },

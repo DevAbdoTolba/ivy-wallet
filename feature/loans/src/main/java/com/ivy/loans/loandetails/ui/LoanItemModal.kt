@@ -1,7 +1,7 @@
 package com.ivy.loans.loandetails.ui
 
+import android.view.View
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -10,20 +10,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ivy.data.model.LoanItem
 import com.ivy.design.l0_system.UI
 import com.ivy.design.l0_system.style
+import com.ivy.design.utils.hideKeyboard
 import com.ivy.legacy.utils.formatInputAmount
-import com.ivy.legacy.utils.hideKeyboard
 import com.ivy.legacy.utils.localDecimalSeparator
 import com.ivy.ui.R
 import com.ivy.wallet.ui.theme.Red
@@ -33,6 +28,7 @@ import com.ivy.wallet.ui.theme.Red
 fun LoanItemModal(
     visible: Boolean,
     loanItem: LoanItem?,
+    baseCurrency: String,
     onSave: (title: String, amount: Double) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -52,7 +48,7 @@ fun LoanItemModal(
                 .fillMaxWidth()
                 .padding(16.dp)
                 .navigationBarsPadding()
-                .imePadding() // Fix for keyboard overlapping
+                .imePadding()
         ) {
             Text(
                 text = if (loanItem == null) "Add Loan Item" else "Edit Loan Item",
@@ -80,7 +76,6 @@ fun LoanItemModal(
 
             Spacer(Modifier.height(16.dp))
 
-            // Custom Display for Amount
             Text(
                 text = amount.ifEmpty { "0" },
                 style = UI.typo.nH1.style(
@@ -93,10 +88,12 @@ fun LoanItemModal(
                     .padding(vertical = 16.dp)
             )
 
-            // Numeric Keypad
             NumericKeypad(
                 onNumberPressed = { num ->
-                    amount = formatInputAmount(amount, num, 2)
+                    val formatted = formatInputAmount(baseCurrency, amount, num, 2)
+                    if (formatted != null) {
+                        amount = formatted
+                    }
                 },
                 onDecimalPoint = {
                     val separator = localDecimalSeparator()
@@ -115,7 +112,7 @@ fun LoanItemModal(
 
             Button(
                 onClick = {
-                    val amountDouble = amount.replace(",", ".").toDoubleOrNull() ?: 0.0
+                    val amountDouble = amount.replace(",", ".").replace(" ", "").replace("\u00A0", "").toDoubleOrNull() ?: 0.0
                     if (title.isNotBlank() && amountDouble > 0) {
                         view.hideKeyboard()
                         onSave(title, amountDouble)
@@ -124,7 +121,7 @@ fun LoanItemModal(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = title.isNotBlank() && (amount.replace(",", ".").toDoubleOrNull() ?: 0.0) > 0,
+                enabled = title.isNotBlank() && (amount.replace(",", ".").replace(" ", "").replace("\u00A0", "").toDoubleOrNull() ?: 0.0) > 0,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = UI.colors.pureInverse,
                     contentColor = UI.colors.pure
@@ -156,7 +153,7 @@ private fun NumericKeypad(
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterVertically
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         rows.forEach { row ->
             Row(
@@ -180,10 +177,10 @@ private fun NumericKeypad(
                 modifier = Modifier
                     .size(64.dp)
                     .clip(CircleShape)
-                    .background(UI.colors.medium.copy(alpha = 0.3f))
+                    .background(UI.colors.medium.copy(alpha = 0.1f))
             ) {
                 Icon(
-                    painter = androidx.compose.ui.res.painterResource(R.drawable.ic_backspace),
+                    painter = androidx.compose.ui.res.painterResource(com.ivy.ui.R.drawable.ic_backspace),
                     contentDescription = "Backspace",
                     tint = Red,
                     modifier = Modifier.size(24.dp)

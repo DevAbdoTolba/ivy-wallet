@@ -1,14 +1,13 @@
 package com.ivy.loans.loandetails.events
 
+import com.ivy.data.model.LoanItem
+import com.ivy.data.model.LoanItemId
 import com.ivy.wallet.domain.deprecated.logic.model.CreateAccountData
 
 sealed interface LoanDetailsScreenEvent {
     data object OnEditLoanClick : LoanDetailsScreenEvent
     data object OnAmountClick : LoanDetailsScreenEvent
     data object OnAddRecord : LoanDetailsScreenEvent
-import com.ivy.data.model.LoanItem
-import com.ivy.data.model.LoanItemId
-...
     data class OnCreateAccount(val data: CreateAccountData) : LoanDetailsScreenEvent
     
     data class OnToggleLoanItemSettled(val id: LoanItemId, val isSettled: Boolean) : LoanDetailsScreenEvent

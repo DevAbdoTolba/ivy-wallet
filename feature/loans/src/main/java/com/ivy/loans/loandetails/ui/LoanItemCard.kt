@@ -1,6 +1,7 @@
 package com.ivy.loans.loandetails.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -29,9 +30,10 @@ fun LoanItemCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
             .clip(UI.shapes.r4)
-            .background(UI.colors.medium, UI.shapes.r4)
+            .background(UI.colors.medium.copy(alpha = 0.5f), UI.shapes.r4)
+            .clickable { onEdit() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -58,32 +60,34 @@ fun LoanItemCard(
             )
         }
 
-        Text(
-            text = loanItem.amount.format(baseCurrency),
-            style = UI.typo.b1.style(
-                fontWeight = FontWeight.ExtraBold,
-                color = UI.colors.pureInverse
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = loanItem.amount.format(baseCurrency),
+                style = UI.typo.b1.style(
+                    fontWeight = FontWeight.Black,
+                    color = if (loanItem.isSettled) UI.colors.pureInverse.copy(alpha = 0.5f) else UI.colors.pureInverse
+                )
             )
-        )
+            
+            Row {
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        tint = UI.colors.pureInverse.copy(alpha = 0.7f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
 
-        Spacer(Modifier.width(8.dp))
-
-        IconButton(onClick = onEdit) {
-            Icon(
-                imageVector = Icons.Default.Edit,
-                contentDescription = "Edit",
-                tint = UI.colors.pureInverse,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
-        IconButton(onClick = onDelete) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Delete",
-                tint = UI.colors.pureInverse,
-                modifier = Modifier.size(20.dp)
-            )
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = com.ivy.wallet.ui.theme.Red.copy(alpha = 0.7f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
         }
     }
 }

@@ -14,7 +14,9 @@ import com.ivy.base.time.TimeProvider
 import com.ivy.data.db.dao.read.LoanRecordDao
 import com.ivy.data.db.dao.read.SettingsDao
 import com.ivy.data.db.dao.write.WriteLoanDao
+import com.ivy.data.model.LoanId
 import com.ivy.data.model.LoanType
+import com.ivy.data.repository.LoanRepository
 import com.ivy.frp.test.TestIdlingResource
 import com.ivy.legacy.datamodel.Account
 import com.ivy.legacy.datamodel.Loan
@@ -57,7 +59,8 @@ class LoanViewModel @Inject constructor(
     private val loanWriter: WriteLoanDao,
     private val timeConverter: TimeConverter,
     private val timeProvider: TimeProvider,
-    private val dateTimePicker: DateTimePicker
+    private val dateTimePicker: DateTimePicker,
+    private val loanRepository: LoanRepository,
 ) : ComposeViewModel<LoanScreenState, LoanScreenEvent>() {
 
     private var baseCurrencyCode by mutableStateOf(getDefaultFIATCurrency().currencyCode)
@@ -394,6 +397,8 @@ class LoanViewModel @Inject constructor(
      *  @return A Pair containing the total amount paid and the total loan amount.
      */
     private suspend fun calculateAmountPaidAndTotalAmount(loan: Loan): Pair<Double, Double> {
+        val unsettledSum = loanRepository.getUnsettledSum(LoanId(loan.id))
+        
         val loanRecords = ioThread { loanRecordDao.findAllByLoanId(loanId = loan.id) }
         val (amountPaid, loanTotalAmount) = loanRecords.fold(0.0 to loan.amount) { value, loanRecord ->
             val (currentAmountPaid, currentLoanTotalAmount) = value
@@ -405,7 +410,14 @@ class LoanViewModel @Inject constructor(
                 increaseAction = { currentAmountPaid to currentLoanTotalAmount + convertedAmount }
             )
         }
-        return amountPaid to loanTotalAmount
+        
+        // If unsettledSum is 0, it means all checklist items are settled.
+        // We consider the loan fully paid in this case.
+        return if (unsettledSum == 0.0) {
+            loanTotalAmount to loanTotalAmount
+        } else {
+            amountPaid to loanTotalAmount
+        }
     }
 
     private fun updatePaidOffLoanVisibility() {

@@ -12,6 +12,10 @@ import com.ivy.base.time.TimeConverter
 import com.ivy.base.time.TimeProvider
 import com.ivy.data.db.dao.read.LoanRecordDao
 import com.ivy.data.db.dao.read.SettingsDao
+import com.ivy.data.model.LoanId
+import com.ivy.data.model.LoanItem
+import com.ivy.data.model.LoanItemId
+import com.ivy.data.repository.LoanRepository
 import com.ivy.data.repository.TransactionRepository
 import com.ivy.data.repository.mapper.TransactionMapper
 import com.ivy.frp.test.TestIdlingResource
@@ -23,6 +27,7 @@ import com.ivy.legacy.datamodel.temp.toLegacyDomain
 import com.ivy.legacy.domain.deprecated.logic.AccountCreator
 import com.ivy.legacy.utils.computationThread
 import com.ivy.legacy.utils.ioThread
+import com.ivy.loans.loan.data.DisplayLoanItem
 import com.ivy.loans.loan.data.DisplayLoanRecord
 import com.ivy.loans.loandetails.events.DeleteLoanModalEvent
 import com.ivy.loans.loandetails.events.LoanDetailsScreenEvent
@@ -69,12 +74,15 @@ class LoanDetailsViewModel @Inject constructor(
     private val timeConverter: TimeConverter,
     private val timeProvider: TimeProvider,
     private val dateTimePicker: DateTimePicker,
+    private val loanRepository: LoanRepository,
 ) : ComposeViewModel<LoanDetailsScreenState, LoanDetailsScreenEvent>() {
 
     private val baseCurrency = mutableStateOf("")
     private val loan = mutableStateOf<Loan?>(null)
     private val displayLoanRecords =
         mutableStateOf<ImmutableList<DisplayLoanRecord>>(persistentListOf())
+    private val displayLoanItems =
+        mutableStateOf<ImmutableList<DisplayLoanItem>>(persistentListOf())
     private val loanTotalAmount = mutableDoubleStateOf(0.0)
     private val amountPaid = mutableDoubleStateOf(0.0)
     private val accounts = mutableStateOf<ImmutableList<Account>>(persistentListOf())
@@ -85,6 +93,8 @@ class LoanDetailsViewModel @Inject constructor(
     private var defaultCurrencyCode = ""
     private val loanModalData = mutableStateOf<LoanModalData?>(null)
     private val loanRecordModalData = mutableStateOf<LoanRecordModalData?>(null)
+    private val loanItemModalVisible = mutableStateOf(false)
+    private val selectedLoanItem = mutableStateOf<LoanItem?>(null)
     private val waitModalVisible = mutableStateOf(false)
     private val isDeleteModalVisible = mutableStateOf(false)
     private var dateTime = mutableStateOf<Instant>(timeProvider.utcNow())
@@ -100,6 +110,7 @@ class LoanDetailsViewModel @Inject constructor(
             baseCurrency = baseCurrency.value,
             loan = loan.value,
             displayLoanRecords = displayLoanRecords.value,
+            displayLoanItems = displayLoanItems.value,
             loanTotalAmount = loanTotalAmount.doubleValue,
             amountPaid = amountPaid.doubleValue,
             loanAmountPaid = loanInterestAmountPaid.doubleValue,
@@ -108,6 +119,8 @@ class LoanDetailsViewModel @Inject constructor(
             createLoanTransaction = createLoanTransaction.value,
             loanModalData = loanModalData.value,
             loanRecordModalData = loanRecordModalData.value,
+            loanItemModalVisible = loanItemModalVisible.value,
+            selectedLoanItem = selectedLoanItem.value,
             waitModalVisible = waitModalVisible.value,
             isDeleteModalVisible = isDeleteModalVisible.value,
             dateTime = dateTime.value
@@ -240,6 +253,34 @@ class LoanDetailsViewModel @Inject constructor(
                 createAccount(event.data)
             }
 
+            is LoanDetailsScreenEvent.OnToggleLoanItemSettled -> {
+                toggleLoanItemSettled(event.id, event.isSettled)
+            }
+            
+            LoanDetailsScreenEvent.OnAddLoanItem -> {
+                selectedLoanItem.value = null
+                loanItemModalVisible.value = true
+            }
+            
+            is LoanDetailsScreenEvent.OnSaveLoanItem -> {
+                saveLoanItem(event.title, event.amount)
+                loanItemModalVisible.value = false
+            }
+            
+            is LoanDetailsScreenEvent.OnDeleteLoanItem -> {
+                deleteLoanItem(event.id)
+            }
+            
+            is LoanDetailsScreenEvent.OnEditLoanItem -> {
+                selectedLoanItem.value = event.loanItem
+                loanItemModalVisible.value = true
+            }
+
+            LoanDetailsScreenEvent.OnDismissLoanItemModal -> {
+                loanItemModalVisible.value = false
+                selectedLoanItem.value = null
+            }
+
             else -> {}
         }
     }
@@ -271,6 +312,15 @@ class LoanDetailsViewModel @Inject constructor(
 
                 selectedLoanAccount.value?.let { acc ->
                     baseCurrency.value = acc.currency ?: defaultCurrencyCode
+                }
+            }
+
+            // Observe loan items for the checklist
+            launch {
+                loanRepository.getLoanItems(LoanId(loanId)).collect { items ->
+                    displayLoanItems.value = items.map { DisplayLoanItem(it) }.toImmutableList()
+                    // Total amount is now the sum of unsettled items
+                    loanTotalAmount.doubleValue = items.filter { !it.isSettled }.sumOf { it.amount }
                 }
             }
 
@@ -321,21 +371,7 @@ class LoanDetailsViewModel @Inject constructor(
                 loanInterestAmountPaid.doubleValue = loanInterestAmtPaid
             }
 
-            computationThread {
-                // Calculate total amount of loan borrowed or lent.
-                // That is initial amount + each record that increased the loan.
-                val totalAmount =
-                    displayLoanRecords.value.fold(loan.value?.amount ?: 0.0) { value, record ->
-                        if (record.loanRecord.loanRecordType == LoanRecordType.INCREASE) {
-                            val convertedAmount =
-                                record.loanRecord.convertedAmount ?: record.loanRecord.amount
-                            value + convertedAmount
-                        } else {
-                            value
-                        }
-                    }
-                loanTotalAmount.doubleValue = totalAmount
-            }
+            // Note: loanTotalAmount is now updated reactively from loan items Flow in the launch block above.
 
             associatedTransaction = ioThread {
                 transactionRepository.findLoanTransaction(loanId = loan.value!!.id).let {
@@ -350,6 +386,31 @@ class LoanDetailsViewModel @Inject constructor(
             }
 
             TestIdlingResource.decrement()
+        }
+    }
+
+    private fun toggleLoanItemSettled(id: LoanItemId, isSettled: Boolean) {
+        viewModelScope.launch {
+            loanRepository.updateSettledStatus(id, isSettled)
+        }
+    }
+
+    private fun saveLoanItem(title: String, amount: Double) {
+        val loanId = loan.value?.id ?: return
+        viewModelScope.launch {
+            val item = selectedLoanItem.value?.copy(title = title, amount = amount)
+                ?: LoanItem(
+                    contactId = LoanId(loanId),
+                    title = title,
+                    amount = amount
+                )
+            loanRepository.saveLoanItem(item)
+        }
+    }
+
+    private fun deleteLoanItem(id: LoanItemId) {
+        viewModelScope.launch {
+            loanRepository.deleteLoanItem(id)
         }
     }
 

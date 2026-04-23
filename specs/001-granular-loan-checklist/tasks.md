@@ -11,10 +11,10 @@
 
 **Purpose**: Initial structure and boilerplate
 
-- [ ] T001 [P] Create `DisplayLoanItem.kt` in `feature/loans/src/main/java/com/ivy/loans/loan/data/`
-- [ ] T002 [P] Create `LoanItemEntity.kt` in `shared/data/core/src/main/java/com/ivy/data/db/entity/`
-- [ ] T003 [P] Create `LoanItemDao.kt` in `shared/data/core/src/main/java/com/ivy/data/db/dao/read/`
-- [ ] T004 [P] Create `WriteLoanItemDao.kt` in `shared/data/core/src/main/java/com/ivy/data/db/dao/write/`
+- [x] T001 [P] Create `DisplayLoanItem.kt` in `feature/loans/src/main/java/com/ivy/loans/loan/data/`
+- [x] T002 [P] Create `LoanItemEntity.kt` in `shared/data/core/src/main/java/com/ivy/data/db/entity/`
+- [x] T003 [P] Create `LoanItemDao.kt` in `shared/data/core/src/main/java/com/ivy/data/db/dao/read/`
+- [x] T004 [P] Create `WriteLoanItemDao.kt` in `shared/data/core/src/main/java/com/ivy/data/db/dao/write/`
 
 ---
 
@@ -22,11 +22,11 @@
 
 **Purpose**: Blocking database and repository prerequisites
 
-- [ ] T005 Register `LoanItemDao` and `WriteLoanItemDao` in `shared/data/core/src/main/java/com/ivy/data/db/IvyRoomDatabase.kt`
-- [ ] T006 Configure Hilt for new DAOs in `shared/data/core/src/main/java/com/ivy/data/di/RoomDbModule.kt`
-- [ ] T007 Implement `Migration130to131_LoanChecklist.kt` in `shared/data/core/src/main/java/com/ivy/data/db/migration/`
-- [ ] T008 Update `IvyRoomDatabase.kt` to include migration 130 to 131
-- [ ] T009 Create `LoanRepository.kt` (if not exists) in `shared/data/core/src/main/java/com/ivy/data/repository/` with basic CRUD for `LoanItem`
+- [x] T005 Register `LoanItemDao` and `WriteLoanItemDao` in `shared/data/core/src/main/java/com/ivy/data/db/IvyRoomDatabase.kt`
+- [x] T006 Configure Hilt for new DAOs in `shared/data/core/src/main/java/com/ivy/data/di/RoomDbModule.kt`
+- [x] T007 Implement `Migration130to131_LoanChecklist.kt` in `shared/data/core/src/main/java/com/ivy/data/db/migration/`
+- [x] T008 Update `IvyRoomDatabase.kt` to include migration 130 to 131
+- [x] T009 Create `LoanRepository.kt` (if not exists) in `shared/data/core/src/main/java/com/ivy/data/repository/` with basic CRUD for `LoanItem`
 
 **Checkpoint**: Database migrated and repository accessible
 
@@ -40,16 +40,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T010 [P] [US1] Create JUnit test for `LoanItemDao` checklist logic in `shared/data/core/src/test/`
-- [ ] T011 [P] [US1] Create Paparazzi test for `LoanItemCard.kt`
+- [x] T010 [P] [US1] Create JUnit test for `LoanItemDao` checklist logic in `shared/data/core/src/test/`
+- [x] T011 [P] [US1] Create Paparazzi test for `LoanItemCard.kt`
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Create `LoanItemCard.kt` in `feature/loans/src/main/java/com/ivy/loans/loandetails/ui/`
-- [ ] T013 [US1] Update `LoanRepository.kt` to provide `Flow<List<LoanItem>>`
-- [ ] T014 [US1] Refactor `LoanDetailsViewModel.kt` to observe `LoanItem` flow and calculate unsettled balance
-- [ ] T015 [US1] Refactor `LoanDetailsScreen.kt` to display `LoanItemCard`s in a `LazyColumn`
-- [ ] T016 [US1] Implement toggle settlement logic in `LoanDetailsViewModel.kt`
+- [x] T012 [P] [US1] Create `LoanItemCard.kt` in `feature/loans/src/main/java/com/ivy/loans/loandetails/ui/`
+- [x] T013 [US1] Update `LoanRepository.kt` to provide `Flow<List<LoanItem>>`
+- [x] T014 [US1] Refactor `LoanDetailsViewModel.kt` to observe `LoanItem` flow and calculate unsettled balance
+- [x] T015 [US1] Refactor `LoanDetailsScreen.kt` to display `LoanItemCard`s in a `LazyColumn`
+- [x] T016 [US1] Implement toggle settlement logic in `LoanDetailsViewModel.kt`
 
 **Checkpoint**: US1 functional - legacy data viewable and toggleable
 
@@ -63,10 +63,10 @@
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Add "Add Loan Item" event to `LoanDetailsScreenEvent.kt`
-- [ ] T018 [US2] Implement FAB in `LoanDetailsScreen.kt`
-- [ ] T019 [US2] Create "Add Loan Item" modal/dialog UI
-- [ ] T020 [US2] Implement `saveLoanItem` logic in `LoanDetailsViewModel.kt` with title validation (> 0 chars) and amount validation (> 0)
+- [x] T017 [US2] Add "Add Loan Item" event to `LoanDetailsScreenEvent.kt`
+- [x] T018 [US2] Implement FAB in `LoanDetailsScreen.kt`
+- [x] T019 [US2] Create "Add Loan Item" modal/dialog UI
+- [x] T020 [US2] Implement `saveLoanItem` logic in `LoanDetailsViewModel.kt` with title validation (> 0 chars) and amount validation (> 0)
 
 **Checkpoint**: US2 functional - can add new granular items
 
@@ -80,9 +80,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Add Edit/Delete actions to `LoanItemCard.kt`
-- [ ] T022 [US3] Implement `deleteLoanItem` logic in `LoanDetailsViewModel.kt`
-- [ ] T023 [US3] Implement Edit modal and `updateLoanItem` logic in `LoanDetailsViewModel.kt`
+- [x] T021 [US3] Add Edit/Delete actions to `LoanItemCard.kt`
+- [x] T022 [US3] Implement `deleteLoanItem` logic in `LoanDetailsViewModel.kt`
+- [x] T023 [US3] Implement Edit modal and `updateLoanItem` logic in `LoanDetailsViewModel.kt`
 
 **Checkpoint**: US3 functional - full management of checklist items
 
@@ -90,7 +90,7 @@
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T024 Ensure `LoanItem`s are preserved when contact is moved to "completed" section (Logic verification)
+- [x] T024 Ensure `LoanItem`s are preserved when contact is moved to "completed" section (Logic verification)
 
 ---
 

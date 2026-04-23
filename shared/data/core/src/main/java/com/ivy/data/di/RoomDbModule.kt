@@ -87,6 +87,11 @@ object RoomDbModule {
     }
 
     @Provides
+    fun provideLoanItemDao(db: IvyRoomDatabase): LoanItemDao {
+        return db.loanItemDao
+    }
+
+    @Provides
     fun providePlannedPaymentRuleDao(db: IvyRoomDatabase): PlannedPaymentRuleDao {
         return db.plannedPaymentRuleDao
     }
@@ -161,5 +166,8 @@ object RoomDbModule {
     @Provides
     fun provideWriteTagAssociationDao(db: IvyRoomDatabase): WriteTagAssociationDao {
         return db.writeTagAssociationDao
+    }
+}
+ionDao
     }
 }

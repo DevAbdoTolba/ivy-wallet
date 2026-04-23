@@ -96,6 +96,9 @@ fun BoxWithConstraintsScope.LoanDetailsScreen(screen: LoanDetailsScreen) {
     viewModel.screen = screen
     val state = viewModel.uiState()
 
+import androidx.compose.material3.FloatingActionButton
+import com.ivy.loans.loandetails.ui.LoanItemCard
+...
     UI(
         state = state,
         onEventHandler = viewModel::onEvent
@@ -109,95 +112,117 @@ private fun BoxWithConstraintsScope.UI(
 ) {
     val itemColor = state.loan?.color?.toComposeColor() ?: Gray
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(itemColor)
-    ) {
-        val listState = rememberLazyListState()
-
-        LazyColumn(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .padding(top = 16.dp)
-                .clip(UI.shapes.r1Top)
-                .background(UI.colors.pure),
-            state = listState,
+                .background(itemColor)
         ) {
-            item {
-                if (state.loan != null) {
-                    Header(
-                        loan = state.loan,
+            val listState = rememberLazyListState()
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .padding(top = 16.dp)
+                    .clip(UI.shapes.r1Top)
+                    .background(UI.colors.pure),
+                state = listState,
+            ) {
+                item {
+                    if (state.loan != null) {
+                        Header(
+                            loan = state.loan,
+                            baseCurrency = state.baseCurrency,
+                            loanTotalAmount = state.loanTotalAmount,
+                            amountPaid = state.amountPaid,
+                            loanAmountPaid = state.loanAmountPaid,
+                            itemColor = itemColor,
+                            selectedLoanAccount = state.selectedLoanAccount,
+                            onAmountClick = {
+                                onEventHandler.invoke(LoanDetailsScreenEvent.OnAmountClick)
+                            },
+                            onDeleteLoan = {
+                                onEventHandler.invoke(
+                                    DeleteLoanModalEvent.OnDismissDeleteLoan(
+                                        isDeleteModalVisible = true
+                                    )
+                                )
+                            },
+                            onEditLoan = {
+                                onEventHandler.invoke(LoanDetailsScreenEvent.OnEditLoanClick)
+                            },
+                            onAddRecord = {
+                                onEventHandler.invoke(LoanDetailsScreenEvent.OnAddRecord)
+                            }
+                        )
+                    }
+                }
+
+                item {
+                    // Rounded corners top effect
+                    Spacer(
+                        Modifier
+                            .height(32.dp)
+                            .fillMaxWidth()
+                            .background(itemColor) // itemColor is displayed below the clip
+                            .background(UI.colors.pure, UI.shapes.r1Top)
+                    )
+                }
+
+                items(state.displayLoanItems) { displayLoanItem ->
+                    LoanItemCard(
+                        loanItem = displayLoanItem.loanItem,
                         baseCurrency = state.baseCurrency,
-                        loanTotalAmount = state.loanTotalAmount,
-                        amountPaid = state.amountPaid,
-                        loanAmountPaid = state.loanAmountPaid,
-                        itemColor = itemColor,
-                        selectedLoanAccount = state.selectedLoanAccount,
-                        onAmountClick = {
-                            onEventHandler.invoke(LoanDetailsScreenEvent.OnAmountClick)
-                        },
-                        onDeleteLoan = {
+                        onToggleSettled = { isSettled ->
                             onEventHandler.invoke(
-                                DeleteLoanModalEvent.OnDismissDeleteLoan(
-                                    isDeleteModalVisible = true
+                                LoanDetailsScreenEvent.OnToggleLoanItemSettled(
+                                    displayLoanItem.loanItem.id,
+                                    isSettled
                                 )
                             )
                         },
-                        onEditLoan = {
-                            onEventHandler.invoke(LoanDetailsScreenEvent.OnEditLoanClick)
+                        onEdit = {
+                            onEventHandler.invoke(
+                                LoanDetailsScreenEvent.OnEditLoanItem(displayLoanItem.loanItem)
+                            )
                         },
-                        onAddRecord = {
-                            onEventHandler.invoke(LoanDetailsScreenEvent.OnAddRecord)
+                        onDelete = {
+                            onEventHandler.invoke(
+                                LoanDetailsScreenEvent.OnDeleteLoanItem(displayLoanItem.loanItem.id)
+                            )
                         }
                     )
                 }
-            }
 
-            item {
-                // Rounded corners top effect
-                Spacer(
-                    Modifier
-                        .height(32.dp)
-                        .fillMaxWidth()
-                        .background(itemColor) // itemColor is displayed below the clip
-                        .background(UI.colors.pure, UI.shapes.r1Top)
-                )
-            }
-
-            if (state.loan != null) {
-                loanRecords(
-                    loan = state.loan,
-                    displayLoanRecords = state.displayLoanRecords,
-                    onClick = { displayLoanRecord ->
-                        onEventHandler.invoke(
-                            LoanRecordModalEvent.OnClickLoanRecord(
-                                displayLoanRecord
-                            )
-                        )
+                if (state.displayLoanItems.isEmpty()) {
+                    item {
+                        NoLoanRecordsEmptyState()
+                        Spacer(Modifier.height(96.dp))
                     }
-                )
-                item {
-                    InitialRecordItem(
-                        loan = state.loan,
-                        amount = state.loan.amount,
-                        baseCurrency = state.baseCurrency,
-                    )
                 }
-            }
 
-            if (state.displayLoanRecords.isEmpty()) {
                 item {
-                    NoLoanRecordsEmptyState()
+                    // scroll hack
                     Spacer(Modifier.height(96.dp))
                 }
             }
+        }
 
-            item {
-                // scroll hack
-                Spacer(Modifier.height(96.dp))
-            }
+        FloatingActionButton(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(24.dp),
+            onClick = {
+                onEventHandler.invoke(LoanDetailsScreenEvent.OnAddLoanItem)
+            },
+            containerColor = itemColor,
+            contentColor = findContrastTextColor(itemColor)
+        ) {
+            IvyIcon(
+                iconName = "ic_add", // Assuming ic_add exists or use a standard one
+                tint = findContrastTextColor(itemColor)
+            )
         }
     }
 
@@ -253,10 +278,24 @@ private fun BoxWithConstraintsScope.UI(
         onEventHandler.invoke(DeleteLoanModalEvent.OnDeleteLoan)
     }
 
+import com.ivy.loans.loandetails.ui.LoanItemCard
+import com.ivy.loans.loandetails.ui.LoanItemModal
+...
     ProgressModal(
         title = stringResource(R.string.confirm_account_change),
         description = stringResource(R.string.confirm_account_loan_change),
         visible = state.waitModalVisible
+    )
+
+    LoanItemModal(
+        visible = state.loanItemModalVisible,
+        loanItem = state.selectedLoanItem,
+        onSave = { title, amount ->
+            onEventHandler.invoke(LoanDetailsScreenEvent.OnSaveLoanItem(title, amount))
+        },
+        onDismiss = {
+            onEventHandler.invoke(LoanDetailsScreenEvent.OnDismissLoanItemModal)
+        }
     )
 }
 

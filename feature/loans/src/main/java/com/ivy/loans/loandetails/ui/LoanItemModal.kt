@@ -130,7 +130,10 @@ fun LoanItemModal(
             ) {
                 Text(
                     text = "SAVE",
-                    style = UI.typo.b1.style(fontWeight = FontWeight.Black)
+                    style = UI.typo.b1.style(
+                        color = UI.colors.pure,
+                        fontWeight = FontWeight.Black
+                    )
                 )
             }
             

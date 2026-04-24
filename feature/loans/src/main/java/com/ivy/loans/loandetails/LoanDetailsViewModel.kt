@@ -51,6 +51,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDateTime
@@ -98,7 +99,47 @@ class LoanDetailsViewModel @Inject constructor(
     private val waitModalVisible = mutableStateOf(false)
     private val isDeleteModalVisible = mutableStateOf(false)
     private var dateTime = mutableStateOf<Instant>(timeProvider.utcNow())
-    lateinit var screen: LoanDetailsScreen
+    private val isLoading = mutableStateOf(false)
+
+    // Job for the current loan-items flow collection. The VM is scoped to the
+    // Activity (custom router — not NavHost), so it's reused across loans.
+    // We cancel the prior collector before starting a new one to avoid two
+    // flows racing to overwrite displayLoanItems.
+    private var itemsJob: Job? = null
+
+    private var _screen: LoanDetailsScreen? = null
+    var screen: LoanDetailsScreen
+        get() = _screen!!
+        set(value) {
+            val changed = _screen?.loanId != value.loanId
+            _screen = value
+            if (changed) {
+                // Reset synchronously so the first recomposition on the new
+                // loan doesn't flash the previous loan's data.
+                resetStateForNewLoan()
+            }
+        }
+
+    private fun resetStateForNewLoan() {
+        itemsJob?.cancel()
+        itemsJob = null
+        loan.value = null
+        displayLoanRecords.value = persistentListOf()
+        displayLoanItems.value = persistentListOf()
+        loanTotalAmount.doubleValue = 0.0
+        amountPaid.doubleValue = 0.0
+        loanInterestAmountPaid.doubleValue = 0.0
+        selectedLoanAccount.value = null
+        createLoanTransaction.value = false
+        loanModalData.value = null
+        loanRecordModalData.value = null
+        loanItemModalVisible.value = false
+        selectedLoanItem.value = null
+        waitModalVisible.value = false
+        isDeleteModalVisible.value = false
+        associatedTransaction = null
+        isLoading.value = true
+    }
 
     @Composable
     override fun uiState(): LoanDetailsScreenState {
@@ -123,7 +164,8 @@ class LoanDetailsViewModel @Inject constructor(
             selectedLoanItem = selectedLoanItem.value,
             waitModalVisible = waitModalVisible.value,
             isDeleteModalVisible = isDeleteModalVisible.value,
-            dateTime = dateTime.value
+            dateTime = dateTime.value,
+            isLoading = isLoading.value,
         )
     }
 
@@ -241,14 +283,6 @@ class LoanDetailsViewModel @Inject constructor(
                 )
             }
 
-            LoanDetailsScreenEvent.OnAddRecord -> {
-                loanRecordModalData.value = LoanRecordModalData(
-                    loanRecord = null,
-                    baseCurrency = baseCurrency.value,
-                    selectedAccount = selectedLoanAccount.value
-                )
-            }
-
             is LoanDetailsScreenEvent.OnCreateAccount -> {
                 createAccount(event.data)
             }
@@ -293,6 +327,7 @@ class LoanDetailsViewModel @Inject constructor(
         viewModelScope.launch {
             TestIdlingResource.increment()
 
+            isLoading.value = true
             dateTime.value = timeProvider.utcNow()
 
             defaultCurrencyCode = ioThread {
@@ -304,6 +339,11 @@ class LoanDetailsViewModel @Inject constructor(
             accounts.value = accountsAct(Unit)
 
             loan.value = loanByIdAct(loanId)
+            // Note: isLoading stays true until the loan-items flow emits once —
+            // the header already renders the moment `loan.value` is non-null,
+            // and keeping isLoading true in the meantime suppresses the
+            // "No items" empty state from briefly flashing before the first
+            // items emission arrives.
 
             loan.value?.let { loan ->
                 selectedLoanAccount.value = accounts.value.find {
@@ -315,17 +355,26 @@ class LoanDetailsViewModel @Inject constructor(
                 }
             }
 
-            // Observe loan items for the checklist
-            launch {
+            // Observe loan items for the checklist. If the user never itemized
+            // this loan, fall back to the loan's headline amount so the header
+            // doesn't show 0.0.
+            itemsJob?.cancel()
+            itemsJob = viewModelScope.launch {
                 loanRepository.getLoanItems(LoanId(loanId)).collect { items ->
                     displayLoanItems.value = items.map { DisplayLoanItem(it) }.toImmutableList()
-                    
-                    // NEW: Calculate total and paid based on checklist items
-                    val total = items.sumOf { it.amount }
-                    val paid = items.filter { it.isSettled }.sumOf { it.amount }
-                    
-                    loanTotalAmount.doubleValue = total
-                    amountPaid.doubleValue = paid
+
+                    if (items.isEmpty()) {
+                        loanTotalAmount.doubleValue = loan.value?.amount ?: 0.0
+                        amountPaid.doubleValue = 0.0
+                    } else {
+                        loanTotalAmount.doubleValue = items.sumOf { it.amount }
+                        amountPaid.doubleValue = items.filter { it.isSettled }.sumOf { it.amount }
+                    }
+
+                    // First emission after (re)loading — screen is now fully
+                    // populated, so it's safe to let the empty state show if
+                    // the list really is empty.
+                    if (isLoading.value) isLoading.value = false
                 }
             }
 

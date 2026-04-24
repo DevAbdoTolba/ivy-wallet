@@ -6,6 +6,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.viewModelScope
 import com.ivy.base.legacy.SharedPrefs
 import com.ivy.base.model.processByType
@@ -15,6 +16,7 @@ import com.ivy.data.db.dao.read.LoanRecordDao
 import com.ivy.data.db.dao.read.SettingsDao
 import com.ivy.data.db.dao.write.WriteLoanDao
 import com.ivy.data.model.LoanId
+import com.ivy.data.model.LoanItem
 import com.ivy.data.model.LoanType
 import com.ivy.data.repository.LoanRepository
 import com.ivy.frp.test.TestIdlingResource
@@ -73,6 +75,7 @@ class LoanViewModel @Inject constructor(
     private var reorderModalVisible by mutableStateOf(false)
     private var dateTime by mutableStateOf<Instant>(timeProvider.utcNow())
     private var selectedTab by mutableStateOf(LoanTab.PENDING)
+    private var itemizeSheetData by mutableStateOf<ItemizeSheetData?>(null)
 
     /** If true paid off loans will be visible */
     private var paidOffLoanVisibility by mutableStateOf(true)
@@ -101,7 +104,8 @@ class LoanViewModel @Inject constructor(
             dateTime = dateTime,
             selectedTab = getSelectedTab(),
             completedLoans = getCompletedLoans(),
-            pendingLoans = getPendingLoans()
+            pendingLoans = getPendingLoans(),
+            itemizeSheetData = itemizeSheetData,
         )
     }
 
@@ -190,6 +194,32 @@ class LoanViewModel @Inject constructor(
             is LoanScreenEvent.OnTabChanged -> {
                 setTab(event.tab)
             }
+
+            LoanScreenEvent.OnDismissItemizeSheet -> {
+                itemizeSheetData = null
+            }
+
+            is LoanScreenEvent.OnSaveItemizedLoan -> {
+                saveItemizedLoan(event.loanId, event.items)
+            }
+        }
+    }
+
+    private fun saveItemizedLoan(loanId: UUID, items: List<ItemizeEntry>) {
+        viewModelScope.launch {
+            items.filter { it.title.isNotBlank() && it.amount > 0 }
+                .forEach { entry ->
+                    loanRepository.saveLoanItem(
+                        LoanItem(
+                            contactId = LoanId(loanId),
+                            title = entry.title.trim(),
+                            amount = entry.amount,
+                            isSettled = false,
+                        )
+                    )
+                }
+            itemizeSheetData = null
+            start()
         }
     }
 
@@ -326,6 +356,14 @@ class LoanViewModel @Inject constructor(
 
             uuid?.let {
                 loanTransactionsLogic.Loan.createAssociatedLoanTransaction(data = data, loanId = it)
+                // Offer optional itemization after the loan is stored.
+                itemizeSheetData = ItemizeSheetData(
+                    loanId = it,
+                    loanName = data.name.trim(),
+                    loanAmount = data.amount,
+                    currencyCode = data.account?.currency ?: baseCurrencyCode,
+                    loanColorArgb = data.color.toArgb(),
+                )
             }
 
             TestIdlingResource.decrement()
@@ -399,10 +437,14 @@ class LoanViewModel @Inject constructor(
      */
     private suspend fun calculateAmountPaidAndTotalAmount(loan: Loan): Pair<Double, Double> {
         val items = loanRepository.getLoanItems(LoanId(loan.id)).first()
-        val loanTotalAmount = items.sumOf { it.amount }
-        val amountPaid = items.filter { it.isSettled }.sumOf { it.amount }
-        
-        return amountPaid to loanTotalAmount
+        return if (items.isEmpty()) {
+            // Non-itemized loan: keep the original loan.amount as total, nothing paid yet
+            0.0 to loan.amount
+        } else {
+            val total = items.sumOf { it.amount }
+            val paid = items.filter { it.isSettled }.sumOf { it.amount }
+            paid to total
+        }
     }
 
     private fun updatePaidOffLoanVisibility() {

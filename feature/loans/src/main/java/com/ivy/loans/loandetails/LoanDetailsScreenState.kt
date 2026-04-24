@@ -27,5 +27,6 @@ data class LoanDetailsScreenState(
     val selectedLoanItem: LoanItem? = null,
     val waitModalVisible: Boolean,
     val isDeleteModalVisible: Boolean,
-    val dateTime: Instant
+    val dateTime: Instant,
+    val isLoading: Boolean = false,
 )

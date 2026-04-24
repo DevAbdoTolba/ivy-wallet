@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-granular-loan-checklist`  
 **Created**: 2026-04-23  
-**Status**: Draft  
+**Status**: Completed  
 **Input**: User description: "refactor single running total per person into a one-to-many checklist system"
 
 ## Clarifications

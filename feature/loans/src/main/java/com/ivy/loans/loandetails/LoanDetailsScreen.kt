@@ -152,9 +152,6 @@ private fun BoxWithConstraintsScope.UI(
                             },
                             onEditLoan = {
                                 onEventHandler.invoke(LoanDetailsScreenEvent.OnEditLoanClick)
-                            },
-                            onAddRecord = {
-                                onEventHandler.invoke(LoanDetailsScreenEvent.OnAddRecord)
                             }
                         )
                     }
@@ -171,10 +168,14 @@ private fun BoxWithConstraintsScope.UI(
                     )
                 }
 
-                items(state.displayLoanItems) { displayLoanItem ->
+                items(
+                    items = state.displayLoanItems,
+                    key = { it.loanItem.id.value }
+                ) { displayLoanItem ->
                     LoanItemCard(
                         loanItem = displayLoanItem.loanItem,
                         baseCurrency = state.baseCurrency,
+                        loanColor = itemColor,
                         onToggleSettled = { isSettled ->
                             onEventHandler.invoke(
                                 LoanDetailsScreenEvent.OnToggleLoanItemSettled(
@@ -196,7 +197,7 @@ private fun BoxWithConstraintsScope.UI(
                     )
                 }
 
-                if (state.displayLoanItems.isEmpty()) {
+                if (state.displayLoanItems.isEmpty() && !state.isLoading && state.loan != null) {
                     item {
                         NoLoanRecordsEmptyState()
                         Spacer(Modifier.height(96.dp))
@@ -250,27 +251,6 @@ private fun BoxWithConstraintsScope.UI(
         },
     )
 
-    LoanRecordModal(
-        modal = state.loanRecordModalData, onCreate = {
-        onEventHandler.invoke(LoanRecordModalEvent.OnCreateLoanRecord(it))
-    }, onEdit = {
-        onEventHandler.invoke(LoanRecordModalEvent.OnEditLoanRecord(it))
-    }, onDelete = { loanRecord ->
-        onEventHandler.invoke(LoanRecordModalEvent.OnDeleteLoanRecord(loanRecord))
-    }, accounts = state.accounts, dismiss = {
-        onEventHandler.invoke(LoanRecordModalEvent.OnDismissLoanRecord)
-    }, onCreateAccount = { createAccountData ->
-        onEventHandler.invoke(LoanDetailsScreenEvent.OnCreateAccount(createAccountData))
-    },
-        dateTime = state.dateTime,
-        onSetDate = {
-            onEventHandler.invoke(LoanRecordModalEvent.OnChangeDate)
-        },
-        onSetTime = {
-            onEventHandler.invoke(LoanRecordModalEvent.OnChangeTime)
-        },
-    )
-
     DeleteModal(
         visible = state.isDeleteModalVisible,
         title = stringResource(R.string.confirm_deletion),
@@ -313,7 +293,6 @@ private fun Header(
     onDeleteLoan: () -> Unit,
     loanAmountPaid: Double = 0.0,
     selectedLoanAccount: Account? = null,
-    onAddRecord: () -> Unit
 ) {
     val contrastColor = findContrastTextColor(itemColor)
 
@@ -361,7 +340,6 @@ private fun Header(
             loanAmountPaid = loanAmountPaid,
             loanTotalAmount = loanTotalAmount,
             selectedLoanAccount = selectedLoanAccount,
-            onAddRecord = onAddRecord
         )
 
         Spacer(Modifier.height(20.dp))
@@ -437,8 +415,6 @@ private fun LoanInfoCard(
     amountPaid: Double,
     loanAmountPaid: Double = 0.0,
     selectedLoanAccount: Account? = null,
-
-    onAddRecord: () -> Unit
 ) {
     val backgroundColor = if (isDarkColor(loan.color)) {
         MediumBlack.copy(alpha = 0.9f)
@@ -634,26 +610,7 @@ private fun LoanInfoCard(
             )
         }
 
-        Spacer(Modifier.height(24.dp))
-
-        IvyButton(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .align(Alignment.CenterHorizontally),
-            text = stringResource(R.string.add_record),
-            shadowAlpha = 0.1f,
-            backgroundGradient = Gradient.solid(contrastColor),
-            textStyle = UI.typo.b2.style(
-                color = findContrastTextColor(contrastColor),
-                fontWeight = FontWeight.Bold
-            ),
-            wrapContentMode = false
-        ) {
-            onAddRecord()
-        }
-
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(20.dp))
     }
 }
 
@@ -956,7 +913,8 @@ private fun Preview_Empty() {
                 loanModalData = null,
                 loanRecordModalData = null,
                 waitModalVisible = false,
-                dateTime = Instant.now()
+                dateTime = Instant.now(),
+                isLoading = false,
             )
         ) {}
     }
@@ -1018,7 +976,8 @@ private fun Preview_Records(theme: Theme = Theme.LIGHT) {
                 loanModalData = null,
                 loanRecordModalData = null,
                 waitModalVisible = false,
-                dateTime = Instant.now()
+                dateTime = Instant.now(),
+                isLoading = false,
             )
         ) {}
     }

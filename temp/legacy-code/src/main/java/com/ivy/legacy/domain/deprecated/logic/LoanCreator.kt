@@ -3,8 +3,6 @@ package com.ivy.wallet.domain.deprecated.logic
 import androidx.compose.ui.graphics.toArgb
 import com.ivy.data.db.dao.read.LoanDao
 import com.ivy.data.db.dao.write.WriteLoanDao
-import com.ivy.data.model.LoanId
-import com.ivy.data.model.LoanItem
 import com.ivy.data.repository.LoanRepository
 import com.ivy.legacy.datamodel.Loan
 import com.ivy.legacy.utils.ioThread
@@ -47,16 +45,6 @@ class LoanCreator @Inject constructor(
                 loanWriter.save(item.toEntity())
                 item
             }
-
-            // Create initial checklist item
-            loanRepository.saveLoanItem(
-                LoanItem(
-                    contactId = LoanId(loanId!!),
-                    amount = data.amount,
-                    title = "Initial Balance",
-                    isSettled = false
-                )
-            )
 
             onRefreshUI(newItem)
         } catch (e: Exception) {

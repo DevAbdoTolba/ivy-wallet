@@ -45,6 +45,7 @@ import com.ivy.legacy.utils.horizontalSwipeListener
 import com.ivy.legacy.utils.rememberSwipeListenerState
 import com.ivy.loans.loan.Constants.SWIPE_HORIZONTAL_THRESHOLD
 import com.ivy.loans.loan.data.DisplayLoan
+import com.ivy.loans.loan.ui.ItemizeLoanSheet
 import com.ivy.navigation.LoanDetailsScreen
 import com.ivy.navigation.LoansScreen
 import com.ivy.navigation.navigation
@@ -211,6 +212,23 @@ private fun BoxWithConstraintsScope.UI(
             }
         )
     }
+
+    ItemizeLoanSheet(
+        data = state.itemizeSheetData,
+        onDismiss = {
+            onEventHandler.invoke(LoanScreenEvent.OnDismissItemizeSheet)
+        },
+        onSave = { items ->
+            state.itemizeSheetData?.let {
+                onEventHandler.invoke(
+                    LoanScreenEvent.OnSaveItemizedLoan(
+                        loanId = it.loanId,
+                        items = items,
+                    )
+                )
+            }
+        },
+    )
 }
 
 @Composable
@@ -484,7 +502,8 @@ private fun Preview(theme: Theme = Theme.LIGHT) {
         reorderModalVisible = false,
         selectedAccount = null,
         paidOffLoanVisibility = true,
-        dateTime = Instant.now()
+        dateTime = Instant.now(),
+        itemizeSheetData = null,
     )
     IvyWalletPreview(theme) {
         UI(

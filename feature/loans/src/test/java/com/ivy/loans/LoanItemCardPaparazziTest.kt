@@ -7,6 +7,7 @@ import com.ivy.data.model.LoanItem
 import com.ivy.loans.loandetails.ui.LoanItemCard
 import com.ivy.ui.testing.PaparazziScreenshotTest
 import com.ivy.ui.testing.PaparazziTheme
+import com.ivy.wallet.ui.theme.Ivy
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.UUID
@@ -27,7 +28,10 @@ class LoanItemCardPaparazziTest(
                     isSettled = false
                 ),
                 baseCurrency = "USD",
-                onToggleSettled = {}
+                loanColor = Ivy,
+                onToggleSettled = {},
+                onEdit = {},
+                onDelete = {}
             )
         }
     }
@@ -43,7 +47,10 @@ class LoanItemCardPaparazziTest(
                     isSettled = true
                 ),
                 baseCurrency = "USD",
-                onToggleSettled = {}
+                loanColor = Ivy,
+                onToggleSettled = {},
+                onEdit = {},
+                onDelete = {}
             )
         }
     }

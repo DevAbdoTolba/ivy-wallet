@@ -17,7 +17,8 @@ import com.ivy.domain.db.migration.*
         SettingsEntity::class, PlannedPaymentRuleEntity::class,
         UserEntity::class, ExchangeRateEntity::class, BudgetEntity::class,
         LoanEntity::class, LoanRecordEntity::class, LoanItemEntity::class,
-        TagEntity::class, TagAssociationEntity::class
+        TagEntity::class, TagAssociationEntity::class,
+        SmsTemplateEntity::class, SenderAccountLinkEntity::class, PendingReviewItemEntity::class
     ],
     autoMigrations = [
         AutoMigration(
@@ -26,7 +27,7 @@ import com.ivy.domain.db.migration.*
             spec = IvyRoomDatabase.DeleteSEMigration::class
         )
     ],
-    version = 131,
+    version = 132,
     exportSchema = true
 )
 @TypeConverters(RoomTypeConverters::class)
@@ -58,6 +59,13 @@ abstract class IvyRoomDatabase : RoomDatabase() {
     abstract val writeTagDao: WriteTagDao
     abstract val writeTagAssociationDao: WriteTagAssociationDao
 
+    abstract val readSmsTemplateDao: ReadSmsTemplateDao
+    abstract val readSenderAccountLinkDao: ReadSenderAccountLinkDao
+    abstract val readPendingReviewItemDao: ReadPendingReviewItemDao
+    abstract val writeSmsTemplateDao: WriteSmsTemplateDao
+    abstract val writeSenderAccountLinkDao: WriteSenderAccountLinkDao
+    abstract val writePendingReviewItemDao: WritePendingReviewItemDao
+
     companion object {
         const val DB_NAME = "ivywallet.db"
 
@@ -86,7 +94,8 @@ abstract class IvyRoomDatabase : RoomDatabase() {
             Migration127to128_PaidForDateRecord(),
             Migration128to129_DeleteIsDeleted(),
             Migration129to130_LoanIncludeNote(),
-            Migration130to131_LoanChecklist()
+            Migration130to131_LoanChecklist(),
+            Migration131to132_SmsExtraction()
         )
 
         @Suppress("SpreadOperator")

@@ -39,5 +39,13 @@ data class IvyWalletCompleteData(
     @SerialName("tags")
     val tags: List<TagEntity> = emptyList(),
     @SerialName("tagAssociations")
-    val tagAssociations: List<TagAssociationEntity> = emptyList()
+    val tagAssociations: List<TagAssociationEntity> = emptyList(),
+    @SerialName("smsTemplates")
+    val smsTemplates: List<SmsTemplateBackupDto>? = null,
+    @SerialName("senderAccountLinks")
+    val senderAccountLinks: List<SenderAccountLinkBackupDto>? = null,
+    @SerialName("smsWatermarkEpochMillis")
+    val smsWatermarkEpochMillis: Long? = null,
+    @SerialName("smsScanLowerBoundEpochMillis")
+    val smsScanLowerBoundEpochMillis: Long? = null,
 )

@@ -1,0 +1,55 @@
+package com.ivy.sms.domain.usecase
+
+import com.ivy.data.model.AccountId
+import com.ivy.sms.data.PendingReviewItemRepository
+import com.ivy.sms.domain.model.SmsMessage
+import com.ivy.sms.domain.model.SmsTemplate
+import com.ivy.sms.domain.model.SmsTemplateId
+import com.ivy.sms.domain.model.TemplateState
+import com.ivy.sms.domain.model.TransactionClassification
+import com.ivy.sms.domain.model.WildcardId
+import com.ivy.sms.domain.model.WildcardMapping
+import com.ivy.sms.domain.model.WildcardSlot
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.mockk.coVerify
+import io.mockk.mockk
+import kotlinx.coroutines.test.runTest
+import org.junit.Test
+import java.time.Instant
+import java.util.UUID
+
+class RouteSmsBlacklistTest {
+
+    private val createTransaction = mockk<CreateTransactionFromSmsUseCase>(relaxed = true)
+    private val pendingRepo = mockk<PendingReviewItemRepository>(relaxed = true)
+    private val route = RouteSmsUseCase(createTransaction, pendingRepo)
+
+    @Test
+    fun blacklistedTemplate_neitherCreatesTransactionNorEnqueues() = runTest {
+        val template = SmsTemplate(
+            id = SmsTemplateId(UUID.randomUUID()),
+            pattern = "OTP <*>",
+            wildcardSlots = listOf(
+                WildcardSlot(WildcardId(UUID.randomUUID()), 1, "", WildcardMapping.Unmapped),
+            ),
+            state = TemplateState.BLACKLISTED,
+            classification = TransactionClassification.EXPENSE,
+            senderIdHint = "OTPService",
+            firstSeen = Instant.EPOCH,
+            lastSeen = Instant.EPOCH,
+            matchCount = 1,
+        )
+        val message = SmsMessage(
+            dedupKey = "k",
+            senderId = "OTPService",
+            body = "OTP 12345",
+            timestamp = Instant.EPOCH,
+        )
+
+        val outcome = route(message, template, mapOf("OTPService" to AccountId(UUID.randomUUID()))).getOrNull()
+
+        outcome.shouldBeInstanceOf<RouteOutcome.Blacklisted>()
+        coVerify(exactly = 0) { createTransaction(any(), any(), any()) }
+        coVerify(exactly = 0) { pendingRepo.enqueue(any()) }
+    }
+}

@@ -3,6 +3,7 @@ package com.ivy.data.backup
 import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -77,7 +78,16 @@ class BackupDataUseCaseAndroidTest {
             tagsReader = db.tagDao,
             tagAssociationReader = db.tagAssociationDao,
             tagsWriter = db.writeTagDao,
-            tagAssociationWriter = db.writeTagAssociationDao
+            tagAssociationWriter = db.writeTagAssociationDao,
+            smsTemplateReader = db.readSmsTemplateDao,
+            senderAccountLinkReader = db.readSenderAccountLinkDao,
+            smsTemplateWriter = db.writeSmsTemplateDao,
+            senderAccountLinkWriter = db.writeSenderAccountLinkDao,
+            dataStore = PreferenceDataStoreFactory.create(
+                produceFile = {
+                    File.createTempFile("backup-test", ".preferences_pb").apply { delete() }
+                },
+            ),
         )
     }
 

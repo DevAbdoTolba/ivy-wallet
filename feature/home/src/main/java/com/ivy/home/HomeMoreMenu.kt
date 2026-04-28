@@ -72,6 +72,7 @@ import com.ivy.navigation.PlannedPaymentsScreen
 import com.ivy.navigation.ReportScreen
 import com.ivy.navigation.SearchScreen
 import com.ivy.navigation.SettingsScreen
+import com.ivy.navigation.SmsExtractionScreen
 import com.ivy.navigation.navigation
 import com.ivy.ui.R
 import com.ivy.wallet.ui.theme.Blue
@@ -533,6 +534,15 @@ private fun QuickAccess(
                 label = stringResource(R.string.loans),
             ) {
                 nav.navigateTo(LoansScreen)
+            }
+
+            Spacer(Modifier.weight(1f))
+
+            MoreMenuButton(
+                icon = R.drawable.home_more_menu_share,
+                label = "Sync SMS",
+            ) {
+                nav.navigateTo(SmsExtractionScreen)
             }
 
             Spacer(Modifier.weight(1f))

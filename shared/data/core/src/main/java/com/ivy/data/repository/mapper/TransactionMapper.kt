@@ -37,7 +37,11 @@ class TransactionMapper @Inject constructor(
             recurringRuleId = recurringRuleId,
             paidForDateTime = paidForDateTime,
             loanId = loanId,
-            loanRecordId = loanRecordId
+            loanRecordId = loanRecordId,
+            smsSourceDedupKey = smsSourceDedupKey,
+            smsTemplateId = smsTemplateId,
+            smsSourceSenderId = smsSourceSenderId,
+            smsSourceTimestamp = smsSourceTimestamp,
         )
 
         val settled = dateTime != null
@@ -161,6 +165,10 @@ class TransactionMapper @Inject constructor(
             attachmentUrl = null,
             loanId = metadata.loanId,
             loanRecordId = metadata.loanRecordId,
+            smsSourceDedupKey = metadata.smsSourceDedupKey,
+            smsTemplateId = metadata.smsTemplateId,
+            smsSourceSenderId = metadata.smsSourceSenderId,
+            smsSourceTimestamp = metadata.smsSourceTimestamp,
             isSynced = true,
             isDeleted = false,
             id = id.value

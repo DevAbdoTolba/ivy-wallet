@@ -145,3 +145,29 @@ data object ReleasesScreen : Screen
 data object DisclaimerScreen : Screen
 
 data object PollScreen : Screen
+
+data object SmsExtractionScreen : Screen {
+    override val isLegacy: Boolean = false
+}
+
+data object PendingReviewScreen : Screen {
+    override val isLegacy: Boolean = false
+}
+
+data class TemplateMappingScreen(
+    val templateId: String,
+) : Screen {
+    override val isLegacy: Boolean = false
+}
+
+data class LinkSenderToWalletScreen(
+    val senderId: String,
+) : Screen {
+    override val isLegacy: Boolean = false
+}
+
+data class SmsSourceLookupScreen(
+    val transactionId: String,
+) : Screen {
+    override val isLegacy: Boolean = false
+}

@@ -51,6 +51,7 @@ import com.ivy.releases.ReleasesScreenImpl
 import com.ivy.reports.ReportScreen
 import com.ivy.search.SearchScreen
 import com.ivy.settings.SettingsScreen
+import com.ivy.sms.ui.nav.smsSyncDestination
 import com.ivy.transaction.EditTransactionScreen
 import com.ivy.transactions.TransactionsScreen
 
@@ -59,6 +60,7 @@ import com.ivy.transactions.TransactionsScreen
 @Composable
 @Suppress("CyclomaticComplexMethod", "FunctionNaming")
 fun BoxWithConstraintsScope.IvyNavGraph(screen: Screen?) {
+    if (smsSyncDestination(screen)) return
     when (screen) {
         null -> {
             // show nothing
@@ -88,5 +90,9 @@ fun BoxWithConstraintsScope.IvyNavGraph(screen: Screen?) {
         ReleasesScreen -> ReleasesScreenImpl()
         DisclaimerScreen -> DisclaimerScreenImpl()
         PollScreen -> PollScreen()
+        else -> {
+            // SMS-sync routes are handled by the early-return at the top
+            // (smsSyncDestination); reaching here means an unknown screen.
+        }
     }
 }

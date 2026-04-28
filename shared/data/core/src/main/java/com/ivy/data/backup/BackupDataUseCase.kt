@@ -15,6 +15,8 @@ import com.ivy.data.db.dao.read.CategoryDao
 import com.ivy.data.db.dao.read.LoanDao
 import com.ivy.data.db.dao.read.LoanRecordDao
 import com.ivy.data.db.dao.read.PlannedPaymentRuleDao
+import com.ivy.data.db.dao.read.ReadSenderAccountLinkDao
+import com.ivy.data.db.dao.read.ReadSmsTemplateDao
 import com.ivy.data.db.dao.read.SettingsDao
 import com.ivy.data.db.dao.read.TagAssociationDao
 import com.ivy.data.db.dao.read.TagDao
@@ -26,14 +28,21 @@ import com.ivy.data.db.dao.write.WriteLoanRecordDao
 import com.ivy.data.db.dao.write.WritePlannedPaymentRuleDao
 import com.ivy.data.db.dao.write.WriteSettingsDao
 import com.ivy.data.db.dao.write.WriteTagAssociationDao
+import com.ivy.data.db.dao.write.WriteSenderAccountLinkDao
+import com.ivy.data.db.dao.write.WriteSmsTemplateDao
 import com.ivy.data.db.dao.write.WriteTagDao
 import com.ivy.data.db.dao.write.WriteTransactionDao
 import com.ivy.data.file.FileSystem
 import com.ivy.data.repository.AccountRepository
 import com.ivy.data.repository.mapper.AccountMapper
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -72,8 +81,17 @@ class BackupDataUseCase @Inject constructor(
     private val tagsReader: TagDao,
     private val tagAssociationReader: TagAssociationDao,
     private val tagsWriter: WriteTagDao,
-    private val tagAssociationWriter: WriteTagAssociationDao
+    private val tagAssociationWriter: WriteTagAssociationDao,
+    private val smsTemplateReader: ReadSmsTemplateDao,
+    private val senderAccountLinkReader: ReadSenderAccountLinkDao,
+    private val smsTemplateWriter: WriteSmsTemplateDao,
+    private val senderAccountLinkWriter: WriteSenderAccountLinkDao,
+    private val dataStore: DataStore<Preferences>,
 ) {
+
+    private val watermarkKey = longPreferencesKey("sms.watermark.epochMillis")
+    private val scanLowerBoundKey = longPreferencesKey("sms.scan.period.lowerBoundEpochMillis")
+
     suspend fun exportToFile(
         zipFileUri: Uri
     ) {
@@ -108,6 +126,14 @@ class BackupDataUseCase @Inject constructor(
             val sharedPrefs = async { getSharedPrefsData() }
             val tags = async { tagsReader.findAll() }
             val tagAssociations = async { tagAssociationReader.findAll() }
+            val smsTemplates = async { smsTemplateReader.findAll().map { it.toBackupDto() } }
+            val senderAccountLinks = async { senderAccountLinkReader.findAll().map { it.toBackupDto() } }
+            val watermark = async {
+                runCatching { dataStore.data.first()[watermarkKey] }.getOrNull()
+            }
+            val scanLowerBound = async {
+                runCatching { dataStore.data.first()[scanLowerBoundKey] }.getOrNull()
+            }
 
             val completeData = IvyWalletCompleteData(
                 accounts = accounts.await(),
@@ -120,7 +146,11 @@ class BackupDataUseCase @Inject constructor(
                 transactions = transactions.await(),
                 sharedPrefs = sharedPrefs.await(),
                 tags = tags.await(),
-                tagAssociations = tagAssociations.await()
+                tagAssociations = tagAssociations.await(),
+                smsTemplates = smsTemplates.await(),
+                senderAccountLinks = senderAccountLinks.await(),
+                smsWatermarkEpochMillis = watermark.await(),
+                smsScanLowerBoundEpochMillis = scanLowerBound.await(),
             )
 
             json.encodeToString(completeData)
@@ -312,6 +342,23 @@ class BackupDataUseCase @Inject constructor(
             settings.await()
             tags.await()
             tagAssociations.await()
+
+            completeData.smsTemplates?.let { templates ->
+                smsTemplateWriter.replaceAll(templates.map { it.toEntity() })
+            }
+            completeData.senderAccountLinks?.let { links ->
+                senderAccountLinkWriter.replaceAll(links.map { it.toEntity() })
+            }
+            completeData.smsWatermarkEpochMillis?.let { watermark ->
+                runCatching {
+                    dataStore.edit { it[watermarkKey] = watermark }
+                }
+            }
+            completeData.smsScanLowerBoundEpochMillis?.let { lower ->
+                runCatching {
+                    dataStore.edit { it[scanLowerBoundKey] = lower }
+                }
+            }
 
             onProgress(0.9)
         }

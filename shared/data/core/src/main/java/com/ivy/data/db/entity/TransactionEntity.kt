@@ -57,6 +57,16 @@ data class TransactionEntity(
     @SerialName("loanRecordId")
     @Serializable(with = KSerializerUUID::class)
     val loanRecordId: UUID? = null,
+    @SerialName("smsSourceDedupKey")
+    val smsSourceDedupKey: String? = null,
+    @SerialName("smsTemplateId")
+    @Serializable(with = KSerializerUUID::class)
+    val smsTemplateId: UUID? = null,
+    @SerialName("smsSourceSenderId")
+    val smsSourceSenderId: String? = null,
+    @SerialName("smsSourceTimestamp")
+    @Serializable(with = KSerializerInstant::class)
+    val smsSourceTimestamp: Instant? = null,
     @Deprecated("Obsolete field used for cloud sync. Can't be deleted because of backwards compatibility")
     @SerialName("isSynced")
     val isSynced: Boolean = false,

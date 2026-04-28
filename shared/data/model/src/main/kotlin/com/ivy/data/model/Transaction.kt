@@ -71,6 +71,10 @@ data class TransactionMetadata(
     val loanId: UUID? = null,
     // This refers to the loan record id that is linked with a transaction
     val loanRecordId: UUID?,
+    val smsSourceDedupKey: String? = null,
+    val smsTemplateId: UUID? = null,
+    val smsSourceSenderId: String? = null,
+    val smsSourceTimestamp: Instant? = null,
 )
 
 fun Transaction.getFromValue(): PositiveValue = when (this) {

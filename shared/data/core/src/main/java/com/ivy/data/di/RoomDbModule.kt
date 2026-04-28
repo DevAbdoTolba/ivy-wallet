@@ -11,6 +11,9 @@ import com.ivy.data.db.dao.read.LoanItemDao
 import com.ivy.data.db.dao.read.LoanRecordDao
 import com.ivy.data.db.dao.read.PlannedPaymentRuleDao
 import com.ivy.data.db.dao.read.SettingsDao
+import com.ivy.data.db.dao.read.ReadPendingReviewItemDao
+import com.ivy.data.db.dao.read.ReadSenderAccountLinkDao
+import com.ivy.data.db.dao.read.ReadSmsTemplateDao
 import com.ivy.data.db.dao.read.TagAssociationDao
 import com.ivy.data.db.dao.read.TagDao
 import com.ivy.data.db.dao.read.TransactionDao
@@ -24,6 +27,9 @@ import com.ivy.data.db.dao.write.WriteLoanItemDao
 import com.ivy.data.db.dao.write.WriteLoanRecordDao
 import com.ivy.data.db.dao.write.WritePlannedPaymentRuleDao
 import com.ivy.data.db.dao.write.WriteSettingsDao
+import com.ivy.data.db.dao.write.WritePendingReviewItemDao
+import com.ivy.data.db.dao.write.WriteSenderAccountLinkDao
+import com.ivy.data.db.dao.write.WriteSmsTemplateDao
 import com.ivy.data.db.dao.write.WriteTagAssociationDao
 import com.ivy.data.db.dao.write.WriteTagDao
 import com.ivy.data.db.dao.write.WriteTransactionDao
@@ -173,5 +179,35 @@ object RoomDbModule {
     @Provides
     fun provideWriteTagAssociationDao(db: IvyRoomDatabase): WriteTagAssociationDao {
         return db.writeTagAssociationDao
+    }
+
+    @Provides
+    fun provideReadSmsTemplateDao(db: IvyRoomDatabase): ReadSmsTemplateDao {
+        return db.readSmsTemplateDao
+    }
+
+    @Provides
+    fun provideReadSenderAccountLinkDao(db: IvyRoomDatabase): ReadSenderAccountLinkDao {
+        return db.readSenderAccountLinkDao
+    }
+
+    @Provides
+    fun provideReadPendingReviewItemDao(db: IvyRoomDatabase): ReadPendingReviewItemDao {
+        return db.readPendingReviewItemDao
+    }
+
+    @Provides
+    fun provideWriteSmsTemplateDao(db: IvyRoomDatabase): WriteSmsTemplateDao {
+        return db.writeSmsTemplateDao
+    }
+
+    @Provides
+    fun provideWriteSenderAccountLinkDao(db: IvyRoomDatabase): WriteSenderAccountLinkDao {
+        return db.writeSenderAccountLinkDao
+    }
+
+    @Provides
+    fun provideWritePendingReviewItemDao(db: IvyRoomDatabase): WritePendingReviewItemDao {
+        return db.writePendingReviewItemDao
     }
 }

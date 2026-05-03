@@ -189,7 +189,6 @@ fun TemplateMappingScreen(
                         }
                     } else {
                         TokenizedExample(
-                            exampleBody = displayBody,
                             pattern = displayPattern,
                             wildcards = displayWildcards,
                             onWildcardTap = { id ->
@@ -275,24 +274,22 @@ fun TemplateMappingScreen(
 }
 
 /**
- * Renders the SMS body as a FlowRow of per-token chips. Each wildcard slot is its
- * own tappable chip with the role's accent color; literals are plain text. This
- * decouples rendering and tap detection from AnnotatedString quirks (the previous
- * BasicText + character-offset tap approach showed an empty box on some devices).
- *
- * Falls back to rendering the pattern itself when the example body is empty —
- * legacy templates from earlier schemas may not have one stored.
+ * Renders the template as an inline read of literals + wildcard chips, walking
+ * ONLY the pattern. Each wildcard slot becomes exactly one chip whose text is
+ * the slot's captured `exampleValue` — no body-token alignment, no multi-word
+ * smushing, no "•••" placeholder. Literals and chips share the same font
+ * scale (UI.typo.b1) so the line reads as one continuous sentence with the
+ * variable parts colored, not as oversized buttons interrupting plain text.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TokenizedExample(
-    exampleBody: String,
     pattern: String,
     wildcards: List<WildcardChip>,
     onWildcardTap: (WildcardId) -> Unit,
 ) {
-    val tokens = remember(exampleBody, pattern, wildcards) {
-        buildTokenList(exampleBody, pattern, wildcards)
+    val tokens = remember(pattern, wildcards) {
+        buildTokenList(pattern, wildcards)
     }
 
     Box(
@@ -303,15 +300,8 @@ private fun TokenizedExample(
             .padding(horizontal = 14.dp, vertical = 14.dp),
     ) {
         if (tokens.isEmpty()) {
-            // Pattern AND example body both empty — likely the template hasn't
-            // finished loading yet, or it was created with an unusable SMS
-            // body. Either way show a neutral hint rather than a scary error.
             Text(
-                text = if (pattern.isBlank() && exampleBody.isBlank()) {
-                    "Loading template…"
-                } else {
-                    "Tap Save to use the default roles, or run a Sync from the wallet to refresh this template."
-                },
+                text = "Loading template…",
                 style = UI.typo.b2.style(
                     color = UI.colors.gray,
                     fontWeight = FontWeight.Medium,
@@ -343,46 +333,43 @@ private fun LiteralChip(text: String) {
         text = text,
         style = UI.typo.b1.style(
             color = UI.colors.pureInverse,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.SemiBold,
         ),
-        modifier = Modifier.padding(vertical = 4.dp),
+        modifier = Modifier.padding(vertical = 2.dp),
     )
 }
 
+/**
+ * Inline-style wildcard chip — same font as the surrounding literals, just
+ * coloured by role and outlined. The previous version paired the value text
+ * with an uppercase role-name sub-label and bumped the weight to ExtraBold,
+ * which read as a button rather than a highlight. This version drops the
+ * sub-label (color carries the role) and matches LiteralChip's font weight
+ * so the SMS reads naturally top-to-bottom.
+ */
 @Composable
 private fun WildcardChipView(text: String, role: WildcardRole, onClick: () -> Unit) {
     val accent = colorForRole(role)
     val mapped = role !is WildcardRole.Unmapped
-    val bg = if (mapped) accent else accent.copy(alpha = 0.18f)
-    val fg = if (mapped) Color.White else accent
-    val borderColor = if (mapped) accent else accent
+    val bg = if (mapped) accent.copy(alpha = 0.22f) else accent.copy(alpha = 0.10f)
+    val fg = accent
+    val borderColor = accent
     Row(
         modifier = Modifier
             .clip(UI.shapes.rFull)
             .background(bg)
-            .border(width = 2.dp, color = borderColor, shape = UI.shapes.rFull)
+            .border(width = 1.5.dp, color = borderColor, shape = UI.shapes.rFull)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 6.dp),
+            .padding(horizontal = 10.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = text,
             style = UI.typo.b1.style(
                 color = fg,
-                fontWeight = FontWeight.ExtraBold,
+                fontWeight = FontWeight.SemiBold,
             ),
         )
-        val label = labelFor(role)
-        if (label != null) {
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = label.uppercase(),
-                style = UI.typo.c.style(
-                    color = fg.copy(alpha = 0.9f),
-                    fontWeight = FontWeight.Bold,
-                ),
-            )
-        }
     }
 }
 
@@ -392,89 +379,30 @@ private sealed interface Token {
 }
 
 /**
- * Walks the pattern and the example body in lockstep using the same alignment as
- * the runtime extractor, producing a flat list of either literal tokens or wildcard
- * chips. Falls back to rendering the pattern's own tokens when no example body
- * exists, so the user always has something to tap.
+ * Pattern-only walk: each pattern token becomes either a literal or a chip.
+ * Wildcard chips render the slot's `exampleValue` directly — guaranteed
+ * one chip per `<*>` in the pattern with no multi-word capture and no
+ * placeholder dots. If a slot's example is blank we fall back to its role
+ * label so the chip still has tappable text; if that's also empty (Unmapped
+ * + blank example), we skip that slot rather than render an empty chip.
  */
 private fun buildTokenList(
-    exampleBody: String,
     pattern: String,
     wildcards: List<WildcardChip>,
 ): List<Token> {
     val patternTokens = pattern.split(Regex("\\s+")).filter { it.isNotBlank() }
-    val bodyTokens = exampleBody.split(Regex("\\s+")).filter { it.isNotBlank() }
-
-    // Both empty → caller (TokenizedExample) will render a "loading" placeholder.
-    if (patternTokens.isEmpty() && bodyTokens.isEmpty()) return emptyList()
-
-    // Pattern missing but body present → render the body verbatim as plain literals.
-    // This unblocks templates whose pattern column is blank in the DB (legacy /
-    // backup-restored rows) so the user at least sees the SMS text.
-    if (patternTokens.isEmpty()) {
-        return bodyTokens.map { Token.Literal(it) }
-    }
+    if (patternTokens.isEmpty()) return emptyList()
     val byPosition = wildcards.associateBy { it.positionInPattern }
-
-    if (bodyTokens.isEmpty()) {
-        // No example body — render the pattern shape itself so the user can still
-        // tap wildcard slots.
-        return patternTokens.mapIndexed { idx, ptok ->
-            if (ptok == com.ivy.sms.data.WILDCARD_TOKEN) {
-                val chip = byPosition[idx]
-                if (chip != null) {
-                    Token.Wild(chip.exampleValue.ifBlank { "•••" }, chip.role, chip.id)
-                } else {
-                    Token.Literal("•••")
-                }
-            } else {
-                Token.Literal(ptok)
-            }
-        }
-    }
-
     val out = mutableListOf<Token>()
-    var bodyIdx = 0
-    for ((patternIdx, ptok) in patternTokens.withIndex()) {
-        if (ptok != com.ivy.sms.data.WILDCARD_TOKEN) {
-            val match = (bodyIdx until bodyTokens.size).firstOrNull {
-                bodyTokens[it].equals(ptok, ignoreCase = true)
-            }
-            if (match == null) {
-                out.add(Token.Literal(ptok))
-                continue
-            }
-            while (bodyIdx <= match) {
-                out.add(Token.Literal(bodyTokens[bodyIdx]))
-                bodyIdx++
-            }
+    for ((idx, ptok) in patternTokens.withIndex()) {
+        if (ptok == com.ivy.sms.data.WILDCARD_TOKEN) {
+            val chip = byPosition[idx] ?: continue
+            val text = chip.exampleValue.ifBlank { labelFor(chip.role).orEmpty() }
+            if (text.isBlank()) continue
+            out.add(Token.Wild(text, chip.role, chip.id))
         } else {
-            val chip = byPosition[patternIdx]
-            val nextLiteralPattern = (patternIdx + 1 until patternTokens.size).firstOrNull {
-                patternTokens[it] != com.ivy.sms.data.WILDCARD_TOKEN
-            }
-            val stopAt = if (nextLiteralPattern == null) bodyTokens.size else {
-                val literal = patternTokens[nextLiteralPattern]
-                (bodyIdx until bodyTokens.size).firstOrNull {
-                    bodyTokens[it].equals(literal, ignoreCase = true)
-                } ?: bodyTokens.size
-            }
-            val captured = if (bodyIdx < stopAt) {
-                bodyTokens.subList(bodyIdx, stopAt).joinToString(" ")
-            } else {
-                "•••"
-            }
-            if (chip != null) {
-                out.add(Token.Wild(captured, chip.role, chip.id))
-            } else {
-                out.add(Token.Literal(captured))
-            }
-            bodyIdx = stopAt
+            out.add(Token.Literal(ptok))
         }
-    }
-    while (bodyIdx < bodyTokens.size) {
-        out.add(Token.Literal(bodyTokens[bodyIdx]))
-        bodyIdx++
     }
     return out
 }

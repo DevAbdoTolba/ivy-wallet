@@ -22,6 +22,7 @@ import com.ivy.sms.domain.model.WildcardRole
 import com.ivy.sms.domain.model.isAmountRole
 import com.ivy.sms.domain.parser.AmountParser
 import com.ivy.sms.domain.parser.DateTimeParser
+import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
@@ -44,11 +45,8 @@ class CreateTransactionFromSmsUseCase @Inject constructor(
         val amountText = values[amountSlot.id]
             ?: return "AMOUNT_NOT_PARSEABLE:no amount value".left()
 
-        val amount = AmountParser.parseAmount(amountText).getOrNull()
+        val rawAmount = AmountParser.parseAmount(amountText).getOrNull()
             ?: return "AMOUNT_NOT_PARSEABLE:'$amountText'".left()
-
-        val positive = PositiveDouble.from(amount.toDouble()).getOrNull()
-            ?: return "AMOUNT_NOT_PARSEABLE:non-positive '$amountText'".left()
 
         val acct = accountRepository.findById(account)
             ?: return "STORAGE_ERROR:account not found".left()
@@ -65,6 +63,30 @@ class CreateTransactionFromSmsUseCase @Inject constructor(
             ?: values.firstByRole(template, WildcardRole.TimeOnly)
         val currentTotal = values.firstByRole(template, WildcardRole.CurrentTotal)
         val transactionFee = values.firstByRole(template, WildcardRole.TransactionFee)
+
+        // Aggregate the fee into the transaction amount when the fee is a
+        // SEPARATE deduction on top of the principal — i.e. for Expense and
+        // Transfer the wallet leaves with `amount + fee`, for Income the
+        // bank usually advertises the gross amount and deducts the fee
+        // before crediting, so wallet receives `amount - fee`. Without this
+        // the user transferred 8500 with a 1 EGP fee and the wallet showed
+        // -8500 instead of the actual -8501.
+        val feeBigDecimal = transactionFee?.let { AmountParser.parseAmount(it).getOrNull() }
+        val effectiveAmount = when (amountSlot.role) {
+            WildcardRole.Expense, WildcardRole.Transfer -> if (feeBigDecimal != null) {
+                rawAmount.add(feeBigDecimal)
+            } else {
+                rawAmount
+            }
+            WildcardRole.Income -> if (feeBigDecimal != null) {
+                rawAmount.subtract(feeBigDecimal).coerceAtLeast(BigDecimal.ZERO)
+            } else {
+                rawAmount
+            }
+            else -> rawAmount
+        }
+        val positive = PositiveDouble.from(effectiveAmount.toDouble()).getOrNull()
+            ?: return "AMOUNT_NOT_PARSEABLE:non-positive '$amountText'".left()
 
         val txTime: Instant = dateTimeText
             ?.let { DateTimeParser.parseDateTime(it).getOrNull() }

@@ -6,7 +6,17 @@ import arrow.core.right
 import java.math.BigDecimal
 
 object AmountParser {
-    private val numberToken = Regex("[+-]?\\d{1,3}(?:[,.\\u00A0\\s]\\d{3})*(?:[.,]\\d{1,4})?")
+    // Two alternatives:
+    //   1. Thousands-separated number: \d{1,3}(?:[,. \s]\d{3})+ — requires
+    //      at least one separator+3-digit group, so "1,500" / "1 000 000" hit this.
+    //   2. Plain unseparated number: \d+ — matches "8500", "100", "13220".
+    // Decimal tail (`[.,]\d{1,4}`) is optional and applies to either alternative.
+    //
+    // The previous regex used `\d{1,3}(...)*` with the * making the thousands group
+    // optional, which silently dropped the trailing digit on plain 4+ digit
+    // numbers: "8500" matched only the first 3 digits ("850") and then exited.
+    // The user reported transferring 8500 EGP and the wallet showing 850.
+    private val numberToken = Regex("[+-]?(?:\\d{1,3}(?:[,.\\u00A0\\s]\\d{3})+|\\d+)(?:[.,]\\d{1,4})?")
 
     fun parseAmount(text: String): Either<String, BigDecimal> {
         val normalized = normalizeArabicDigits(text)

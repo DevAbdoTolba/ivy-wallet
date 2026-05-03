@@ -4,7 +4,6 @@ import arrow.core.Either
 import arrow.core.right
 import com.ivy.sms.data.SmsInboxDataSource
 import com.ivy.sms.data.SmsMessageMapper
-import com.ivy.sms.data.WILDCARD_TOKEN
 import com.ivy.sms.domain.model.SmsMessage
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
@@ -13,23 +12,19 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Returns up to [limit] inbox messages whose body matches the given template.
- * Used by the templates list to answer the user's question "which messages
- * does this row match?" without persisting per-template body snapshots —
- * the device inbox is the source of truth.
+ * Returns up to [limit] inbox messages whose body the given template's pattern
+ * can ACTUALLY align to (via extractWildcardValues). Used by the templates
+ * list to answer "which inbox messages will this template turn into a
+ * transaction?" — the count and the listed bodies always agree because both
+ * come from the same alignment check.
  *
- * Match check is Jaccard-similarity over normalised literal tokens, mirroring
- * the same heuristic [com.ivy.sms.data.DrainParser] uses to cluster messages
- * into the template in the first place. The previous implementation used
- * [extractWildcardValues] which requires a STRICT pattern alignment — that
- * caused matchCount=17 to display only 5 messages in the expand view because
- * Drain merges had narrowed the pattern over time and old example bodies
- * could no longer align to it. The user said "shows almost only extra 5 but
- * it says there are 17!".
+ * Earlier this used Jaccard similarity (which mirrors Drain's clustering
+ * heuristic), but that was too permissive: an income template's literals
+ * overlap heavily with an unrelated شحن template from the same Vodafone
+ * Cash sender, so the row showed 100 matches but only 17 became actual
+ * transactions. The user reported the mismatch.
  */
-private const val JACCARD_THRESHOLD = 0.4
 private val whitespaceRegex = Regex("\\s+")
-private val digitRegex = Regex("[0-9\\u0660-\\u0669\\u06F0-\\u06F9]")
 
 @Singleton
 class FindMatchingMessagesUseCase @Inject constructor(
@@ -61,40 +56,20 @@ class FindMatchingMessagesUseCase @Inject constructor(
             senderFilter = sender,
         ).getOrNull().orEmpty()
 
-        val patternLiterals = template.pattern.split(whitespaceRegex)
-            .filter { it.isNotBlank() && it != WILDCARD_TOKEN }
-            .toSet()
-        if (patternLiterals.isEmpty()) {
-            // All-wildcard pattern → fall back to "all from this sender".
-            val all = rows
-                .sortedByDescending { it.dateEpochMillis }
-                .take(limit)
-                .map { with(mapper) { it.toDomain() } }
-            cache[template.id] = all
-            return all.right()
-        }
-
         val matches = mutableListOf<SmsMessage>()
         for (row in rows.sortedByDescending { it.dateEpochMillis }) {
             val msg = with(mapper) { row.toDomain() }
-            if (jaccardMatches(patternLiterals, msg.body)) {
+            // Strict alignment: only count messages the template's pattern can
+            // actually extract wildcard values from. The same check the runtime
+            // routing pipeline uses, so the row count == the number of
+            // transactions that will actually be created when the template is
+            // mapped (or has already been mapped).
+            if (extractWildcardValues(template, msg) != null) {
                 matches.add(msg)
                 if (matches.size >= limit) break
             }
         }
         cache[template.id] = matches.toList()
         return matches.right()
-    }
-
-    private fun jaccardMatches(patternLiterals: Set<String>, body: String): Boolean {
-        val msgLiterals = body.split(whitespaceRegex)
-            .filter { it.isNotBlank() }
-            .filterNot { digitRegex.containsMatchIn(it) }
-            .toSet()
-        if (msgLiterals.isEmpty()) return false
-        val intersect = patternLiterals.intersect(msgLiterals).size
-        val union = patternLiterals.union(msgLiterals).size
-        if (union == 0) return false
-        return intersect.toDouble() / union.toDouble() >= JACCARD_THRESHOLD
     }
 }

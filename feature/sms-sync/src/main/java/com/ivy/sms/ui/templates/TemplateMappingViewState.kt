@@ -34,8 +34,21 @@ data class TemplateMappingViewState(
     val rolesByWildcardId: ImmutableMap<WildcardId, WildcardRole> = persistentMapOf(),
     val activeWildcard: WildcardId? = null,
     val saving: Boolean = false,
+    /**
+     * Live progress while reprocess is draining the pending queue. Null
+     * before save and after the queue is fully consumed. Wallet-level rule:
+     * "always progress bar with numbers".
+     */
+    val reprocess: ReprocessProgress? = null,
     val error: String? = null,
     val convertedFromQueue: Int? = null,
+)
+
+@Immutable
+data class ReprocessProgress(
+    val processed: Int,
+    val total: Int,
+    val converted: Int,
 )
 
 sealed interface TemplateMappingEvent {

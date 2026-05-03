@@ -14,18 +14,38 @@ import com.ivy.sms.domain.model.WildcardRole
 import com.ivy.sms.domain.model.WildcardSlot
 import com.ivy.sms.domain.model.isAmountRole
 import com.ivy.sms.domain.model.isUnique
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
+import javax.inject.Singleton
 
 data class MapTemplateResult(
     val convertedFromQueue: Int,
 )
 
+/**
+ * Live progress emitted while [MapTemplateUseCase] is reprocessing pending
+ * review items. Lets the screen render an x/y bar so the user can see
+ * what's happening when a freshly-mapped template has lots of queued items
+ * to drain — they reported "I save and just sit there with no feedback".
+ */
+data class MapTemplateProgress(
+    val processed: Int,
+    val total: Int,
+    val converted: Int,
+)
+
+@Singleton
 class MapTemplateUseCase @Inject constructor(
     private val templateRepo: SmsTemplateRepository,
     private val pendingRepo: PendingReviewItemRepository,
     private val senderRepo: SenderAccountLinkRepository,
     private val route: RouteSmsUseCase,
 ) {
+    private val _progress = MutableStateFlow<MapTemplateProgress?>(null)
+    val progress: StateFlow<MapTemplateProgress?> = _progress.asStateFlow()
+
     suspend operator fun invoke(
         templateId: SmsTemplateId,
         wildcardRoles: Map<WildcardId, WildcardRole>,
@@ -77,24 +97,40 @@ class MapTemplateUseCase @Inject constructor(
         // message wasn't even read".
         val pending = pendingRepo.findAll().getOrNull().orEmpty()
             .filter { it.sms.senderId == updated.senderIdHint }
-        if (pending.isEmpty()) return MapTemplateResult(0).right()
+        if (pending.isEmpty()) {
+            _progress.value = null
+            return MapTemplateResult(0).right()
+        }
 
         val links = senderRepo.findAll().getOrNull().orEmpty()
         val senderToAccount = links.associate { it.senderId to it.accountId }
 
+        // Seed an initial 0/total before the loop so the screen can size its
+        // progress bar immediately rather than waiting for the first row.
+        _progress.value = MapTemplateProgress(processed = 0, total = pending.size, converted = 0)
+
         var converted = 0
-        for (item in pending) {
+        for ((idx, item) in pending.withIndex()) {
             val itemTemplate = if (item.template.id == updated.id) {
                 updated
             } else {
-                templateRepo.findById(item.template.id).getOrNull() ?: continue
+                templateRepo.findById(item.template.id).getOrNull()
             }
-            val outcome = route(item.sms, itemTemplate, senderToAccount).getOrNull() ?: continue
-            if (outcome is RouteOutcome.Created) {
-                pendingRepo.dismiss(item.id)
-                converted++
+            if (itemTemplate != null) {
+                val outcome = route(item.sms, itemTemplate, senderToAccount).getOrNull()
+                if (outcome is RouteOutcome.Created) {
+                    pendingRepo.dismiss(item.id)
+                    converted++
+                }
             }
+            _progress.value = MapTemplateProgress(
+                processed = idx + 1,
+                total = pending.size,
+                converted = converted,
+            )
         }
+        // Clear so the next subscriber doesn't see a stale "100% done" snapshot.
+        _progress.value = null
         return MapTemplateResult(converted).right()
     }
 }

@@ -31,6 +31,24 @@ class TemplateMappingViewModel @Inject constructor(
     private var state by mutableStateOf(TemplateMappingViewState())
     private val pendingRoles = mutableMapOf<WildcardId, WildcardRole>()
 
+    init {
+        // Surface MapTemplateUseCase's reprocess progress into the screen
+        // state so the user gets live x/y feedback while the queue drains.
+        viewModelScope.launch {
+            mapTemplate.progress.collect { p ->
+                state = state.copy(
+                    reprocess = p?.let {
+                        ReprocessProgress(
+                            processed = it.processed,
+                            total = it.total,
+                            converted = it.converted,
+                        )
+                    },
+                )
+            }
+        }
+    }
+
     /**
      * Cached copy of the loaded template so we can rebuild the wildcard chip
      * list whenever pendingRoles changes — without this, a user pick that

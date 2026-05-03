@@ -260,6 +260,10 @@ fun TemplateMappingScreen(
                         it == WildcardRole.Transfer
                 } && !state.saving
 
+                state.reprocess?.let { p ->
+                    ReprocessProgressCard(progress = p)
+                }
+
                 Spacer(Modifier.height(8.dp))
                 IvyButton(
                     text = if (state.saving) "Saving…" else "Save",
@@ -469,6 +473,77 @@ private fun containsDigit(text: String): Boolean = text.any { ch ->
     ch.isDigit() || ch in '٠'..'٩' || ch in '۰'..'۹'
 }
 
+/**
+ * Live progress while [MapTemplateUseCase] drains the pending queue. Always
+ * shows numbers ("3 of 17") because that's the project-wide rule the user
+ * asked for: "always progress bar with numbers".
+ */
+@Composable
+private fun ReprocessProgressCard(progress: ReprocessProgress) {
+    val ratio = if (progress.total > 0) {
+        progress.processed.toFloat() / progress.total.toFloat()
+    } else {
+        0f
+    }
+    val animatedRatio by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = ratio.coerceIn(0f, 1f),
+        animationSpec = androidx.compose.animation.core.tween(
+            durationMillis = 400,
+            easing = androidx.compose.animation.core.LinearEasing,
+        ),
+        label = "reprocessProgressBar",
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(UI.shapes.r4)
+            .background(UI.colors.medium)
+            .padding(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Reprocessing pending…",
+                style = UI.typo.b1.style(
+                    color = UI.colors.pureInverse,
+                    fontWeight = FontWeight.ExtraBold,
+                ),
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = "${progress.processed} / ${progress.total}",
+                style = UI.typo.c.style(
+                    color = UI.colors.gray,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(UI.shapes.rFull)
+                .background(UI.colors.pure),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction = animatedRatio)
+                    .height(6.dp)
+                    .clip(UI.shapes.rFull)
+                    .background(com.ivy.wallet.ui.theme.Green),
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "${progress.converted} new transaction${if (progress.converted == 1) "" else "s"} created so far",
+            style = UI.typo.c.style(
+                color = UI.colors.gray,
+                fontWeight = FontWeight.SemiBold,
+            ),
+        )
+    }
+}
+
 private fun labelFor(role: WildcardRole): String? = when (role) {
     WildcardRole.Unmapped -> null
     WildcardRole.Income -> "Income"
@@ -483,36 +558,49 @@ private fun labelFor(role: WildcardRole): String? = when (role) {
     WildcardRole.Ignored -> null
 }
 
-private data class RoleTile(
-    val role: WildcardRole,
-    val title: String,
-    val subtitle: String,
-)
+private data class RoleTile(val role: WildcardRole, val title: String)
 
-private val ROLE_TILES = listOf(
-    RoleTile(WildcardRole.Income, "Income", "amount you received"),
-    RoleTile(WildcardRole.Expense, "Expense", "amount you spent"),
-    RoleTile(WildcardRole.Transfer, "Transfer", "amount moved between wallets"),
-    RoleTile(WildcardRole.CurrentTotal, "Current Total", "running balance after this txn"),
-    RoleTile(WildcardRole.TransactionFee, "Transaction Fee", "fee charged"),
-    RoleTile(WildcardRole.DateFull, "Date + Time", "full date and time, e.g. 28/04/2026 10:30"),
-    RoleTile(WildcardRole.DateOnly, "Date only", "date without time, e.g. 28/04/2026"),
-    RoleTile(WildcardRole.TimeOnly, "Time only", "time without date, e.g. 10:30"),
-    RoleTile(WildcardRole.Merchant, "Merchant", "free text added to the description"),
-    RoleTile(WildcardRole.Ignored, "Ignored", "skip this part of the message"),
+private data class RoleCategory(val title: String, val tiles: List<RoleTile>)
+
+private val ROLE_CATEGORIES = listOf(
+    RoleCategory(
+        title = "Amount",
+        tiles = listOf(
+            RoleTile(WildcardRole.Income, "Income"),
+            RoleTile(WildcardRole.Expense, "Expense"),
+            RoleTile(WildcardRole.Transfer, "Transfer"),
+        ),
+    ),
+    RoleCategory(
+        title = "Date / Time",
+        tiles = listOf(
+            RoleTile(WildcardRole.DateFull, "Date + Time"),
+            RoleTile(WildcardRole.DateOnly, "Date only"),
+            RoleTile(WildcardRole.TimeOnly, "Time only"),
+        ),
+    ),
+    RoleCategory(
+        title = "Other",
+        tiles = listOf(
+            RoleTile(WildcardRole.CurrentTotal, "Balance"),
+            RoleTile(WildcardRole.TransactionFee, "Fee"),
+            RoleTile(WildcardRole.Merchant, "Merchant"),
+            RoleTile(WildcardRole.Ignored, "Ignored"),
+        ),
+    ),
 )
 
 /**
- * Role picker rendered through the project's standard `IvyModal`. Same look,
- * feel, and back-button behaviour as the unlink-confirmation modal in
- * `WalletSmsConfigScreen` and the legacy account/category modals — replaces
- * the previous custom bottom sheet, which felt foreign and where the user
- * reported their pick "doesn't take effect".
+ * Role picker rendered through the project's standard `IvyModal`. The 10
+ * possible roles overflowed the previous single-column list, so the user
+ * couldn't see all of them without scrolling and the modal felt cramped.
+ * Now grouped into three categories (Amount / Date+Time / Other) with each
+ * category laid out as a 2-column grid of compact icon + label tiles. The
+ * picker fits the modal at all common screen sizes.
  *
- * `wildcardId` is null while the modal is animating out so we still need to
- * hold a ref to the LAST id the user tapped — captured in [lastWildcardId]
- * via `rememberUpdatedState`-style `remember(wildcardId)` so the choose
- * callback always fires for the right slot even after the modal vanishes.
+ * `wildcardId` becomes null while the modal is animating out, so we hold the
+ * LAST id the user tapped via `remember(wildcardId)` and use it for the
+ * choose callback — that's how a pick survives the dismiss animation.
  */
 @Composable
 private fun BoxScope.RoleMappingModal(
@@ -545,34 +633,32 @@ private fun BoxScope.RoleMappingModal(
 
         ModalTitle(text = "What does this part represent?")
 
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            modifier = Modifier.padding(horizontal = 32.dp),
-            text = "Tap a role to map this segment. Picking a duplicate amount or date role replaces the previous one.",
-            style = UI.typo.b2.style(
-                color = UI.colors.gray,
-                fontWeight = FontWeight.Medium,
-            ),
-        )
-
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
 
         Column(
             modifier = Modifier.padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            ROLE_TILES.forEach { tile ->
-                RoleTileRow(
-                    tile = tile,
-                    selected = currentRole == tile.role,
-                    onClick = {
-                        if (effectiveId != null) {
-                            onChoose(effectiveId, tile.role)
-                        }
-                        dismiss()
-                    },
-                )
+            ROLE_CATEGORIES.forEach { category ->
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = category.title.uppercase(),
+                        style = UI.typo.c.style(
+                            color = UI.colors.gray,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
+                    RoleTileGrid(
+                        tiles = category.tiles,
+                        currentRole = currentRole,
+                        onPick = { picked ->
+                            if (effectiveId != null) {
+                                onChoose(effectiveId, picked)
+                            }
+                            dismiss()
+                        },
+                    )
+                }
             }
         }
 
@@ -580,48 +666,69 @@ private fun BoxScope.RoleMappingModal(
     }
 }
 
+/**
+ * 2-column grid of role tiles. Uses `chunked(2)` + `Row` rather than
+ * LazyVerticalGrid because the modal's parent already manages scrolling
+ * and a Lazy layout can't measure inside a wrap-content modal column.
+ */
 @Composable
-private fun RoleTileRow(
+private fun RoleTileGrid(
+    tiles: List<RoleTile>,
+    currentRole: WildcardRole,
+    onPick: (WildcardRole) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        tiles.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                pair.forEach { tile ->
+                    RoleTileGridCell(
+                        tile = tile,
+                        selected = currentRole == tile.role,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onPick(tile.role) },
+                    )
+                }
+                // Pad odd rows so the trailing tile keeps its half-width.
+                if (pair.size == 1) {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RoleTileGridCell(
     tile: RoleTile,
     selected: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val accent = colorForRole(tile.role)
     val bg = if (selected) accent else UI.colors.medium
     val fg = if (selected) Color.White else UI.colors.pureInverse
-    val subFg = if (selected) Color.White.copy(alpha = 0.85f) else UI.colors.gray
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .clip(UI.shapes.r4)
             .background(bg)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             imageVector = iconForRole(tile.role),
             contentDescription = null,
             tint = if (selected) Color.White else accent,
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(22.dp),
         )
-        Spacer(Modifier.width(14.dp))
-        Column(modifier = Modifier.padding(end = 8.dp)) {
-            Text(
-                text = tile.title,
-                style = UI.typo.b2.style(
-                    color = fg,
-                    fontWeight = FontWeight.ExtraBold,
-                ),
-            )
-            Text(
-                text = tile.subtitle,
-                style = UI.typo.c.style(
-                    color = subFg,
-                    fontWeight = FontWeight.Medium,
-                ),
-            )
-        }
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = tile.title,
+            style = UI.typo.b2.style(
+                color = fg,
+                fontWeight = FontWeight.ExtraBold,
+            ),
+        )
     }
 }

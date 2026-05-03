@@ -70,6 +70,7 @@ import com.ivy.wallet.ui.theme.components.IvyToolbar
 import com.ivy.wallet.ui.theme.modal.IvyModal
 import com.ivy.wallet.ui.theme.modal.ModalTitle
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import java.util.UUID
 
 @Composable
@@ -179,7 +180,7 @@ fun TemplateListScreen(
         val activeRow = activeId?.let { id -> state.templates.firstOrNull { it.id == id } }
         if (activeRow != null) {
             val all = activeRow.matchingMessages
-            val capped = all.take(state.matchingModalLimit)
+            val capped = all.take(state.matchingModalLimit).toImmutableList()
             val canLoadMore = all.size > state.matchingModalLimit
             MatchingMessagesModal(
                 visible = true,

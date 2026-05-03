@@ -34,15 +34,23 @@ class TemplateMappingViewModel @Inject constructor(
     override fun uiState(): TemplateMappingViewState = state
 
     fun load(templateId: SmsTemplateId) {
-        // Raw-thread pattern. viewModelScope.launch was silently no-op'ing on
-        // the user's device (same Compose/lifecycle quirk that bit
-        // SenderPickerViewModel earlier), leaving the screen stuck on the
-        // empty default state and the user staring at a blank "Loading…" box.
+        timber.log.Timber.d("TemplateMapping load(id=${templateId.value})")
         Thread {
             try {
+                timber.log.Timber.d("TemplateMapping load(): worker thread running")
                 kotlinx.coroutines.runBlocking {
-                    val template = templateRepo.findById(templateId).getOrNull()
-                        ?: return@runBlocking
+                    val result = templateRepo.findById(templateId)
+                    timber.log.Timber.d("TemplateMapping load(): findById -> $result")
+                    val template = result.getOrNull()
+                    if (template == null) {
+                        timber.log.Timber.w("TemplateMapping load(): template not found in DB")
+                        state = state.copy(
+                            templateId = templateId,
+                            error = "Template not found. Re-run a Sync from the wallet.",
+                        )
+                        return@runBlocking
+                    }
+                    timber.log.Timber.d("TemplateMapping load(): applying template pattern='${template.pattern}' bodyLen=${template.exampleBody.length}")
                     applyTemplate(template)
                 }
             } catch (t: Throwable) {
@@ -50,6 +58,15 @@ class TemplateMappingViewModel @Inject constructor(
                 state = state.copy(error = "load crashed: ${t.message}")
             }
         }.start()
+    }
+
+    /** Direct-set hook used by the screen as a safety net when the VM-side
+     *  load gets shadowed by a Compose / lifecycle race. Idempotent: only
+     *  applies if the current state hasn't already been populated. */
+    fun seedFromScreen(template: SmsTemplate) {
+        if (state.templateId == template.id && state.pattern.isNotBlank()) return
+        timber.log.Timber.d("TemplateMapping seedFromScreen() applying ${template.id.value}")
+        applyTemplate(template)
     }
 
     private fun applyTemplate(template: SmsTemplate) {

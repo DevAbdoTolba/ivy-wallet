@@ -65,8 +65,28 @@ fun TemplateMappingScreen(
 ) {
     val state = viewModel.uiState()
     val nav = navigation()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(templateId) { viewModel.load(templateId) }
+
+    // Belt-and-braces: fetch the template directly from the repo on every
+    // entry too. If the VM-side load is shadowed by a lifecycle race the
+    // screen still ends up with data. seedFromScreen is idempotent.
+    LaunchedEffect(templateId) {
+        try {
+            val ep = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                TemplateLookupEntryPoint::class.java,
+            )
+            val template = ep.templateRepo().findById(templateId).getOrNull()
+            if (template != null) {
+                viewModel.seedFromScreen(template)
+            }
+        } catch (t: Throwable) {
+            timber.log.Timber.e(t, "TemplateMapping screen-fallback load failed")
+        }
+    }
+
     state.convertedFromQueue?.let {
         LaunchedEffect(it) { onSaved(it) }
     }

@@ -334,21 +334,27 @@ private fun TemplateRow(
         Row(verticalAlignment = Alignment.CenterVertically) {
             StateBadge(row.state)
             Spacer(Modifier.weight(1f))
-            Text(
-                text = if (expanded) {
-                    "Hide messages"
-                } else {
-                    "Show ${row.matchCount} message${if (row.matchCount == 1) "" else "s"}"
-                },
-                style = UI.typo.c.style(
-                    color = Blue,
-                    fontWeight = FontWeight.Bold,
-                ),
-                modifier = Modifier.clickable(onClick = onToggleExpand),
-            )
+            // Single-message templates: render an invisible spacer the same
+            // height as the "Show N messages" toggle so every template card
+            // has the same vertical footprint. Tapping doesn't do anything
+            // (the example body shown above IS the only matching message),
+            // and we silently hide the link rather than say "Show 1 message"
+            // and have expansion show the very same text.
+            if (row.matchCount > 1) {
+                Text(
+                    text = if (expanded) "Hide messages" else "Show ${row.matchCount} messages",
+                    style = UI.typo.c.style(
+                        color = Blue,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    modifier = Modifier.clickable(onClick = onToggleExpand),
+                )
+            } else {
+                Spacer(Modifier.height(20.dp))
+            }
         }
 
-        AnimatedVisibility(visible = expanded) {
+        AnimatedVisibility(visible = expanded && row.matchCount > 1) {
             Column {
                 Spacer(Modifier.height(12.dp))
                 MatchingMessages(row)

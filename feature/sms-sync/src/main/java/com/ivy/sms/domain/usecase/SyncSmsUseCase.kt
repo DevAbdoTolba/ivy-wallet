@@ -26,6 +26,7 @@ class SyncSmsUseCaseImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val scan: ScanInboxUseCase,
     private val senderRepo: SenderAccountLinkRepository,
+    private val findMatching: FindMatchingMessagesUseCase,
 ) : SyncSmsUseCase {
 
     private val mutex = Mutex()
@@ -51,6 +52,9 @@ class SyncSmsUseCaseImpl @Inject constructor(
                     is Either.Left -> r.value.left()
                     is Either.Right -> {
                         val s = r.value
+                        // New SMS may have landed on existing templates →
+                        // matching-messages cache is stale.
+                        findMatching.invalidate()
                         SyncResult.Completed(
                             newMessagesProcessed = s.newMessagesProcessed,
                             transactionsCreated = s.transactionsCreated,

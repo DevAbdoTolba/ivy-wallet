@@ -107,19 +107,33 @@ fun TemplateMappingScreen(
         LaunchedEffect(it) { onSaved(it) }
     }
 
-    // Render data: prefer the VM state if it's been populated (so the user's
-    // edits are reflected) but fall back to the directly-fetched template for
-    // the immutable parts. This is what makes the SMS body visible regardless
-    // of VM state weirdness.
+    // Render data: pattern + body come from the VM state if populated, else
+    // from the directly-fetched template (so the user always sees the SMS
+    // even when the VM is racing). Wildcard ROLES, however, ALWAYS come from
+    // state.rolesByWildcardId — that map is the single source of truth for
+    // the user's picks. Reading from state.wildcards used to drop picks made
+    // before applyTemplate ran, which the user hit as "I picked Expense and
+    // the chip is still grey, save is still dimmed".
     val displayPattern = state.pattern.ifBlank { fetchedTemplate?.pattern.orEmpty() }
     val displayBody = state.exampleBody.ifBlank { fetchedTemplate?.exampleBody.orEmpty() }
-    val displayWildcards = if (state.wildcards.isNotEmpty()) {
-        state.wildcards
-    } else {
-        val slots = fetchedTemplate?.wildcardSlots
-            ?.map { WildcardChip(it.id, it.positionInPattern, it.exampleValue, it.role) }
-            .orEmpty()
-        slots.toImmutableList()
+    val displayWildcards = remember(fetchedTemplate, state.wildcards, state.rolesByWildcardId) {
+        val baseChips: List<WildcardChip> = if (state.wildcards.isNotEmpty()) {
+            state.wildcards
+        } else {
+            fetchedTemplate?.wildcardSlots
+                ?.map {
+                    WildcardChip(
+                        id = it.id,
+                        positionInPattern = it.positionInPattern,
+                        exampleValue = it.exampleValue,
+                        role = it.role,
+                    )
+                }
+                .orEmpty()
+        }
+        baseChips.map { chip ->
+            chip.copy(role = state.rolesByWildcardId[chip.id] ?: chip.role)
+        }.toImmutableList()
     }
     val isLoading = fetchedTemplate == null && state.pattern.isBlank() && state.exampleBody.isBlank()
 
@@ -237,10 +251,14 @@ fun TemplateMappingScreen(
                     )
                 }
 
-                val canSave = displayWildcards.any {
-                    it.role == WildcardRole.Income ||
-                        it.role == WildcardRole.Expense ||
-                        it.role == WildcardRole.Transfer
+                // canSave reads state.rolesByWildcardId directly so the user's
+                // pick enables the button as soon as the VM processes the
+                // event — independent of whether displayWildcards has been
+                // rebuilt from fetchedTemplate yet.
+                val canSave = state.rolesByWildcardId.values.any {
+                    it == WildcardRole.Income ||
+                        it == WildcardRole.Expense ||
+                        it == WildcardRole.Transfer
                 } && !state.saving
 
                 Spacer(Modifier.height(8.dp))
@@ -353,11 +371,11 @@ private fun LiteralChip(text: String) {
 
 /**
  * Inline-style wildcard chip — same font as the surrounding literals, just
- * coloured by role and outlined. The previous version paired the value text
- * with an uppercase role-name sub-label and bumped the weight to ExtraBold,
- * which read as a button rather than a highlight. This version drops the
- * sub-label (color carries the role) and matches LiteralChip's font weight
- * so the SMS reads naturally top-to-bottom.
+ * coloured by role and outlined. When mapped, the chip shows the role's
+ * icon next to the value so the user gets immediate visual confirmation
+ * that their pick took effect (separate from the color change, which can
+ * be hard to spot at glance). Tapping anywhere on the chip re-opens the
+ * picker.
  */
 @Composable
 private fun WildcardChipView(text: String, role: WildcardRole, onClick: () -> Unit) {
@@ -375,6 +393,16 @@ private fun WildcardChipView(text: String, role: WildcardRole, onClick: () -> Un
             .padding(horizontal = 10.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (mapped) {
+            Icon(
+                imageVector = iconForRole(role),
+                contentDescription = null,
+                tint = fg,
+                modifier = Modifier
+                    .padding(end = 6.dp)
+                    .size(16.dp),
+            )
+        }
         Text(
             text = text,
             style = UI.typo.b1.style(
@@ -392,11 +420,11 @@ private sealed interface Token {
 
 /**
  * Pattern-only walk: each pattern token becomes either a literal or a chip.
- * Wildcard chips render the slot's `exampleValue` directly — guaranteed
- * one chip per `<*>` in the pattern with no multi-word capture and no
- * placeholder dots. If a slot's example is blank we fall back to its role
- * label so the chip still has tappable text; if that's also empty (Unmapped
- * + blank example), we skip that slot rather than render an empty chip.
+ * Slots whose `exampleValue` contains no digit are demoted to literals —
+ * Drain merges occasionally mark common Arabic prepositions like "كل" or
+ * "من" as wildcards because their position varies across messages, but
+ * the user never wants to map them as Income/Expense/Date roles. Numeric
+ * slots (amounts, balances, dates, refcodes) stay as tappable chips.
  */
 private fun buildTokenList(
     pattern: String,
@@ -409,14 +437,31 @@ private fun buildTokenList(
     for ((idx, ptok) in patternTokens.withIndex()) {
         if (ptok == com.ivy.sms.data.WILDCARD_TOKEN) {
             val chip = byPosition[idx] ?: continue
-            val text = chip.exampleValue.ifBlank { labelFor(chip.role).orEmpty() }
-            if (text.isBlank()) continue
-            out.add(Token.Wild(text, chip.role, chip.id))
+            val example = chip.exampleValue.trim()
+            if (example.isBlank()) {
+                // No captured value → fall back to the role label if mapped,
+                // skip the slot entirely if not (avoids empty pills).
+                val fallback = labelFor(chip.role).orEmpty()
+                if (fallback.isBlank()) continue
+                out.add(Token.Wild(fallback, chip.role, chip.id))
+                continue
+            }
+            if (containsDigit(example)) {
+                out.add(Token.Wild(example, chip.role, chip.id))
+            } else {
+                // Non-digit "wildcard" — Drain quirk, render as literal so the
+                // SMS reads naturally and the chip count stays meaningful.
+                out.add(Token.Literal(example))
+            }
         } else {
             out.add(Token.Literal(ptok))
         }
     }
     return out
+}
+
+private fun containsDigit(text: String): Boolean = text.any { ch ->
+    ch.isDigit() || ch in '٠'..'٩' || ch in '۰'..'۹'
 }
 
 private fun labelFor(role: WildcardRole): String? = when (role) {

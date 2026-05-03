@@ -5,7 +5,9 @@ import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.WildcardId
 import com.ivy.sms.domain.model.WildcardRole
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 
 @Immutable
 data class WildcardChip(
@@ -22,6 +24,14 @@ data class TemplateMappingViewState(
     val exampleBody: String = "",
     val name: String = "",
     val wildcards: ImmutableList<WildcardChip> = persistentListOf(),
+    /**
+     * Single source of truth for the user's role picks, keyed by [WildcardId].
+     * The screen merges this with `fetchedTemplate.wildcardSlots` so the
+     * visible chip role always reflects the latest pick — even when the VM's
+     * `wildcards` list is stale because of a screen / VM-store race that
+     * was ate the user's "I picked Expense, save is still grey" report.
+     */
+    val rolesByWildcardId: ImmutableMap<WildcardId, WildcardRole> = persistentMapOf(),
     val activeWildcard: WildcardId? = null,
     val saving: Boolean = false,
     val error: String? = null,

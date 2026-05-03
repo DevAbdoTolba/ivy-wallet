@@ -17,6 +17,7 @@ import com.ivy.sms.domain.usecase.MapTemplateUseCase
 import com.ivy.ui.ComposeViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -103,6 +104,7 @@ class TemplateMappingViewModel @Inject constructor(
             exampleBody = template.exampleBody,
             name = template.name.orEmpty(),
             wildcards = rebuildWildcards(),
+            rolesByWildcardId = pendingRoles.toImmutableMap(),
             activeWildcard = null,
             error = null,
         )
@@ -116,11 +118,16 @@ class TemplateMappingViewModel @Inject constructor(
             is TemplateMappingEvent.WildcardRoleChosen -> {
                 // Write through pendingRoles first; rebuildWildcards uses it as
                 // the source of truth, so the user's pick survives even when
-                // state.wildcards happens to be empty (VM-load race).
+                // state.wildcards happens to be empty (VM-load race). Mirror
+                // the same map into state.rolesByWildcardId so the screen can
+                // render the chip's role-color and the save button can
+                // enable WITHOUT depending on the (sometimes stale) wildcards
+                // list.
                 pendingRoles[event.id] = event.role
                 applyUniquenessRulesToPending(event.id, event.role)
                 state = state.copy(
                     wildcards = rebuildWildcards(),
+                    rolesByWildcardId = pendingRoles.toImmutableMap(),
                     activeWildcard = null,
                 )
             }
@@ -190,7 +197,10 @@ class TemplateMappingViewModel @Inject constructor(
 
     private fun save() {
         val templateId = state.templateId ?: return
-        val hasAmount = state.wildcards.any { it.role.isAmountRole() }
+        // Authoritative role check uses pendingRoles, NOT state.wildcards —
+        // the latter can be stale during the screen↔VM race window and the
+        // user reported "I picked Expense, save still grey" because of it.
+        val hasAmount = pendingRoles.values.any { it.isAmountRole() }
         if (!hasAmount) {
             state = state.copy(error = "Pick which segment is the Income, Expense, or Transfer amount")
             return

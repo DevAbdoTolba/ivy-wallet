@@ -33,8 +33,9 @@ class MapTemplateUseCaseTest {
     private val pendingRepo = mockk<PendingReviewItemRepository>(relaxed = true)
     private val senderRepo = mockk<SenderAccountLinkRepository>()
     private val route = mockk<RouteSmsUseCase>()
+    private val prefs = mockk<com.ivy.sms.data.SmsWatermarkPreferences>(relaxed = true)
 
-    private val mapTemplate = MapTemplateUseCase(templateRepo, pendingRepo, senderRepo, route)
+    private val mapTemplate = MapTemplateUseCase(templateRepo, pendingRepo, senderRepo, route, prefs)
 
     private val wildcardId = WildcardId(UUID.randomUUID())
     private val templateId = SmsTemplateId(UUID.randomUUID())

@@ -6,6 +6,7 @@ import arrow.core.right
 import com.ivy.sms.data.PendingReviewItemRepository
 import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.data.SmsTemplateRepository
+import com.ivy.sms.data.SmsWatermarkPreferences
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.TemplateState
@@ -42,6 +43,7 @@ class MapTemplateUseCase @Inject constructor(
     private val pendingRepo: PendingReviewItemRepository,
     private val senderRepo: SenderAccountLinkRepository,
     private val route: RouteSmsUseCase,
+    private val prefs: SmsWatermarkPreferences,
 ) {
     private val _progress = MutableStateFlow<MapTemplateProgress?>(null)
     val progress: StateFlow<MapTemplateProgress?> = _progress.asStateFlow()
@@ -84,6 +86,11 @@ class MapTemplateUseCase @Inject constructor(
         )
 
         templateRepo.upsert(updated).onLeft { return it.left() }
+        if (original.state != TemplateState.ACTIVE) {
+            // Going from Unmapped/Pending → Active counts as "mapped" for the
+            // user's persistent progress hero on the review screen.
+            prefs.incrementTemplatesMappedTotal()
+        }
 
         // Drain any queued pending items from the SAME SENDER. Use EACH item's
         // OWN template (re-fetched to pick up any state change made above for
@@ -120,6 +127,7 @@ class MapTemplateUseCase @Inject constructor(
                 val outcome = route(item.sms, itemTemplate, senderToAccount).getOrNull()
                 if (outcome is RouteOutcome.Created) {
                     pendingRepo.dismiss(item.id)
+                    prefs.incrementReviewedTotal()
                     converted++
                 }
             }

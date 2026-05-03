@@ -58,8 +58,12 @@ fun PendingReviewScreen(
 ) {
     val state = viewModel.uiState()
     val nav = navigation()
-    val total = remember { mutableStateOf(state.items.size) }
-    if (state.items.size > total.value) total.value = state.items.size
+    // Persistent progress: cumulative reviewed (DataStore) + currently
+    // remaining = total ever queued. Survives back-navigation and process
+    // restart, so the user sees their progress grow over time instead of
+    // a counter that resets to zero on every screen entry.
+    val resolved = state.reviewedTotal
+    val totalEverQueued = (resolved + state.items.size).coerceAtLeast(state.items.size)
     val templatesLeft = remember(state.items) {
         state.items.map { it.templateId.value }.toSet().size
     }
@@ -88,8 +92,9 @@ fun PendingReviewScreen(
             // Progress hero — big remaining number above a slim bar.
             ProgressHero(
                 remaining = state.items.size,
-                total = total.value,
+                total = totalEverQueued,
                 templatesLeft = templatesLeft,
+                templatesMappedTotal = state.templatesMappedTotal,
             )
 
             if (state.items.isEmpty()) {
@@ -124,7 +129,12 @@ fun PendingReviewScreen(
 }
 
 @Composable
-private fun ProgressHero(remaining: Int, total: Int, templatesLeft: Int) {
+private fun ProgressHero(
+    remaining: Int,
+    total: Int,
+    templatesLeft: Int,
+    templatesMappedTotal: Int,
+) {
     val resolved = (total - remaining).coerceAtLeast(0)
     val target = if (total == 0) 0f else resolved.toFloat() / total.toFloat()
     val progress by animateFloatAsState(
@@ -174,7 +184,8 @@ private fun ProgressHero(remaining: Int, total: Int, templatesLeft: Int) {
         if (total > 0) {
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "$resolved / $total handled",
+                text = "$resolved of $total reviewed" +
+                    if (templatesMappedTotal > 0) " · $templatesMappedTotal templates mapped" else "",
                 style = UI.typo.c.style(
                     color = UI.colors.gray,
                     fontWeight = FontWeight.SemiBold,

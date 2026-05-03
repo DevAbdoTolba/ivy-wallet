@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.ivy.sms.data.PendingReviewItemRepository
 import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.data.SmsTemplateRepository
+import com.ivy.sms.data.SmsWatermarkPreferences
 import com.ivy.sms.domain.model.PendingReviewItemId
 import com.ivy.sms.domain.model.TemplateState
 import com.ivy.sms.domain.usecase.BlacklistTemplateUseCase
@@ -33,6 +34,7 @@ class PendingReviewViewModel @Inject constructor(
     private val resolve: ResolvePendingItemUseCase,
     private val route: RouteSmsUseCase,
     private val blacklist: BlacklistTemplateUseCase,
+    private val prefs: SmsWatermarkPreferences,
 ) : ComposeViewModel<PendingReviewViewState, PendingReviewEvent>() {
 
     private val expanded = mutableStateOf<Set<String>>(emptySet())
@@ -76,6 +78,7 @@ class PendingReviewViewModel @Inject constructor(
                     val outcome = route(item.sms, tpl, senderToAccount).getOrNull()
                     if (outcome is RouteOutcome.Created) {
                         pendingRepo.dismiss(item.id)
+                        prefs.incrementReviewedTotal()
                         break
                     }
                 }
@@ -89,6 +92,8 @@ class PendingReviewViewModel @Inject constructor(
     override fun uiState(): PendingReviewViewState {
         val items = pendingRepo.observeAllRaw().collectAsState(initial = emptyList())
         val templates = templateRepo.observeAll().collectAsState(initial = emptyList())
+        val reviewed = prefs.observeReviewedTotal().collectAsState(initial = 0)
+        val mapped = prefs.observeTemplatesMappedTotal().collectAsState(initial = 0)
         val templateById = templates.value.associateBy { it.id.value.toString() }
         val rows = items.value.mapNotNull { e ->
             val tpl = templateById[e.templateId] ?: return@mapNotNull null
@@ -106,13 +111,20 @@ class PendingReviewViewModel @Inject constructor(
                 expanded = e.id in expanded.value,
             )
         }.toImmutableList()
-        return PendingReviewViewState(items = rows.ifEmpty { persistentListOf() })
+        return PendingReviewViewState(
+            items = rows.ifEmpty { persistentListOf() },
+            reviewedTotal = reviewed.value,
+            templatesMappedTotal = mapped.value,
+        )
     }
 
     override fun onEvent(event: PendingReviewEvent) {
         when (event) {
             is PendingReviewEvent.Dismiss -> {
-                viewModelScope.launch { resolve.dismiss(event.itemId) }
+                viewModelScope.launch {
+                    resolve.dismiss(event.itemId)
+                    prefs.incrementReviewedTotal()
+                }
             }
             is PendingReviewEvent.MapTemplate -> { /* nav handled by Screen */ }
             is PendingReviewEvent.IgnoreForever -> {

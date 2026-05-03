@@ -24,6 +24,11 @@ data class PendingItemRowViewState(
 @Immutable
 data class PendingReviewViewState(
     val items: ImmutableList<PendingItemRowViewState> = persistentListOf(),
+    /** Cumulative messages reviewed across all sessions — drives the "you've
+     *  done X / Y" encouragement counter so the user keeps a sense of progress
+     *  even after closing and reopening the screen. */
+    val reviewedTotal: Int = 0,
+    val templatesMappedTotal: Int = 0,
     val error: String? = null,
 )
 

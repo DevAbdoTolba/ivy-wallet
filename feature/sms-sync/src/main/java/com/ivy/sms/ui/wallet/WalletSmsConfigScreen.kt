@@ -396,7 +396,11 @@ private fun LinkedSenderCard(
     }
 }
 
-private const val SYNC_PROGRESS_THRESHOLD = 100
+// Drop the threshold to 1 — any non-zero total now shows the real
+// percentage bar. The previous 100-msg gate left "Last year" syncs
+// looking like an indeterminate loop on phones with smaller inboxes
+// from a single sender, even though the total IS known up front.
+private const val SYNC_PROGRESS_THRESHOLD = 1
 
 @Composable
 private fun SyncProgressCard(state: WalletSmsConfigViewState) {

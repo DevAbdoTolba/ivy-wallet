@@ -46,5 +46,12 @@ sealed interface TemplateMappingEvent {
     ) : TemplateMappingEvent
     data object DismissBottomSheet : TemplateMappingEvent
     data class NameChanged(val value: String) : TemplateMappingEvent
-    data object Save : TemplateMappingEvent
+    /**
+     * The screen passes [explicitTemplateId] from its `produceState`-fetched
+     * template so save() can proceed even when the VM's own templateId
+     * field is null because of a screen↔VM seed race. The user reported
+     * "Save lights up but clicking does nothing" because save() was
+     * silently `return`'ing on `state.templateId ?: return`.
+     */
+    data class Save(val explicitTemplateId: SmsTemplateId? = null) : TemplateMappingEvent
 }

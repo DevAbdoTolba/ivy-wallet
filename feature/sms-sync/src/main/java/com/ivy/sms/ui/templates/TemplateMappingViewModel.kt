@@ -137,7 +137,7 @@ class TemplateMappingViewModel @Inject constructor(
             is TemplateMappingEvent.NameChanged -> {
                 state = state.copy(name = event.value)
             }
-            TemplateMappingEvent.Save -> save()
+            is TemplateMappingEvent.Save -> save(explicit = event.explicitTemplateId)
         }
     }
 
@@ -195,11 +195,18 @@ class TemplateMappingViewModel @Inject constructor(
         else -> false
     }
 
-    private fun save() {
-        val templateId = state.templateId ?: return
-        // Authoritative role check uses pendingRoles, NOT state.wildcards —
-        // the latter can be stale during the screen↔VM race window and the
-        // user reported "I picked Expense, save still grey" because of it.
+    private fun save(explicit: SmsTemplateId? = null) {
+        // Prefer the screen-supplied templateId so we proceed even when the
+        // VM's own field is null (screen↔VM seed race). The user hit
+        // "clicking Save does nothing" exactly because state.templateId was
+        // null and the previous code silently `return`'d.
+        val templateId = explicit ?: state.templateId
+        if (templateId == null) {
+            timber.log.Timber.w("TemplateMapping save(): no templateId available")
+            state = state.copy(error = "Reload the screen — template handle was lost")
+            return
+        }
+        timber.log.Timber.d("TemplateMapping save(templateId=${templateId.value})")
         val hasAmount = pendingRoles.values.any { it.isAmountRole() }
         if (!hasAmount) {
             state = state.copy(error = "Pick which segment is the Income, Expense, or Transfer amount")
@@ -208,18 +215,22 @@ class TemplateMappingViewModel @Inject constructor(
 
         state = state.copy(saving = true, error = null)
         val nameToSave = state.name.trim().ifBlank { null }
-        Thread {
+        // viewModelScope.launch — same coroutine pattern PeriodPickerViewModel
+        // uses, which is proven to run on this user's device. The previous
+        // raw `Thread { runBlocking { ... } }.start()` was the same shape
+        // that silently failed in WalletSmsConfig.syncNow on the same device.
+        viewModelScope.launch {
             try {
-                kotlinx.coroutines.runBlocking {
-                    mapTemplate(templateId, pendingRoles.toMap(), name = nameToSave).fold(
-                        { state = state.copy(saving = false, error = it) },
-                        { state = state.copy(saving = false, convertedFromQueue = it.convertedFromQueue) },
-                    )
-                }
+                val result = mapTemplate(templateId, pendingRoles.toMap(), name = nameToSave)
+                timber.log.Timber.d("TemplateMapping save(): mapTemplate -> $result")
+                result.fold(
+                    { state = state.copy(saving = false, error = it) },
+                    { state = state.copy(saving = false, convertedFromQueue = it.convertedFromQueue) },
+                )
             } catch (t: Throwable) {
                 timber.log.Timber.e(t, "TemplateMapping save() crashed")
                 state = state.copy(saving = false, error = "save crashed: ${t.message}")
             }
-        }.start()
+        }
     }
 }

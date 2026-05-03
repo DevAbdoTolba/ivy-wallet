@@ -114,7 +114,6 @@ fun TemplateMappingScreen(
     // the user's picks. Reading from state.wildcards used to drop picks made
     // before applyTemplate ran, which the user hit as "I picked Expense and
     // the chip is still grey, save is still dimmed".
-    val displayPattern = state.pattern.ifBlank { fetchedTemplate?.pattern.orEmpty() }
     val displayBody = state.exampleBody.ifBlank { fetchedTemplate?.exampleBody.orEmpty() }
     val displayWildcards = remember(fetchedTemplate, state.wildcards, state.rolesByWildcardId) {
         val baseChips: List<WildcardChip> = if (state.wildcards.isNotEmpty()) {
@@ -210,7 +209,7 @@ fun TemplateMappingScreen(
                         }
                     } else {
                         TokenizedExample(
-                            pattern = displayPattern,
+                            exampleBody = displayBody,
                             wildcards = displayWildcards,
                             onWildcardTap = { id ->
                                 viewModel.onEvent(TemplateMappingEvent.WildcardTapped(id))
@@ -266,7 +265,18 @@ fun TemplateMappingScreen(
                     text = if (state.saving) "Saving…" else "Save",
                     modifier = Modifier.fillMaxWidth(),
                     enabled = canSave,
-                    onClick = { viewModel.onEvent(TemplateMappingEvent.Save) },
+                    onClick = {
+                        // Pass the screen's directly-fetched templateId so
+                        // save() never has to depend on state.templateId,
+                        // which can be null during the produceState seed
+                        // race that previously caused "clicking Save does
+                        // nothing".
+                        viewModel.onEvent(
+                            TemplateMappingEvent.Save(
+                                explicitTemplateId = state.templateId ?: fetchedTemplate?.id ?: templateId,
+                            ),
+                        )
+                    },
                 )
 
                 IvyOutlinedButton(
@@ -304,22 +314,22 @@ fun TemplateMappingScreen(
 }
 
 /**
- * Renders the template as an inline read of literals + wildcard chips, walking
- * ONLY the pattern. Each wildcard slot becomes exactly one chip whose text is
- * the slot's captured `exampleValue` — no body-token alignment, no multi-word
- * smushing, no "•••" placeholder. Literals and chips share the same font
- * scale (UI.typo.b1) so the line reads as one continuous sentence with the
- * variable parts colored, not as oversized buttons interrupting plain text.
+ * Renders the FULL example SMS body as inline literals + wildcard chips. Walks
+ * the body (not the pattern) because Drain merges shed non-shared tokens from
+ * the pattern, which made the on-screen message look truncated even on a
+ * tall phone. Each digit-bearing body token becomes a tappable chip paired
+ * with a slot in pattern-position order; non-digit tokens stay as plain
+ * literal text. The user sees the entire SMS, no cropping.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TokenizedExample(
-    pattern: String,
+    exampleBody: String,
     wildcards: List<WildcardChip>,
     onWildcardTap: (WildcardId) -> Unit,
 ) {
-    val tokens = remember(pattern, wildcards) {
-        buildTokenList(pattern, wildcards)
+    val tokens = remember(exampleBody, wildcards) {
+        buildTokenList(exampleBody, wildcards)
     }
 
     Box(
@@ -419,45 +429,40 @@ private sealed interface Token {
 }
 
 /**
- * Pattern-only walk: each pattern token becomes either a literal or a chip.
- * Slots whose `exampleValue` contains no digit are demoted to literals —
- * Drain merges occasionally mark common Arabic prepositions like "كل" or
- * "من" as wildcards because their position varies across messages, but
- * the user never wants to map them as Income/Expense/Date roles. Numeric
- * slots (amounts, balances, dates, refcodes) stay as tappable chips.
+ * Body-only walk: every body token becomes either a literal or a tappable
+ * chip. Digit-bearing tokens (Latin / Arabic-Indic / Eastern Arabic-Indic)
+ * are paired with the template's wildcard slots in pattern-position order —
+ * so the FIRST digit token in the body maps to the slot at the smallest
+ * pattern position, the second to the next, and so on. This keeps the FULL
+ * SMS visible (the previous pattern-walk dropped any token Drain had merged
+ * away, which the user reported as the message being "cropped"), while still
+ * giving every amount / balance / date its own role-coloured chip.
  */
 private fun buildTokenList(
-    pattern: String,
+    exampleBody: String,
     wildcards: List<WildcardChip>,
 ): List<Token> {
-    val patternTokens = pattern.split(Regex("\\s+")).filter { it.isNotBlank() }
-    if (patternTokens.isEmpty()) return emptyList()
-    val byPosition = wildcards.associateBy { it.positionInPattern }
-    val out = mutableListOf<Token>()
-    for ((idx, ptok) in patternTokens.withIndex()) {
-        if (ptok == com.ivy.sms.data.WILDCARD_TOKEN) {
-            val chip = byPosition[idx] ?: continue
-            val example = chip.exampleValue.trim()
-            if (example.isBlank()) {
-                // No captured value → fall back to the role label if mapped,
-                // skip the slot entirely if not (avoids empty pills).
-                val fallback = labelFor(chip.role).orEmpty()
-                if (fallback.isBlank()) continue
-                out.add(Token.Wild(fallback, chip.role, chip.id))
-                continue
-            }
-            if (containsDigit(example)) {
-                out.add(Token.Wild(example, chip.role, chip.id))
+    val bodyTokens = exampleBody.split(Regex("\\s+")).filter { it.isNotBlank() }
+    if (bodyTokens.isEmpty()) return emptyList()
+    val digitSlots = wildcards
+        .filter { containsDigit(it.exampleValue) }
+        .sortedBy { it.positionInPattern }
+    val slotIter = digitSlots.iterator()
+    return bodyTokens.map { tok ->
+        if (containsDigit(tok)) {
+            if (slotIter.hasNext()) {
+                val slot = slotIter.next()
+                Token.Wild(tok, slot.role, slot.id)
             } else {
-                // Non-digit "wildcard" — Drain quirk, render as literal so the
-                // SMS reads naturally and the chip count stays meaningful.
-                out.add(Token.Literal(example))
+                // More digit tokens in the body than digit slots in the
+                // template (e.g., a phone number stuck at the end). Render
+                // it as plain text so the message stays readable.
+                Token.Literal(tok)
             }
         } else {
-            out.add(Token.Literal(ptok))
+            Token.Literal(tok)
         }
     }
-    return out
 }
 
 private fun containsDigit(text: String): Boolean = text.any { ch ->

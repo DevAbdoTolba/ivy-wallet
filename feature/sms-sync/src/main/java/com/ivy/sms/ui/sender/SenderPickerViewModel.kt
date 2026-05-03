@@ -9,6 +9,7 @@ import com.ivy.base.threading.DispatchersProvider
 import com.ivy.data.model.AccountId
 import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.data.SmsInboxDataSource
+import com.ivy.sms.domain.JustLinkedSignal
 import com.ivy.sms.domain.usecase.LinkSenderToWalletUseCase
 import com.ivy.ui.ComposeViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -30,6 +31,7 @@ class SenderPickerViewModel @Inject constructor(
     private val inbox: SmsInboxDataSource,
     private val linkSender: LinkSenderToWalletUseCase,
     private val senderRepo: SenderAccountLinkRepository,
+    private val justLinked: JustLinkedSignal,
     private val dispatchers: DispatchersProvider,
 ) : ComposeViewModel<SenderPickerViewState, SenderPickerEvent>() {
 
@@ -177,7 +179,13 @@ class SenderPickerViewModel @Inject constructor(
                                 error = humanizeLinkError(rawError, resolvedSenderId),
                             )
                         },
-                        { state = state.copy(saving = false, saved = true) },
+                        {
+                            // Tell the wallet config screen to auto-pop its
+                            // sync-period sheet on first arrival post-link so
+                            // the user gets carried straight into syncing.
+                            justLinked.emit(walletId)
+                            state = state.copy(saving = false, saved = true)
+                        },
                     )
                 }
             } catch (t: Throwable) {

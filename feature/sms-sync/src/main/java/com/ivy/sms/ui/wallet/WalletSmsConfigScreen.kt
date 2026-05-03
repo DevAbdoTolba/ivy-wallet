@@ -127,6 +127,16 @@ private fun WalletSmsConfigContent(
     var showPeriodPicker by remember { mutableStateOf(false) }
     var showUnlinkConfirm by remember { mutableStateOf(false) }
 
+    // Auto-open the sync-period sheet on first arrival after the user finishes
+    // linking a sender — keeps them in the flow instead of dropping them on a
+    // quiet config screen.
+    LaunchedEffect(state.autoOpenSyncSheet) {
+        if (state.autoOpenSyncSheet) {
+            showPeriodPicker = true
+            viewModel.consumeAutoOpenSyncSheet()
+        }
+    }
+
     val displayWalletName = liveData?.walletName ?: state.walletName
     val displayLinkedSender = liveData?.linkedSender ?: state.linkedSender
     val displayLastSync = liveData?.lastSyncStatus ?: state.lastSyncStatus

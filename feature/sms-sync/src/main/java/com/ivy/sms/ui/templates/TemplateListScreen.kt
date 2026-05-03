@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
@@ -562,16 +564,16 @@ private fun GroupHeader(
 }
 
 /**
- * Modal popup that lists every matching message for a template, paginated
- * 10 at a time. Replaces the inline expand row — the previous design
- * inflated the template card and made the list hard to scan once it grew
- * beyond a few items. Uses the project's standard `IvyModal` so the look
- * matches the unlink confirmation, role picker, etc.
+ * Bottom-sheet popup that lists matching messages for a template, paginated
+ * 10 at a time. Built as a custom `Box(BottomCenter)` instead of `IvyModal`
+ * because IvyModal places its actions row at absolute screenHeight and was
+ * cropping the close button below the system nav bar on the user's device.
+ * This version uses [navigationBarsPadding] inside the column so the close
+ * button always sits cleanly above the gesture/system bar, and caps the
+ * sheet at 88% of the screen so the title stays visible at the top.
  *
- * The "Load 10 more" button reveals the next page; once everything is
- * shown the button hides itself. A 1px separator (same hairline used in
- * the sender-picker batch markers) sits between rows so the wall of SMS
- * text stays visually parsable.
+ * Hairline separators (same alpha 0.06 the sender-picker batch markers use)
+ * sit between rows so the wall of SMS text stays parsable.
  */
 @Composable
 private fun BoxScope.MatchingMessagesModal(
@@ -584,80 +586,117 @@ private fun BoxScope.MatchingMessagesModal(
     onLoadMore: () -> Unit,
     dismiss: () -> Unit,
 ) {
-    val modalId = remember(templateName, totalCount) { UUID.randomUUID() }
-    val scrollState: ScrollState = rememberScrollState()
+    if (!visible) return
 
-    IvyModal(
-        id = modalId,
-        visible = visible,
-        dismiss = dismiss,
-        scrollState = scrollState,
-        PrimaryAction = {
-            IvyButton(
-                text = "Close",
-                onClick = dismiss,
-            )
-        },
+    val scrollState = rememberScrollState()
+
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .background(Color.Black.copy(alpha = 0.55f))
+            .clickable(onClick = dismiss),
     ) {
-        Spacer(Modifier.height(32.dp))
-        ModalTitle(text = templateName?.takeIf { it.isNotBlank() } ?: "Matching messages")
-        Spacer(Modifier.height(8.dp))
-        Text(
-            modifier = Modifier.padding(horizontal = 32.dp),
-            text = "${bodies.size} of $totalCount shown",
-            style = UI.typo.c.style(
-                color = UI.colors.gray,
-                fontWeight = FontWeight.Bold,
-            ),
-        )
-        Spacer(Modifier.height(16.dp))
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .fillMaxHeight(0.88f)
+                .clip(UI.shapes.r2Top)
+                .background(UI.colors.pure)
+                .clickable(enabled = false) { },
+        ) {
+            // Drag-handle indicator like a standard sheet.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 12.dp)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .clip(UI.shapes.rFull)
+                    .background(UI.colors.medium),
+            )
 
-        if (loading && bodies.isEmpty()) {
-            LinearProgressIndicator(
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+            ) {
+                Text(
+                    text = templateName?.takeIf { it.isNotBlank() } ?: "Matching messages",
+                    style = UI.typo.h2.style(
+                        color = UI.colors.pureInverse,
+                        fontWeight = FontWeight.ExtraBold,
+                    ),
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "${bodies.size} of $totalCount shown",
+                    style = UI.typo.c.style(
+                        color = UI.colors.gray,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                )
+            }
+
+            // Scrollable list section, weight=1 so the action row at the
+            // bottom always stays put even when the list grows long.
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = true)
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 24.dp),
+            ) {
+                when {
+                    loading && bodies.isEmpty() -> {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Blue,
+                            trackColor = UI.colors.medium,
+                        )
+                    }
+                    bodies.isEmpty() -> {
+                        Text(
+                            text = "No matching messages found in the device inbox.",
+                            style = UI.typo.b2.style(
+                                color = UI.colors.gray,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                        )
+                    }
+                    else -> {
+                        bodies.forEachIndexed { idx, body ->
+                            if (idx > 0) HrDivider()
+                            MatchingMessageRow(body = body)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
+            // Action row — buttons live above the system nav bar via
+            // navigationBarsPadding so they're always tappable.
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 32.dp),
-                color = Blue,
-                trackColor = UI.colors.medium,
-            )
-            Spacer(Modifier.height(20.dp))
-            return@IvyModal
-        }
-        if (bodies.isEmpty()) {
-            Text(
-                modifier = Modifier.padding(horizontal = 32.dp),
-                text = "No matching messages found in the device inbox.",
-                style = UI.typo.b2.style(
-                    color = UI.colors.gray,
-                    fontWeight = FontWeight.Medium,
-                ),
-            )
-            Spacer(Modifier.height(20.dp))
-            return@IvyModal
-        }
-
-        Column(
-            modifier = Modifier.padding(horizontal = 24.dp),
-        ) {
-            bodies.forEachIndexed { idx, body ->
-                if (idx > 0) HrDivider()
-                MatchingMessageRow(body = body)
+                    .background(UI.colors.pure)
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+                    .navigationBarsPadding(),
+            ) {
+                if (canLoadMore) {
+                    IvyOutlinedButton(
+                        text = "Load 10 more",
+                        iconStart = null,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = onLoadMore,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+                IvyButton(
+                    text = "Close",
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = dismiss,
+                )
             }
         }
-
-        if (canLoadMore) {
-            Spacer(Modifier.height(16.dp))
-            IvyOutlinedButton(
-                text = "Load 10 more",
-                iconStart = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp),
-                onClick = onLoadMore,
-            )
-        }
-
-        Spacer(Modifier.height(24.dp))
     }
 }
 

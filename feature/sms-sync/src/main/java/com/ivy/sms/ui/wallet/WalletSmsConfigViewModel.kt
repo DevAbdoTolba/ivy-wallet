@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.ivy.sms.data.PendingReviewItemRepository
 import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.data.SmsWatermarkPreferences
+import com.ivy.sms.domain.JustLinkedSignal
 import com.ivy.sms.domain.model.SyncResult
 import com.ivy.sms.domain.model.SyncTrigger
 import com.ivy.sms.domain.usecase.ScanInboxUseCase
@@ -34,6 +35,7 @@ class WalletSmsConfigViewModel @Inject constructor(
     private val watermarks: SmsWatermarkPreferences,
     private val syncSms: SyncSmsUseCase,
     private val scanInbox: ScanInboxUseCase,
+    private val justLinked: JustLinkedSignal,
 ) : ComposeViewModel<WalletSmsConfigViewState, Unit>() {
 
     private var state by mutableStateOf(WalletSmsConfigViewState())
@@ -67,12 +69,19 @@ class WalletSmsConfigViewModel @Inject constructor(
                     val link = senderRepo.findByAccountId(walletId).getOrNull()?.firstOrNull()
                     Timber.d("WalletSmsConfig load(): link=$link")
                     val pending = pendingRepo.count().getOrNull() ?: 0
+                    // One-shot: if the user just finished linking THIS wallet,
+                    // pop the sync-period sheet on first composition so they
+                    // don't have to dig for the Sync now button. Consumes the
+                    // signal so refreshing the screen later doesn't re-pop.
+                    val popSheet = justLinked.signal.value == walletId
+                    if (popSheet) justLinked.consume()
                     state = state.copy(
                         walletName = account.name.value,
                         linkedSender = link?.senderId,
                         pendingCount = pending,
                         lastSyncStatus = formatLastSyncStatus(link?.watermark),
                         loaded = true,
+                        autoOpenSyncSheet = state.autoOpenSyncSheet || popSheet,
                     )
                     Timber.d("WalletSmsConfig load(): state updated, linkedSender=${state.linkedSender}")
                 }
@@ -138,6 +147,12 @@ class WalletSmsConfigViewModel @Inject constructor(
                 state = state.copy(syncing = false, error = "sync crashed: ${t.message}")
             }
         }
+    }
+
+    /** Called by the screen once it has popped the sync-period sheet so
+     *  follow-up state changes don't re-open it on every recomposition. */
+    fun consumeAutoOpenSyncSheet() {
+        if (state.autoOpenSyncSheet) state = state.copy(autoOpenSyncSheet = false)
     }
 
     fun unlink() {

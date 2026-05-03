@@ -89,8 +89,49 @@ private fun WalletSmsConfigContent(
         onDispose { lifecycle.removeObserver(observer) }
     }
 
+    // Live read of wallet name + linked sender + pending count straight from
+    // the DAOs into Compose state. Needed because NavigationRoot clears the
+    // ViewModelStore on every screen change, so the VM-side state would
+    // otherwise be empty for ~hundreds of ms after every back-navigation
+    // and the user would see a loading card when the data is right there.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val ep = remember(context) {
+        dagger.hilt.android.EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            WalletConfigDataEntryPoint::class.java,
+        )
+    }
+    val liveData by androidx.compose.runtime.produceState<WalletLiveData?>(
+        initialValue = null,
+        key1 = walletId,
+        key2 = state.syncing, // re-fetch right after a sync completes
+    ) {
+        try {
+            val acct = ep.accountRepository().findById(walletId)
+            val link = ep.senderLinkRepository()
+                .findByAccountId(walletId)
+                .getOrNull()
+                ?.firstOrNull()
+            val pendingCount = ep.pendingRepository().count().getOrNull() ?: 0
+            value = WalletLiveData(
+                walletName = acct?.name?.value.orEmpty(),
+                linkedSender = link?.senderId,
+                lastSyncStatus = formatLastSyncStatus(link?.watermark),
+                pendingCount = pendingCount,
+            )
+        } catch (t: Throwable) {
+            timber.log.Timber.e(t, "WalletSmsConfig live load failed")
+        }
+    }
+
     var showPeriodPicker by remember { mutableStateOf(false) }
     var showUnlinkConfirm by remember { mutableStateOf(false) }
+
+    val displayWalletName = liveData?.walletName ?: state.walletName
+    val displayLinkedSender = liveData?.linkedSender ?: state.linkedSender
+    val displayLastSync = liveData?.lastSyncStatus ?: state.lastSyncStatus
+    val displayPendingCount = liveData?.pendingCount ?: state.pendingCount
+    val isLoading = liveData == null && !state.loaded
 
     Box(
         modifier = Modifier
@@ -116,7 +157,7 @@ private fun WalletSmsConfigContent(
                         ),
                     )
                     Text(
-                        text = state.walletName.ifBlank { "this wallet" },
+                        text = displayWalletName.ifBlank { "this wallet" },
                         style = UI.typo.c.style(
                             color = UI.colors.gray,
                             fontWeight = FontWeight.SemiBold,
@@ -134,15 +175,9 @@ private fun WalletSmsConfigContent(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (!state.loaded) {
-                    // First load on this VM hasn't returned yet — usually only
-                    // a few hundred ms but Compose composes this branch
-                    // immediately on back-navigation (the navigation root
-                    // clears the VM store on every screen change), so without
-                    // this gate the user briefly sees "No SMS chat is linked
-                    // yet" even when the wallet IS linked.
+                if (isLoading) {
                     LoadingCard()
-                } else if (state.linkedSender == null) {
+                } else if (displayLinkedSender == null) {
                     EmptyLinkCard(
                         onLink = {
                             nav.navigateTo(WalletSmsLinkScreen(walletId.value.toString()))
@@ -150,7 +185,9 @@ private fun WalletSmsConfigContent(
                     )
                 } else {
                     LinkedSenderCard(
-                        state = state,
+                        senderId = displayLinkedSender,
+                        lastSyncStatus = displayLastSync,
+                        syncing = state.syncing,
                         onSyncNow = { showPeriodPicker = true },
                     )
 
@@ -169,8 +206,8 @@ private fun WalletSmsConfigContent(
                             onClick = { nav.navigateTo(SmsExtractionScreen) },
                         )
                         IvyOutlinedButton(
-                            text = if (state.pendingCount > 0) {
-                                "Review (${state.pendingCount})"
+                            text = if (displayPendingCount > 0) {
+                                "Review ($displayPendingCount)"
                             } else {
                                 "Review"
                             },
@@ -219,15 +256,34 @@ private fun WalletSmsConfigContent(
         }
 
         UnlinkConfirmModal(
-            visible = showUnlinkConfirm && state.linkedSender != null,
-            walletName = state.walletName.ifBlank { "this wallet" },
-            senderId = state.linkedSender ?: "",
+            visible = showUnlinkConfirm && displayLinkedSender != null,
+            walletName = displayWalletName.ifBlank { "this wallet" },
+            senderId = displayLinkedSender ?: "",
             dismiss = { showUnlinkConfirm = false },
             onConfirm = {
                 showUnlinkConfirm = false
                 viewModel.unlink()
             },
         )
+    }
+}
+
+private data class WalletLiveData(
+    val walletName: String,
+    val linkedSender: String?,
+    val lastSyncStatus: String,
+    val pendingCount: Int,
+)
+
+private fun formatLastSyncStatus(watermark: java.time.Instant?): String {
+    if (watermark == null) return "Never synced"
+    val ago = java.time.Duration.between(watermark, java.time.Instant.now())
+    val minutes = ago.toMinutes()
+    return when {
+        minutes < 1 -> "Last sync: just now"
+        minutes < 60 -> "Last sync: $minutes min ago"
+        minutes < 1440 -> "Last sync: ${minutes / 60} h ago"
+        else -> "Last sync: ${minutes / 1440} d ago"
     }
 }
 
@@ -295,7 +351,9 @@ private fun EmptyLinkCard(onLink: () -> Unit) {
 
 @Composable
 private fun LinkedSenderCard(
-    state: WalletSmsConfigViewState,
+    senderId: String,
+    lastSyncStatus: String,
+    syncing: Boolean,
     onSyncNow: () -> Unit,
 ) {
     Column(
@@ -314,7 +372,7 @@ private fun LinkedSenderCard(
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            text = state.linkedSender.orEmpty(),
+            text = senderId,
             style = UI.typo.h2.style(
                 color = UI.colors.pureInverse,
                 fontWeight = FontWeight.ExtraBold,
@@ -322,7 +380,7 @@ private fun LinkedSenderCard(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = state.lastSyncStatus,
+            text = lastSyncStatus,
             style = UI.typo.c.style(
                 color = UI.colors.gray,
                 fontWeight = FontWeight.SemiBold,
@@ -330,9 +388,9 @@ private fun LinkedSenderCard(
         )
         Spacer(Modifier.height(20.dp))
         IvyButton(
-            text = if (state.syncing) "Syncing…" else "Sync now",
+            text = if (syncing) "Syncing…" else "Sync now",
             modifier = Modifier.fillMaxWidth(),
-            enabled = !state.syncing,
+            enabled = !syncing,
             onClick = onSyncNow,
         )
     }

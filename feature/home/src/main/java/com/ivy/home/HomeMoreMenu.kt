@@ -591,9 +591,10 @@ private fun QuickAccess(
                 ).pendingReviewItemRepository().observeCount()
             }.collectAsState(initial = 0)
 
-            MoreMenuButton(
+            MoreMenuButtonWithBadge(
                 icon = R.drawable.home_more_menu_sms_templates,
-                label = if (pendingCount > 0) "Review ($pendingCount)" else "Review",
+                label = "Review",
+                badgeCount = pendingCount,
             ) {
                 nav.navigateTo(com.ivy.navigation.PendingReviewScreen)
             }
@@ -646,6 +647,75 @@ private fun MoreMenuButton(
                 fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.Center
             )
+        )
+    }
+}
+
+/**
+ * Same shape as [MoreMenuButton] but with a small red circular badge over
+ * the top-right of the icon when [badgeCount] > 0. Mirrors the system
+ * notification-badge UX so the user can tell at a glance "X unreviewed
+ * SMS still need attention" without parsing the label.
+ */
+@Composable
+private fun MoreMenuButtonWithBadge(
+    @DrawableRes icon: Int,
+    label: String,
+    badgeCount: Int,
+    backgroundColor: Color = UI.colors.pure,
+    tint: Color = UI.colors.pureInverse,
+    expandPadding: Dp = 14.dp,
+    onClick: () -> Unit,
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        androidx.compose.foundation.layout.Box(contentAlignment = Alignment.TopEnd) {
+            CircleButtonFilled(
+                icon = icon,
+                backgroundColor = backgroundColor,
+                tint = tint,
+                clickAreaPadding = expandPadding,
+                onClick = onClick,
+            )
+            if (badgeCount > 0) {
+                val text = if (badgeCount > 99) "99+" else badgeCount.toString()
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .padding(top = 2.dp, end = 2.dp)
+                        .defaultMinSize(minWidth = 20.dp, minHeight = 20.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(com.ivy.wallet.ui.theme.Red)
+                        .border(
+                            width = 2.dp,
+                            color = UI.colors.pure,
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = text,
+                        style = UI.typo.c.style(
+                            color = Color.White,
+                            fontWeight = FontWeight.ExtraBold,
+                            textAlign = TextAlign.Center,
+                        ),
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Text(
+            modifier = Modifier
+                .defaultMinSize(minWidth = 92.dp)
+                .clickableNoIndication(rememberInteractionSource()) { onClick() },
+            text = label,
+            style = UI.typo.c.style(
+                color = UI.colors.pureInverse,
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center,
+            ),
         )
     }
 }

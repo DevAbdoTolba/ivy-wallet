@@ -45,14 +45,23 @@ class DrainParser @Inject constructor() {
         val leaf = descend(tokens, createIfMissing = true)
         val best = bestMatch(leaf, tokens)
         if (best != null) {
-            val merged = mergeTemplates(best.templatePattern, tokens)
-            // Refresh examples for any wildcard slot that doesn't have a captured
-            // value yet.
+            // mergeTemplates threads the candidate's rawTokens through so it can
+            // tell digit wildcards apart from word wildcards: digit wildcards
+            // are NEVER collapsed (each digit gets its own slot — this is what
+            // keeps "Balance 416.44" mappable when the same template also has
+            // amount + fee digits earlier in the body), while consecutive
+            // non-digit mismatches still collapse into one slot to avoid
+            // bloating the pattern with merchant-name churn.
+            val (merged, mergedExamples) = mergeTemplates(best.templatePattern, tokens, rawTokens)
             val updatedExamples = best.exampleValues.toMutableMap()
-            for (i in merged.indices) {
-                if (merged[i] == WILDCARD_TOKEN && i !in updatedExamples) {
-                    val raw = rawTokens.getOrNull(i) ?: continue
-                    updatedExamples[i] = raw
+            for ((idx, raw) in mergedExamples) {
+                // Prefer existing example unless it's blank or non-digit (the
+                // latter happens when an earlier merge captured the wrong raw
+                // token because of position misalignment). Replacing with a
+                // digit-bearing example heals the mapping screen.
+                val current = updatedExamples[idx]
+                if (current.isNullOrBlank() || (digitChar.containsMatchIn(raw) && !digitChar.containsMatchIn(current))) {
+                    updatedExamples[idx] = raw
                 }
             }
             best.templatePattern = merged
@@ -181,25 +190,48 @@ class DrainParser @Inject constructor() {
     /**
      * Merge the cluster's existing template with a new candidate message. Walks the
      * candidate token-by-token, keeping each token that ALSO appears as a stable
-     * literal in the existing template (in any position), and replacing the rest with
-     * a single collapsed `<*>` wildcard. Preserves the candidate's token order so the
-     * `exampleBody` we render later still reads naturally.
+     * literal in the existing template (in any position). Wildcards collapse for
+     * non-digit mismatches (merchant churn) but NEVER for digit-derived wildcards —
+     * each digit gets its own slot in the merged pattern so the user can map
+     * every amount, balance, fee, and date independently.
+     *
+     * Returns the merged token list AND a map of mergedIdx → candidate's raw token
+     * for every wildcard position. The caller uses that to refresh
+     * [DrainCluster.exampleValues] without the position-misalignment bug that
+     * previously stranded the third digit's example value at a non-digit raw token.
      */
-    private fun mergeTemplates(existing: List<String>, candidate: List<String>): List<String> {
+    private fun mergeTemplates(
+        existing: List<String>,
+        candidate: List<String>,
+        candidateRaw: List<String>,
+    ): Pair<List<String>, Map<Int, String>> {
         val existingLiterals = existing.filter { it != WILDCARD_TOKEN }.toSet()
         val merged = mutableListOf<String>()
-        var prevWildcard = false
-        for (tok in candidate) {
+        val examples = mutableMapOf<Int, String>()
+        var prevWildcardWasNonDigit = false
+        for ((cIdx, tok) in candidate.withIndex()) {
+            val raw = candidateRaw.getOrNull(cIdx).orEmpty()
             val stable = tok != WILDCARD_TOKEN && tok in existingLiterals
             if (stable) {
                 merged.add(tok)
-                prevWildcard = false
-            } else if (!prevWildcard) {
-                merged.add(WILDCARD_TOKEN)
-                prevWildcard = true
+                prevWildcardWasNonDigit = false
+                continue
             }
+            val isDigitWildcard = tok == WILDCARD_TOKEN && digitChar.containsMatchIn(raw)
+            if (isDigitWildcard) {
+                // Digit wildcards always get their own slot.
+                merged.add(WILDCARD_TOKEN)
+                examples[merged.size - 1] = raw
+                prevWildcardWasNonDigit = false
+            } else if (!prevWildcardWasNonDigit) {
+                // First non-digit wildcard in this run.
+                merged.add(WILDCARD_TOKEN)
+                if (raw.isNotBlank()) examples[merged.size - 1] = raw
+                prevWildcardWasNonDigit = true
+            }
+            // else: collapsed into the previous non-digit wildcard run; drop.
         }
-        return merged
+        return merged to examples
     }
 
     private fun patternToTokens(pattern: String): List<String> =

@@ -91,6 +91,8 @@ class BackupDataUseCase @Inject constructor(
 
     private val watermarkKey = longPreferencesKey("sms.watermark.epochMillis")
     private val scanLowerBoundKey = longPreferencesKey("sms.scan.period.lowerBoundEpochMillis")
+    private val reviewedTotalKey = androidx.datastore.preferences.core.intPreferencesKey("sms.review.totalResolved")
+    private val templatesMappedTotalKey = androidx.datastore.preferences.core.intPreferencesKey("sms.review.totalTemplatesMapped")
 
     suspend fun exportToFile(
         zipFileUri: Uri
@@ -134,6 +136,12 @@ class BackupDataUseCase @Inject constructor(
             val scanLowerBound = async {
                 runCatching { dataStore.data.first()[scanLowerBoundKey] }.getOrNull()
             }
+            val reviewedTotal = async {
+                runCatching { dataStore.data.first()[reviewedTotalKey] }.getOrNull()
+            }
+            val templatesMappedTotal = async {
+                runCatching { dataStore.data.first()[templatesMappedTotalKey] }.getOrNull()
+            }
 
             val completeData = IvyWalletCompleteData(
                 accounts = accounts.await(),
@@ -151,6 +159,8 @@ class BackupDataUseCase @Inject constructor(
                 senderAccountLinks = senderAccountLinks.await(),
                 smsWatermarkEpochMillis = watermark.await(),
                 smsScanLowerBoundEpochMillis = scanLowerBound.await(),
+                smsReviewedTotal = reviewedTotal.await(),
+                smsTemplatesMappedTotal = templatesMappedTotal.await(),
             )
 
             json.encodeToString(completeData)
@@ -352,6 +362,16 @@ class BackupDataUseCase @Inject constructor(
             completeData.smsWatermarkEpochMillis?.let { watermark ->
                 runCatching {
                     dataStore.edit { it[watermarkKey] = watermark }
+                }
+            }
+            completeData.smsReviewedTotal?.let { v ->
+                runCatching {
+                    dataStore.edit { it[reviewedTotalKey] = v }
+                }
+            }
+            completeData.smsTemplatesMappedTotal?.let { v ->
+                runCatching {
+                    dataStore.edit { it[templatesMappedTotalKey] = v }
                 }
             }
             completeData.smsScanLowerBoundEpochMillis?.let { lower ->

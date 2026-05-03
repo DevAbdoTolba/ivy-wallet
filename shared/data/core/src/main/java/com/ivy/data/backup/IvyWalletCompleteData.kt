@@ -48,4 +48,10 @@ data class IvyWalletCompleteData(
     val smsWatermarkEpochMillis: Long? = null,
     @SerialName("smsScanLowerBoundEpochMillis")
     val smsScanLowerBoundEpochMillis: Long? = null,
+    /** Cumulative pending-review-resolved counter shown in the review hero. */
+    @SerialName("smsReviewedTotal")
+    val smsReviewedTotal: Int? = null,
+    /** Cumulative templates-mapped counter shown in the review hero. */
+    @SerialName("smsTemplatesMappedTotal")
+    val smsTemplatesMappedTotal: Int? = null,
 )

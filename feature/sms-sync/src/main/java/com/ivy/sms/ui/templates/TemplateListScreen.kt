@@ -1,11 +1,12 @@
 package com.ivy.sms.ui.templates
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
@@ -30,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,6 +67,10 @@ import com.ivy.wallet.ui.theme.components.BackButtonType
 import com.ivy.wallet.ui.theme.components.IvyButton
 import com.ivy.wallet.ui.theme.components.IvyOutlinedButton
 import com.ivy.wallet.ui.theme.components.IvyToolbar
+import com.ivy.wallet.ui.theme.modal.IvyModal
+import com.ivy.wallet.ui.theme.modal.ModalTitle
+import kotlinx.collections.immutable.ImmutableList
+import java.util.UUID
 
 @Composable
 fun TemplateListScreen(
@@ -140,11 +147,17 @@ fun TemplateListScreen(
                         }
                         if (isOpen) {
                             items(rows, key = { it.id.value }) { row ->
+                                // Kick off a Jaccard preload on first compose so the row
+                                // can show the accurate count next to "Show messages"
+                                // without the user needing to tap it.
+                                LaunchedEffect(row.id) {
+                                    viewModel.onEvent(TemplateListEvent.PreloadMatching(row.id))
+                                }
                                 TemplateRow(
                                     row = row,
-                                    expanded = row.id in state.expandedTemplateIds,
-                                    onToggleExpand = {
-                                        viewModel.onEvent(TemplateListEvent.ToggleTemplateExpanded(row.id))
+                                    displayCount = state.displayCountByTemplate[row.id] ?: row.matchCount,
+                                    onShowMatching = {
+                                        viewModel.onEvent(TemplateListEvent.OpenMatching(row.id))
                                     },
                                     onClick = {
                                         viewModel.onEvent(TemplateListEvent.TemplateClicked(row.id))
@@ -158,6 +171,30 @@ fun TemplateListScreen(
                     }
                 }
             }
+        }
+
+        // Modal popup for "Show N messages". Lives in BoxScope so it can
+        // overlay the screen with the project's standard modal animation.
+        val activeId = state.matchingModalTemplate
+        val activeRow = activeId?.let { id -> state.templates.firstOrNull { it.id == id } }
+        if (activeRow != null) {
+            val all = activeRow.matchingMessages
+            val capped = all.take(state.matchingModalLimit)
+            val canLoadMore = all.size > state.matchingModalLimit
+            MatchingMessagesModal(
+                visible = true,
+                templateName = activeRow.name?.takeIf { it.isNotBlank() },
+                bodies = capped,
+                totalCount = all.size,
+                loading = activeRow.matchingMessagesLoading,
+                canLoadMore = canLoadMore,
+                onLoadMore = {
+                    viewModel.onEvent(TemplateListEvent.LoadMoreMatching)
+                },
+                dismiss = {
+                    viewModel.onEvent(TemplateListEvent.CloseMatching)
+                },
+            )
         }
     }
 }
@@ -295,8 +332,8 @@ private fun EmptyState() {
 @Composable
 private fun TemplateRow(
     row: TemplateRowViewState,
-    expanded: Boolean,
-    onToggleExpand: () -> Unit,
+    displayCount: Int,
+    onShowMatching: () -> Unit,
     onClick: () -> Unit,
     onIgnoreForever: () -> Unit,
 ) {
@@ -334,30 +371,22 @@ private fun TemplateRow(
         Row(verticalAlignment = Alignment.CenterVertically) {
             StateBadge(row.state)
             Spacer(Modifier.weight(1f))
-            // Single-message templates: render an invisible spacer the same
-            // height as the "Show N messages" toggle so every template card
-            // has the same vertical footprint. Tapping doesn't do anything
-            // (the example body shown above IS the only matching message),
-            // and we silently hide the link rather than say "Show 1 message"
-            // and have expansion show the very same text.
-            if (row.matchCount > 1) {
+            // Single-match templates: invisible spacer keeps the card layout
+            // uniform with multi-match rows (the example body shown above IS
+            // the only matching message, so a "Show 1 message" link would
+            // just open a modal with the same text the user is already
+            // looking at).
+            if (displayCount > 1) {
                 Text(
-                    text = if (expanded) "Hide messages" else "Show ${row.matchCount} messages",
+                    text = "Show $displayCount messages",
                     style = UI.typo.c.style(
                         color = Blue,
                         fontWeight = FontWeight.Bold,
                     ),
-                    modifier = Modifier.clickable(onClick = onToggleExpand),
+                    modifier = Modifier.clickable(onClick = onShowMatching),
                 )
             } else {
                 Spacer(Modifier.height(20.dp))
-            }
-        }
-
-        AnimatedVisibility(visible = expanded && row.matchCount > 1) {
-            Column {
-                Spacer(Modifier.height(12.dp))
-                MatchingMessages(row)
             }
         }
 
@@ -531,59 +560,131 @@ private fun GroupHeader(
     }
 }
 
+/**
+ * Modal popup that lists every matching message for a template, paginated
+ * 10 at a time. Replaces the inline expand row — the previous design
+ * inflated the template card and made the list hard to scan once it grew
+ * beyond a few items. Uses the project's standard `IvyModal` so the look
+ * matches the unlink confirmation, role picker, etc.
+ *
+ * The "Load 10 more" button reveals the next page; once everything is
+ * shown the button hides itself. A 1px separator (same hairline used in
+ * the sender-picker batch markers) sits between rows so the wall of SMS
+ * text stays visually parsable.
+ */
 @Composable
-private fun MatchingMessages(row: TemplateRowViewState) {
-    if (row.matchingMessagesLoading) {
-        LinearProgressIndicator(
-            modifier = Modifier.fillMaxWidth(),
-            color = Blue,
-            trackColor = UI.colors.pure,
-        )
-        return
-    }
-    if (row.matchingMessages.isEmpty()) {
+private fun BoxScope.MatchingMessagesModal(
+    visible: Boolean,
+    templateName: String?,
+    bodies: ImmutableList<String>,
+    totalCount: Int,
+    loading: Boolean,
+    canLoadMore: Boolean,
+    onLoadMore: () -> Unit,
+    dismiss: () -> Unit,
+) {
+    val modalId = remember(templateName, totalCount) { UUID.randomUUID() }
+    val scrollState: ScrollState = rememberScrollState()
+
+    IvyModal(
+        id = modalId,
+        visible = visible,
+        dismiss = dismiss,
+        scrollState = scrollState,
+        PrimaryAction = {
+            IvyButton(
+                text = "Close",
+                onClick = dismiss,
+            )
+        },
+    ) {
+        Spacer(Modifier.height(32.dp))
+        ModalTitle(text = templateName?.takeIf { it.isNotBlank() } ?: "Matching messages")
+        Spacer(Modifier.height(8.dp))
         Text(
-            text = "No matching messages found in the device inbox.",
-            style = UI.typo.c.style(
-                color = UI.colors.gray,
-                fontWeight = FontWeight.SemiBold,
-            ),
-        )
-        return
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            text = "MATCHING MESSAGES",
+            modifier = Modifier.padding(horizontal = 32.dp),
+            text = "${bodies.size} of $totalCount shown",
             style = UI.typo.c.style(
                 color = UI.colors.gray,
                 fontWeight = FontWeight.Bold,
             ),
         )
-        for (body in row.matchingMessages) {
-            Box(
+        Spacer(Modifier.height(16.dp))
+
+        if (loading && bodies.isEmpty()) {
+            LinearProgressIndicator(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(UI.shapes.r2)
-                    .background(UI.colors.pure)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-            ) {
-                CompositionLocalProvider(LocalLayoutDirection provides directionFor(body)) {
-                    Text(
-                        text = annotateBody(
-                            body = body,
-                            pattern = row.pattern,
-                            rolesByPosition = row.wildcardRolesByPosition,
-                            defaultColor = UI.colors.pureInverse,
-                        ),
-                        style = UI.typo.c.style(
-                            color = UI.colors.pureInverse,
-                            fontWeight = FontWeight.Medium,
-                        ),
-                    )
-                }
+                    .padding(horizontal = 32.dp),
+                color = Blue,
+                trackColor = UI.colors.medium,
+            )
+            Spacer(Modifier.height(20.dp))
+            return@IvyModal
+        }
+        if (bodies.isEmpty()) {
+            Text(
+                modifier = Modifier.padding(horizontal = 32.dp),
+                text = "No matching messages found in the device inbox.",
+                style = UI.typo.b2.style(
+                    color = UI.colors.gray,
+                    fontWeight = FontWeight.Medium,
+                ),
+            )
+            Spacer(Modifier.height(20.dp))
+            return@IvyModal
+        }
+
+        Column(
+            modifier = Modifier.padding(horizontal = 24.dp),
+        ) {
+            bodies.forEachIndexed { idx, body ->
+                if (idx > 0) HrDivider()
+                MatchingMessageRow(body = body)
             }
         }
+
+        if (canLoadMore) {
+            Spacer(Modifier.height(16.dp))
+            IvyOutlinedButton(
+                text = "Load 10 more",
+                iconStart = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp),
+                onClick = onLoadMore,
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
     }
+}
+
+@Composable
+private fun MatchingMessageRow(body: String) {
+    CompositionLocalProvider(LocalLayoutDirection provides directionFor(body)) {
+        Text(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            text = body,
+            style = UI.typo.b2.style(
+                color = UI.colors.pureInverse,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
+    }
+}
+
+/** Hairline separator — matches the batch dividers in the sender picker. */
+@Composable
+private fun HrDivider() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(UI.colors.pureInverse.copy(alpha = 0.06f)),
+    )
 }
 
 private fun annotatePreview(row: TemplateRowViewState, defaultColor: Color): AnnotatedString {

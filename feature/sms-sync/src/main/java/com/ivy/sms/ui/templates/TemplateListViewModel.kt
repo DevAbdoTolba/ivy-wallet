@@ -37,9 +37,12 @@ class TemplateListViewModel @Inject constructor(
     private var onPending: (() -> Unit)? = null
 
     private var expandedGroup by mutableStateOf<TemplateGroupKey?>(TemplateGroupKey.Expense)
-    private var expandedTemplateIds by mutableStateOf<Set<SmsTemplateId>>(emptySet())
     private var matchingByTemplate by mutableStateOf<Map<SmsTemplateId, List<String>>>(emptyMap())
     private var loadingTemplateIds by mutableStateOf<Set<SmsTemplateId>>(emptySet())
+    private var displayCounts by mutableStateOf<Map<SmsTemplateId, Int>>(emptyMap())
+    private var matchingModalTemplate by mutableStateOf<SmsTemplateId?>(null)
+    private var matchingModalLimit by mutableStateOf(MATCHING_MODAL_PAGE_SIZE)
+    private val preloadedIds = mutableSetOf<SmsTemplateId>()
 
     fun setNavigators(
         onTemplate: (SmsTemplateId) -> Unit,
@@ -71,7 +74,9 @@ class TemplateListViewModel @Inject constructor(
             scanProgress = progress.value,
             pendingReviewCount = pendingCount.value,
             expandedGroup = expandedGroup,
-            expandedTemplateIds = expandedTemplateIds,
+            displayCountByTemplate = displayCounts,
+            matchingModalTemplate = matchingModalTemplate,
+            matchingModalLimit = matchingModalLimit,
         )
     }
 
@@ -84,17 +89,37 @@ class TemplateListViewModel @Inject constructor(
             is TemplateListEvent.ToggleGroup -> {
                 expandedGroup = if (expandedGroup == event.group) null else event.group
             }
-            is TemplateListEvent.ToggleTemplateExpanded -> toggleTemplate(event.id)
+            is TemplateListEvent.OpenMatching -> openMatching(event.id)
+            TemplateListEvent.CloseMatching -> {
+                matchingModalTemplate = null
+                matchingModalLimit = MATCHING_MODAL_PAGE_SIZE
+            }
+            TemplateListEvent.LoadMoreMatching -> {
+                matchingModalLimit += MATCHING_MODAL_PAGE_SIZE
+            }
+            is TemplateListEvent.PreloadMatching -> preloadMatching(event.id)
         }
     }
 
-    private fun toggleTemplate(id: SmsTemplateId) {
-        if (id in expandedTemplateIds) {
-            expandedTemplateIds = expandedTemplateIds - id
-            return
-        }
-        expandedTemplateIds = expandedTemplateIds + id
-        if (matchingByTemplate.containsKey(id)) return
+    private fun openMatching(id: SmsTemplateId) {
+        matchingModalTemplate = id
+        matchingModalLimit = MATCHING_MODAL_PAGE_SIZE
+        if (id !in matchingByTemplate) loadMatching(id)
+    }
+
+    /**
+     * Fire-and-forget background load that lets each row show the accurate
+     * Jaccard match count next to "Show messages" without the user needing
+     * to tap. Skips ids we've already kicked off so repeated row recompositions
+     * don't pile up duplicate launches.
+     */
+    private fun preloadMatching(id: SmsTemplateId) {
+        if (!preloadedIds.add(id)) return
+        if (id in matchingByTemplate) return
+        loadMatching(id)
+    }
+
+    private fun loadMatching(id: SmsTemplateId) {
         loadingTemplateIds = loadingTemplateIds + id
         viewModelScope.launch {
             val tpl = templateRepo.findById(id).getOrNull()
@@ -104,6 +129,7 @@ class TemplateListViewModel @Inject constructor(
                 emptyList()
             }
             matchingByTemplate = matchingByTemplate + (id to bodies)
+            displayCounts = displayCounts + (id to bodies.size)
             loadingTemplateIds = loadingTemplateIds - id
         }
     }

@@ -23,6 +23,9 @@ data class SenderPickerViewState(
     val saving: Boolean = false,
     val error: String? = null,
     val saved: Boolean = false,
+    /** Set when the wallet already has a sender linked. The screen uses this to
+     *  bounce the user out of the picker (no point re-linking). */
+    val alreadyLinked: Boolean = false,
 ) {
     val visibleSenders: List<SenderRowViewState>
         get() = allSenders.take(visibleCount)

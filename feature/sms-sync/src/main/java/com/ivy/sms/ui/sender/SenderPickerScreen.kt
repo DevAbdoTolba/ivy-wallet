@@ -79,6 +79,13 @@ private fun SenderPickerContent(
     if (state.saved) {
         LaunchedEffect(Unit) { onSaved() }
     }
+    // The picker is locked once the wallet has a sender — bouncing the user
+    // back avoids the "I added a wrong sender, now I'm stuck on UNIQUE
+    // constraint errors" dead-end. They have to unlink from the config view
+    // first to reach this screen again.
+    if (state.alreadyLinked) {
+        LaunchedEffect(Unit) { onSaved() }
+    }
 
     var typed by remember(state.typed) {
         mutableStateOf(selectEndTextFieldValue(state.typed))

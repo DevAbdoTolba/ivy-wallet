@@ -134,7 +134,15 @@ private fun WalletSmsConfigContent(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (state.linkedSender == null) {
+                if (!state.loaded) {
+                    // First load on this VM hasn't returned yet — usually only
+                    // a few hundred ms but Compose composes this branch
+                    // immediately on back-navigation (the navigation root
+                    // clears the VM store on every screen change), so without
+                    // this gate the user briefly sees "No SMS chat is linked
+                    // yet" even when the wallet IS linked.
+                    LoadingCard()
+                } else if (state.linkedSender == null) {
                     EmptyLinkCard(
                         onLink = {
                             nav.navigateTo(WalletSmsLinkScreen(walletId.value.toString()))
@@ -219,6 +227,34 @@ private fun WalletSmsConfigContent(
                 showUnlinkConfirm = false
                 viewModel.unlink()
             },
+        )
+    }
+}
+
+@Composable
+private fun LoadingCard() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(UI.shapes.r4)
+            .background(UI.colors.medium)
+            .padding(20.dp),
+    ) {
+        Text(
+            text = "Loading…",
+            style = UI.typo.b1.style(
+                color = UI.colors.gray,
+                fontWeight = FontWeight.SemiBold,
+            ),
+        )
+        Spacer(Modifier.height(10.dp))
+        androidx.compose.material3.LinearProgressIndicator(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(UI.shapes.rFull),
+            color = com.ivy.wallet.ui.theme.Green,
+            trackColor = UI.colors.pure,
         )
     }
 }

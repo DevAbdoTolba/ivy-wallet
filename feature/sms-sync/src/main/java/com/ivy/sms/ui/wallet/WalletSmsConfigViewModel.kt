@@ -72,6 +72,7 @@ class WalletSmsConfigViewModel @Inject constructor(
                         linkedSender = link?.senderId,
                         pendingCount = pending,
                         lastSyncStatus = formatLastSyncStatus(link?.watermark),
+                        loaded = true,
                     )
                     Timber.d("WalletSmsConfig load(): state updated, linkedSender=${state.linkedSender}")
                 }

@@ -46,12 +46,12 @@ class PendingReviewViewModel @Inject constructor(
      * the messages that affect THAT wallet, separate from the global
      * "Review all" queue.
      */
-    private var walletFilter by mutableStateOf<com.ivy.data.model.AccountId?>(null)
+    private var activeWalletFilter by mutableStateOf<com.ivy.data.model.AccountId?>(null)
     private var walletSenders by mutableStateOf<Set<String>?>(null)
 
     fun setWalletFilter(walletId: com.ivy.data.model.AccountId?) {
-        if (walletFilter == walletId) return
-        walletFilter = walletId
+        if (activeWalletFilter == walletId) return
+        activeWalletFilter = walletId
         if (walletId == null) {
             walletSenders = null
             return
@@ -141,7 +141,7 @@ class PendingReviewViewModel @Inject constructor(
             items = rows.ifEmpty { persistentListOf() },
             reviewedTotal = reviewed.value,
             templatesMappedTotal = mapped.value,
-            scopedToWallet = walletFilter != null,
+            scopedToWallet = activeWalletFilter != null,
         )
     }
 

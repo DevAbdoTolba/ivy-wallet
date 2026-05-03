@@ -65,11 +65,16 @@ class MapTemplateUseCase @Inject constructor(
 
         templateRepo.upsert(updated).onLeft { return it.left() }
 
-        // Drain any queued pending items from the SAME SENDER (not just same
-        // templateId). Drain may have clustered the user's existing SMS into a
-        // separate template, so the just-mapped roles can resolve items that
-        // never had this templateId. extractWildcardValues returns null for
-        // bodies that don't actually align, so this can't mis-route.
+        // Drain any queued pending items from the SAME SENDER. Use EACH item's
+        // OWN template (re-fetched to pick up any state change made above for
+        // the just-mapped one) — earlier this used `updated` for everything,
+        // which silently failed for items belonging to OTHER templates from
+        // the same sender. Concretely: a Vodafone Cash sender produces both
+        // "تم استلام …" (income) and "تم تحويل …" (transfer) clusters because
+        // their first three stable tokens differ; mapping the income template
+        // can't possibly route a transfer message via that pattern, so the
+        // transfer items stayed pending and the user said "the transfer
+        // message wasn't even read".
         val pending = pendingRepo.findAll().getOrNull().orEmpty()
             .filter { it.sms.senderId == updated.senderIdHint }
         if (pending.isEmpty()) return MapTemplateResult(0).right()
@@ -79,7 +84,12 @@ class MapTemplateUseCase @Inject constructor(
 
         var converted = 0
         for (item in pending) {
-            val outcome = route(item.sms, updated, senderToAccount).getOrNull() ?: continue
+            val itemTemplate = if (item.template.id == updated.id) {
+                updated
+            } else {
+                templateRepo.findById(item.template.id).getOrNull() ?: continue
+            }
+            val outcome = route(item.sms, itemTemplate, senderToAccount).getOrNull() ?: continue
             if (outcome is RouteOutcome.Created) {
                 pendingRepo.dismiss(item.id)
                 converted++

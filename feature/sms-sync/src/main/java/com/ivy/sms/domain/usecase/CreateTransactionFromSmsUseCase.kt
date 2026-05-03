@@ -71,30 +71,40 @@ class CreateTransactionFromSmsUseCase @Inject constructor(
             ?: message.timestamp
 
         // Title resolution (optional, never blank):
-        //   1. User-set template name (FR-024).
-        //   2. Captured merchant text — useful when no name is set.
-        //   3. First few non-numeric words of the SMS body — last-resort fallback
-        //      so the transactions list never shows a blank row.
-        // Merchant ALSO flows to the description as "to/from <merchant>" so the
-        // same merchant string appears in both places when both apply.
+        //   1. User-set template name (FR-024) — explicit always wins.
+        //   2. First few non-numeric words of the SMS body — keeps the
+        //      transaction title readable AND distinct from the merchant
+        //      that goes into the description on the next line. The user
+        //      asked for this swap: "if there is a merchant selected, the
+        //      title should be the first words of the message".
+        //   3. Captured merchant text — only used when there's no body
+        //      (legacy templates without a stored example). Should rarely fire.
         val titleSource = template.name?.takeIf { it.isNotBlank() }
-            ?: merchantText
             ?: firstWordsOf(message.body)
+            ?: merchantText
         val title = titleSource?.let(NotBlankTrimmedString::from)?.getOrNull()
 
-        // Merchant flows to description as "to <merchant>" / "from <merchant>"
-        // depending on the amount role — matches the reading direction the user
-        // sees on the transactions list ("Spent X to Cafe", "Received X from Bob").
+        // Description: line 1 is "to/from <merchant>" if a merchant slot was
+        // mapped, line 2 is "Fee: <amount>" if a transaction-fee slot was
+        // mapped. Keeps the wallet detail panel useful at a glance — the user
+        // can see who/what the txn was for AND the fee charged without
+        // tapping into the SMS source.
         val merchantPrefix = when (amountSlot.role) {
             WildcardRole.Income -> "from"
             WildcardRole.Expense, WildcardRole.Transfer -> "to"
             else -> null
         }
-        val descriptionText = if (merchantText != null && merchantPrefix != null) {
+        val merchantLine = if (merchantText != null && merchantPrefix != null) {
             "$merchantPrefix $merchantText"
         } else {
             merchantText
         }
+        val feeLine = transactionFee
+            ?.let { AmountParser.parseAmount(it).getOrNull() }
+            ?.let { feeAmount -> "Fee: ${feeAmount.stripTrailingZeros().toPlainString()}" }
+        val descriptionText = listOfNotNull(merchantLine, feeLine)
+            .joinToString("\n")
+            .ifBlank { null }
         val description = descriptionText?.let(NotBlankTrimmedString::from)?.getOrNull()
 
         val transactionId = TransactionId(UUID.randomUUID())

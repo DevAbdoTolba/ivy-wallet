@@ -57,10 +57,10 @@ class TemplateListPaparazziTest(
             TemplateListPreview(
                 state = TemplateListViewState(
                     templates = persistentListOf(
-                        TemplateRowViewState(SmsTemplateId(UUID.randomUUID()), "Active row", TemplateState.ACTIVE, 7),
-                        TemplateRowViewState(SmsTemplateId(UUID.randomUUID()), "Unmapped 1", TemplateState.UNMAPPED, 3),
-                        TemplateRowViewState(SmsTemplateId(UUID.randomUUID()), "Unmapped 2", TemplateState.UNMAPPED, 1),
-                        TemplateRowViewState(SmsTemplateId(UUID.randomUUID()), "Pending review", TemplateState.PENDING_REVIEW, 2),
+                        previewRow("Spent 12 at Cafe", TemplateState.ACTIVE, 7),
+                        previewRow("Hello unmapped", TemplateState.UNMAPPED, 3),
+                        previewRow("Another unmapped", TemplateState.UNMAPPED, 1),
+                        previewRow("Pending shape", TemplateState.PENDING_REVIEW, 2),
                     ),
                     pendingReviewCount = 2,
                 ),
@@ -68,6 +68,16 @@ class TemplateListPaparazziTest(
         }
     }
 }
+
+private fun previewRow(body: String, state: TemplateState, matchCount: Int) =
+    TemplateRowViewState(
+        id = SmsTemplateId(UUID.randomUUID()),
+        pattern = body,
+        exampleBody = body,
+        wildcardRolesByPosition = emptyMap(),
+        state = state,
+        matchCount = matchCount,
+    )
 
 @Composable
 internal fun TemplateListPreview(state: TemplateListViewState) {
@@ -80,10 +90,10 @@ internal fun TemplateListPreview(state: TemplateListViewState) {
             Text("Scanning… ${it.processed} / ${it.total}")
         }
         if (state.templates.isEmpty()) {
-            Text("No templates yet — pull down or tap Sync to scan.")
+            Text("No templates yet — tap Sync inside the wallet to scan.")
         } else {
             state.templates.forEach { row ->
-                Text("${row.preview} — ${row.state.name} (${row.matchCount})")
+                Text("${row.exampleBody} — ${row.state.name} (${row.matchCount} matches)")
             }
         }
     }

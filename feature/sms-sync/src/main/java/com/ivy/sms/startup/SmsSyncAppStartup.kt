@@ -17,6 +17,10 @@ import javax.inject.Singleton
 interface SmsSyncAppStartup {
     val syncResult: StateFlow<SyncResult?>
     fun scheduleLaunchScan()
+    /** Fire-and-forget incremental sync triggered by the user (quick-access button).
+     *  Same incremental semantics as the launch scan — only reads SMS newer than the
+     *  last successful watermark. */
+    fun triggerManualSync()
 }
 
 @Singleton
@@ -39,6 +43,19 @@ class SmsSyncAppStartupImpl @Inject constructor(
                 )
             } catch (t: Throwable) {
                 Timber.e(t, "App-launch sync threw")
+            }
+        }
+    }
+
+    override fun triggerManualSync() {
+        applicationScope.launch {
+            try {
+                syncSms(SyncTrigger.MANUAL_MENU).fold(
+                    { Timber.w("Manual sync error: $it") },
+                    { _syncResult.value = it },
+                )
+            } catch (t: Throwable) {
+                Timber.e(t, "Manual sync threw")
             }
         }
     }

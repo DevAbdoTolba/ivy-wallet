@@ -7,4 +7,6 @@ data class SenderAccountLink(
     val senderId: String,
     val accountId: AccountId,
     val linkedAt: Instant,
+    val historicalLowerBound: Instant? = null,
+    val watermark: Instant? = null,
 )

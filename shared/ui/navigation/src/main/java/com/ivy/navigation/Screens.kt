@@ -171,3 +171,17 @@ data class SmsSourceLookupScreen(
 ) : Screen {
     override val isLegacy: Boolean = false
 }
+
+/** Per-wallet "Link SMS chat" picker — shows top-10 senders + free-text input. */
+data class WalletSmsLinkScreen(
+    val walletId: String,
+) : Screen {
+    override val isLegacy: Boolean = false
+}
+
+/** Per-wallet config surface — last-sync status, Sync now, templates, pending review. */
+data class WalletSmsConfigScreen(
+    val walletId: String,
+) : Screen {
+    override val isLegacy: Boolean = false
+}

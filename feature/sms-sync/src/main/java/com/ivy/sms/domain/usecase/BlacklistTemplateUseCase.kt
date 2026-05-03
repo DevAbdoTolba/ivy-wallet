@@ -25,11 +25,15 @@ class BlacklistTemplateUseCase @Inject constructor(
     suspend fun disable(templateId: SmsTemplateId): Either<String, Unit> {
         val template = templateRepo.findById(templateId).getOrNull()
             ?: return "TEMPLATE_NOT_FOUND".left()
-        // Disable goes back to UNMAPPED — user must re-map (per data-model.md §6 fourth rule).
+        // Disable goes back to UNMAPPED — user must re-bind roles before Tier 1
+        // can fire again (per data-model.md §6 fourth rule).
+        val resetSlots = template.wildcardSlots.map {
+            it.copy(role = com.ivy.sms.domain.model.WildcardRole.Unmapped)
+        }
         return templateRepo.upsert(
             template.copy(
                 state = TemplateState.UNMAPPED,
-                classification = null,
+                wildcardSlots = resetSlots,
             ),
         ).map { Unit }
     }

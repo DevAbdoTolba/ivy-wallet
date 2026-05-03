@@ -10,9 +10,8 @@ import androidx.compose.ui.unit.dp
 import com.google.testing.junit.testparameterinjector.TestParameter
 import com.google.testing.junit.testparameterinjector.TestParameterInjector
 import com.ivy.sms.domain.model.SmsTemplateId
-import com.ivy.sms.domain.model.TransactionClassification
 import com.ivy.sms.domain.model.WildcardId
-import com.ivy.sms.domain.model.WildcardMapping
+import com.ivy.sms.domain.model.WildcardRole
 import com.ivy.ui.testing.PaparazziScreenshotTest
 import com.ivy.ui.testing.PaparazziTheme
 import kotlinx.collections.immutable.persistentListOf
@@ -27,18 +26,18 @@ class TemplateMappingPaparazziTest(
 ) : PaparazziScreenshotTest() {
 
     @Test
-    fun mappingScreen_threeWildcards_classificationPicked() {
+    fun mappingScreen_threeWildcards_amountAndDateBound() {
         snapshot(theme) {
             TemplateMappingPreview(
                 state = TemplateMappingViewState(
                     templateId = SmsTemplateId(UUID.randomUUID()),
                     pattern = "Purchase of <*> at <*> on <*>",
+                    exampleBody = "Purchase of 12.34 at Cafe on 2026-04-28",
                     wildcards = persistentListOf(
-                        WildcardChip(WildcardId(UUID.randomUUID()), 2, WildcardMapping.Amount),
-                        WildcardChip(WildcardId(UUID.randomUUID()), 4, WildcardMapping.Merchant),
-                        WildcardChip(WildcardId(UUID.randomUUID()), 6, WildcardMapping.DateTime),
+                        WildcardChip(WildcardId(UUID.randomUUID()), 2, "12.34", WildcardRole.Expense),
+                        WildcardChip(WildcardId(UUID.randomUUID()), 4, "Cafe", WildcardRole.Merchant),
+                        WildcardChip(WildcardId(UUID.randomUUID()), 6, "2026-04-28", WildcardRole.DateOnly),
                     ),
-                    classification = TransactionClassification.EXPENSE,
                 ),
             )
         }
@@ -51,9 +50,8 @@ private fun TemplateMappingPreview(state: TemplateMappingViewState) {
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("Tap each <*> in the message")
-        Text(state.pattern)
-        state.wildcards.forEach { Text("• ${it.mapping}") }
-        Text("Classification: ${state.classification?.name ?: "—"}")
+        Text("Tap each highlighted segment in the message")
+        Text(state.exampleBody.ifBlank { state.pattern })
+        state.wildcards.forEach { Text("• ${it.exampleValue} → ${it.role}") }
     }
 }

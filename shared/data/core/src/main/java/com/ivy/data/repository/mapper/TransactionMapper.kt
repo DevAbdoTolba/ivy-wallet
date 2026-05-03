@@ -42,6 +42,8 @@ class TransactionMapper @Inject constructor(
             smsTemplateId = smsTemplateId,
             smsSourceSenderId = smsSourceSenderId,
             smsSourceTimestamp = smsSourceTimestamp,
+            smsCurrentTotal = smsCurrentTotal,
+            smsTransactionFee = smsTransactionFee,
         )
 
         val settled = dateTime != null
@@ -169,6 +171,8 @@ class TransactionMapper @Inject constructor(
             smsTemplateId = metadata.smsTemplateId,
             smsSourceSenderId = metadata.smsSourceSenderId,
             smsSourceTimestamp = metadata.smsSourceTimestamp,
+            smsCurrentTotal = metadata.smsCurrentTotal,
+            smsTransactionFee = metadata.smsTransactionFee,
             isSynced = true,
             isDeleted = false,
             id = id.value

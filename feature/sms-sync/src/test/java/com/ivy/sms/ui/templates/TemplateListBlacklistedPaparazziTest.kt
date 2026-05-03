@@ -23,8 +23,22 @@ class TemplateListBlacklistedPaparazziTest(
             TemplateListPreview(
                 state = TemplateListViewState(
                     templates = persistentListOf(
-                        TemplateRowViewState(SmsTemplateId(UUID.randomUUID()), "OTP <*>", TemplateState.BLACKLISTED, 12),
-                        TemplateRowViewState(SmsTemplateId(UUID.randomUUID()), "Spent <*>", TemplateState.ACTIVE, 7),
+                        TemplateRowViewState(
+                            id = SmsTemplateId(UUID.randomUUID()),
+                            pattern = "OTP <*>",
+                            exampleBody = "OTP 123456",
+                            wildcardRolesByPosition = emptyMap(),
+                            state = TemplateState.BLACKLISTED,
+                            matchCount = 12,
+                        ),
+                        TemplateRowViewState(
+                            id = SmsTemplateId(UUID.randomUUID()),
+                            pattern = "Spent <*>",
+                            exampleBody = "Spent 12.34",
+                            wildcardRolesByPosition = emptyMap(),
+                            state = TemplateState.ACTIVE,
+                            matchCount = 7,
+                        ),
                     ),
                 ),
             )

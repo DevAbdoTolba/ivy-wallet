@@ -75,6 +75,11 @@ data class TransactionMetadata(
     val smsTemplateId: UUID? = null,
     val smsSourceSenderId: String? = null,
     val smsSourceTimestamp: Instant? = null,
+    /** Bound by a `WildcardRole.CurrentTotal` wildcard, if any. Stored verbatim so the
+     *  raw bank-reported balance can be displayed alongside the transaction. */
+    val smsCurrentTotal: String? = null,
+    /** Bound by a `WildcardRole.TransactionFee` wildcard, if any. Stored verbatim. */
+    val smsTransactionFee: String? = null,
 )
 
 fun Transaction.getFromValue(): PositiveValue = when (this) {

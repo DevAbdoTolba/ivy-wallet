@@ -9,11 +9,13 @@ import androidx.room.PrimaryKey
 @Keep
 @Entity(
     tableName = "sender_account_link",
-    indices = [Index(value = ["accountId"])],
+    indices = [Index(value = ["accountId"], unique = true)],
 )
 data class SenderAccountLinkEntity(
     @PrimaryKey
     val senderId: String,
     val accountId: String,
     val linkedAtEpochMillis: Long,
+    val historicalLowerBoundEpochMillis: Long?,
+    val watermarkEpochMillis: Long?,
 )

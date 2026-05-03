@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ReadSmsTemplateDao {
-    @Query("SELECT * FROM sms_template")
+    @Query("SELECT * FROM sms_template ORDER BY lastSeenEpochMillis DESC")
     suspend fun findAll(): List<SmsTemplateEntity>
 
     @Query("SELECT * FROM sms_template WHERE id = :id")
@@ -16,9 +16,9 @@ interface ReadSmsTemplateDao {
     @Query("SELECT * FROM sms_template WHERE pattern = :pattern LIMIT 1")
     suspend fun findByPattern(pattern: String): SmsTemplateEntity?
 
-    @Query("SELECT * FROM sms_template WHERE state = 'ACTIVE'")
+    @Query("SELECT * FROM sms_template WHERE state = 'ACTIVE' ORDER BY lastSeenEpochMillis DESC")
     suspend fun findActive(): List<SmsTemplateEntity>
 
-    @Query("SELECT * FROM sms_template")
+    @Query("SELECT * FROM sms_template ORDER BY lastSeenEpochMillis DESC")
     fun observeAll(): Flow<List<SmsTemplateEntity>>
 }

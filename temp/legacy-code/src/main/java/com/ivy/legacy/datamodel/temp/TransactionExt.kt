@@ -40,7 +40,8 @@ fun TransactionEntity.toLegacyDomain(
     loanId = loanId,
     loanRecordId = loanRecordId,
     id = id,
-    tags = tags
+    tags = tags,
+    smsSourceDedupKey = smsSourceDedupKey,
 )
 
 fun Tag.toLegacyTag(): LegacyTag = LegacyTag(this.id.value, this.name.value)

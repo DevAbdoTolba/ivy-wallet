@@ -10,9 +10,8 @@ import com.ivy.sms.domain.model.SmsMessage
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.TemplateState
-import com.ivy.sms.domain.model.TransactionClassification
 import com.ivy.sms.domain.model.WildcardId
-import com.ivy.sms.domain.model.WildcardMapping
+import com.ivy.sms.domain.model.WildcardRole
 import com.ivy.sms.domain.model.WildcardSlot
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -33,11 +32,17 @@ class RouteSmsUseCaseTest {
     private fun template(state: TemplateState, hasAmount: Boolean = true): SmsTemplate = SmsTemplate(
         id = SmsTemplateId(UUID.randomUUID()),
         pattern = "test",
+        exampleBody = "test",
         wildcardSlots = if (hasAmount) listOf(
-            WildcardSlot(WildcardId(UUID.randomUUID()), 0, "", WildcardMapping.Amount),
+            WildcardSlot(
+                id = WildcardId(UUID.randomUUID()),
+                positionInPattern = 0,
+                contextSnippet = "",
+                exampleValue = "12.34",
+                role = WildcardRole.Expense,
+            ),
         ) else emptyList(),
         state = state,
-        classification = TransactionClassification.EXPENSE,
         senderIdHint = "TestBank",
         firstSeen = Instant.EPOCH,
         lastSeen = Instant.EPOCH,
@@ -99,5 +104,17 @@ class RouteSmsUseCaseTest {
 
         outcome.shouldBeInstanceOf<RouteOutcome.Quarantined>()
         (outcome as RouteOutcome.Quarantined).reason shouldBe QuarantineReason.AMOUNT_NOT_PARSEABLE
+    }
+
+    @Test
+    fun activeButNoAmountRole_quarantines() = runTest {
+        val tpl = template(TemplateState.ACTIVE, hasAmount = false)
+        val account = AccountId(UUID.randomUUID())
+        coEvery { pendingRepo.enqueue(any()) } returns Unit.right()
+
+        val outcome = route(message, tpl, mapOf("TestBank" to account)).getOrNull()
+
+        outcome.shouldBeInstanceOf<RouteOutcome.Quarantined>()
+        coVerify(exactly = 0) { createTransaction(any(), any(), any()) }
     }
 }

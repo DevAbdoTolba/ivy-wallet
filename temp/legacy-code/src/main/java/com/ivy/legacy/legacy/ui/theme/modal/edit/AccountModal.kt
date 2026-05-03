@@ -5,15 +5,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.ivy.data.di.SenderLinkLookupEntryPoint
+import dagger.hilt.android.EntryPointAccessors
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,6 +72,7 @@ fun BoxWithConstraintsScope.AccountModal(
     modal: AccountModalData?,
     onCreateAccount: (CreateAccountData) -> Unit,
     onEditAccount: (Account, balance: Double) -> Unit,
+    onLinkSmsChat: ((Account) -> Unit)? = null,
     dismiss: () -> Unit,
 ) {
     val account = modal?.account
@@ -196,6 +202,83 @@ fun BoxWithConstraintsScope.AccountModal(
             amountPaddingBottom = 40.dp,
         ) {
             amountModalVisible = true
+        }
+
+        // SMS sync entry point (2026-04-28 redesign): only available on existing wallets.
+        // Tapping navigates to the per-wallet sender picker / config screen at the host
+        // call site. The button label flips between "Link SMS chat" and the live linked
+        // sender so the user can see at a glance which chat feeds this wallet without
+        // having to open the config screen.
+        if (account != null && onLinkSmsChat != null) {
+            val ctx = LocalContext.current
+            // Live-observe the sender link table so re-opening the wallet edit
+            // modal AFTER linking/unlinking elsewhere shows the current state.
+            // Keying on `modal?.id` (a fresh UUID per AccountModalData instance)
+            // also forces a refresh on every reopen — the same wallet UUID
+            // alone wasn't enough since IvyModal keeps composition alive.
+            val ep = remember(ctx) {
+                EntryPointAccessors.fromApplication(
+                    ctx.applicationContext,
+                    SenderLinkLookupEntryPoint::class.java,
+                )
+            }
+            val linkedSenderId by produceState<String?>(
+                initialValue = null,
+                key1 = account.id,
+                key2 = modal?.id,
+            ) {
+                ep.readSenderAccountLinkDao().observeAll().collect { rows ->
+                    value = rows.firstOrNull { it.accountId == account.id.toString() }?.senderId
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
+                    .clip(UI.shapes.r4)
+                    .background(UI.colors.medium)
+                    .clickable { onLinkSmsChat(account) }
+                    .padding(vertical = 16.dp, horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (linkedSenderId != null) {
+                    androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "SMS sync",
+                            style = UI.typo.c.style(
+                                color = Gray,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = linkedSenderId!!,
+                            style = UI.typo.b2.style(
+                                color = UI.colors.pureInverse,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                    }
+                    Text(
+                        text = "Manage",
+                        style = UI.typo.c.style(
+                            color = Ivy,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
+                } else {
+                    Text(
+                        text = "Link SMS chat",
+                        style = UI.typo.b2.style(
+                            color = UI.colors.pureInverse,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
         }
     }
 

@@ -14,9 +14,8 @@ import com.ivy.sms.domain.model.SmsMessage
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.TemplateState
-import com.ivy.sms.domain.model.TransactionClassification
 import com.ivy.sms.domain.model.WildcardId
-import com.ivy.sms.domain.model.WildcardMapping
+import com.ivy.sms.domain.model.WildcardRole
 import com.ivy.sms.domain.model.WildcardSlot
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
@@ -42,11 +41,11 @@ class MapTemplateUseCaseTest {
     private val seedTemplate = SmsTemplate(
         id = templateId,
         pattern = "Order <*> at Cafe",
+        exampleBody = "Order 12.34 at Cafe",
         wildcardSlots = listOf(
-            WildcardSlot(wildcardId, 1, "Order <*> at", WildcardMapping.Unmapped),
+            WildcardSlot(wildcardId, 1, "Order <*> at", "12.34", WildcardRole.Unmapped),
         ),
         state = TemplateState.UNMAPPED,
-        classification = null,
         senderIdHint = "TestBank",
         firstSeen = Instant.EPOCH,
         lastSeen = Instant.EPOCH,
@@ -54,13 +53,37 @@ class MapTemplateUseCaseTest {
     )
 
     @Test
-    fun rejects_save_whenNoAmountWildcard() = runTest {
+    fun rejects_save_whenNoAmountRole() = runTest {
         coEvery { templateRepo.findById(templateId) } returns seedTemplate.right()
 
         val result = mapTemplate(
             templateId = templateId,
-            wildcardMappings = mapOf(wildcardId to WildcardMapping.Merchant),
-            classification = TransactionClassification.EXPENSE,
+            wildcardRoles = mapOf(wildcardId to WildcardRole.Merchant),
+        )
+
+        result.leftOrNull()!! shouldStartWith "VALIDATION"
+    }
+
+    @Test
+    fun rejects_save_whenMultipleAmountRoles() = runTest {
+        val secondId = WildcardId(UUID.randomUUID())
+        val twoSlot = seedTemplate.copy(
+            wildcardSlots = seedTemplate.wildcardSlots + WildcardSlot(
+                id = secondId,
+                positionInPattern = 3,
+                contextSnippet = "",
+                exampleValue = "1.0",
+                role = WildcardRole.Unmapped,
+            ),
+        )
+        coEvery { templateRepo.findById(templateId) } returns twoSlot.right()
+
+        val result = mapTemplate(
+            templateId = templateId,
+            wildcardRoles = mapOf(
+                wildcardId to WildcardRole.Income,
+                secondId to WildcardRole.Expense,
+            ),
         )
 
         result.leftOrNull()!! shouldStartWith "VALIDATION"
@@ -86,8 +109,7 @@ class MapTemplateUseCaseTest {
 
         val result = mapTemplate(
             templateId = templateId,
-            wildcardMappings = mapOf(wildcardId to WildcardMapping.Amount),
-            classification = TransactionClassification.EXPENSE,
+            wildcardRoles = mapOf(wildcardId to WildcardRole.Expense),
         )
 
         result.getOrNull()!!.convertedFromQueue shouldBe 1

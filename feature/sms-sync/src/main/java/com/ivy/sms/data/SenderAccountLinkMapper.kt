@@ -19,6 +19,8 @@ class SenderAccountLinkMapper @Inject constructor() {
             senderId = senderId,
             accountId = AccountId(accountUuid),
             linkedAt = Instant.ofEpochMilli(linkedAtEpochMillis),
+            historicalLowerBound = historicalLowerBoundEpochMillis?.let(Instant::ofEpochMilli),
+            watermark = watermarkEpochMillis?.let(Instant::ofEpochMilli),
         )
     }
 
@@ -26,5 +28,7 @@ class SenderAccountLinkMapper @Inject constructor() {
         senderId = senderId,
         accountId = accountId.value.toString(),
         linkedAtEpochMillis = linkedAt.toEpochMilli(),
+        historicalLowerBoundEpochMillis = historicalLowerBound?.toEpochMilli(),
+        watermarkEpochMillis = watermark?.toEpochMilli(),
     )
 }

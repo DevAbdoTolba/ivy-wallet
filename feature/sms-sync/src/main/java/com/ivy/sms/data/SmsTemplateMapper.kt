@@ -7,9 +7,8 @@ import com.ivy.data.db.entity.SmsTemplateEntity
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.TemplateState
-import com.ivy.sms.domain.model.TransactionClassification
 import com.ivy.sms.domain.model.WildcardId
-import com.ivy.sms.domain.model.WildcardMapping
+import com.ivy.sms.domain.model.WildcardRole
 import com.ivy.sms.domain.model.WildcardSlot
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -24,7 +23,8 @@ internal data class WildcardSlotJson(
     @SerialName("id") val id: String,
     @SerialName("positionInPattern") val positionInPattern: Int,
     @SerialName("contextSnippet") val contextSnippet: String,
-    @SerialName("mapping") val mapping: String,
+    @SerialName("exampleValue") val exampleValue: String = "",
+    @SerialName("role") val role: String,
 )
 
 class SmsTemplateMapper @Inject constructor(
@@ -40,13 +40,14 @@ class SmsTemplateMapper @Inject constructor(
         SmsTemplate(
             id = SmsTemplateId(UUID.fromString(id)),
             pattern = pattern,
+            exampleBody = exampleBody,
             wildcardSlots = slots.map { it.toDomain() },
             state = TemplateState.valueOf(state),
-            classification = classification?.let(TransactionClassification::valueOf),
             senderIdHint = senderIdHint,
             firstSeen = Instant.ofEpochMilli(firstSeenEpochMillis),
             lastSeen = Instant.ofEpochMilli(lastSeenEpochMillis),
             matchCount = matchCount,
+            name = name,
         )
     }
 
@@ -55,13 +56,14 @@ class SmsTemplateMapper @Inject constructor(
         return SmsTemplateEntity(
             id = id.value.toString(),
             pattern = pattern,
+            exampleBody = exampleBody,
             wildcardSlotsJson = jsonStr,
             state = state.name,
-            classification = classification?.name,
             senderIdHint = senderIdHint,
             firstSeenEpochMillis = firstSeen.toEpochMilli(),
             lastSeenEpochMillis = lastSeen.toEpochMilli(),
             matchCount = matchCount,
+            name = name,
         )
     }
 }
@@ -70,30 +72,44 @@ internal fun WildcardSlotJson.toDomain(): WildcardSlot = WildcardSlot(
     id = WildcardId(UUID.fromString(id)),
     positionInPattern = positionInPattern,
     contextSnippet = contextSnippet,
-    mapping = mappingFromString(mapping),
+    exampleValue = exampleValue,
+    role = roleFromString(role),
 )
 
 internal fun WildcardSlot.toJson(): WildcardSlotJson = WildcardSlotJson(
     id = id.value.toString(),
     positionInPattern = positionInPattern,
     contextSnippet = contextSnippet,
-    mapping = mapping.asString(),
+    exampleValue = exampleValue,
+    role = role.asString(),
 )
 
-internal fun WildcardMapping.asString(): String = when (this) {
-    WildcardMapping.Amount -> "Amount"
-    WildcardMapping.DateTime -> "DateTime"
-    WildcardMapping.Ignored -> "Ignored"
-    WildcardMapping.Merchant -> "Merchant"
-    WildcardMapping.Reference -> "Reference"
-    WildcardMapping.Unmapped -> "Unmapped"
+internal fun WildcardRole.asString(): String = when (this) {
+    WildcardRole.Unmapped -> "Unmapped"
+    WildcardRole.Income -> "Income"
+    WildcardRole.Expense -> "Expense"
+    WildcardRole.Transfer -> "Transfer"
+    WildcardRole.CurrentTotal -> "CurrentTotal"
+    WildcardRole.TransactionFee -> "TransactionFee"
+    WildcardRole.DateFull -> "DateFull"
+    WildcardRole.DateOnly -> "DateOnly"
+    WildcardRole.TimeOnly -> "TimeOnly"
+    WildcardRole.Merchant -> "Merchant"
+    WildcardRole.Ignored -> "Ignored"
 }
 
-internal fun mappingFromString(value: String): WildcardMapping = when (value) {
-    "Amount" -> WildcardMapping.Amount
-    "DateTime" -> WildcardMapping.DateTime
-    "Ignored" -> WildcardMapping.Ignored
-    "Merchant" -> WildcardMapping.Merchant
-    "Reference" -> WildcardMapping.Reference
-    else -> WildcardMapping.Unmapped
+internal fun roleFromString(value: String): WildcardRole = when (value) {
+    "Income" -> WildcardRole.Income
+    "Expense" -> WildcardRole.Expense
+    "Transfer" -> WildcardRole.Transfer
+    "CurrentTotal" -> WildcardRole.CurrentTotal
+    "TransactionFee" -> WildcardRole.TransactionFee
+    "DateFull" -> WildcardRole.DateFull
+    "DateOnly" -> WildcardRole.DateOnly
+    "TimeOnly" -> WildcardRole.TimeOnly
+    // Backward compat: legacy "Date" rows treated as full datetime.
+    "Date" -> WildcardRole.DateFull
+    "Merchant" -> WildcardRole.Merchant
+    "Ignored" -> WildcardRole.Ignored
+    else -> WildcardRole.Unmapped
 }

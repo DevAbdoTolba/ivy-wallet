@@ -6,9 +6,8 @@ import com.ivy.sms.domain.model.SmsMessage
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.TemplateState
-import com.ivy.sms.domain.model.TransactionClassification
 import com.ivy.sms.domain.model.WildcardId
-import com.ivy.sms.domain.model.WildcardMapping
+import com.ivy.sms.domain.model.WildcardRole
 import com.ivy.sms.domain.model.WildcardSlot
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.coVerify
@@ -29,11 +28,17 @@ class RouteSmsBlacklistTest {
         val template = SmsTemplate(
             id = SmsTemplateId(UUID.randomUUID()),
             pattern = "OTP <*>",
+            exampleBody = "OTP 12345",
             wildcardSlots = listOf(
-                WildcardSlot(WildcardId(UUID.randomUUID()), 1, "", WildcardMapping.Unmapped),
+                WildcardSlot(
+                    id = WildcardId(UUID.randomUUID()),
+                    positionInPattern = 1,
+                    contextSnippet = "",
+                    exampleValue = "12345",
+                    role = WildcardRole.Unmapped,
+                ),
             ),
             state = TemplateState.BLACKLISTED,
-            classification = TransactionClassification.EXPENSE,
             senderIdHint = "OTPService",
             firstSeen = Instant.EPOCH,
             lastSeen = Instant.EPOCH,

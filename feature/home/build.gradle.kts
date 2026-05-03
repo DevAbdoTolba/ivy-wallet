@@ -16,6 +16,7 @@ dependencies {
     implementation(projects.temp.oldDesign)
     implementation(projects.widget.addTransaction)
     implementation(projects.feature.poll.public)
+    implementation(projects.feature.smsSync)
 
     testImplementation(projects.shared.ui.testing)
 }

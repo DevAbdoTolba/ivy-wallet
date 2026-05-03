@@ -11,9 +11,8 @@ import com.ivy.sms.data.SmsWatermarkPreferences
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.TemplateState
-import com.ivy.sms.domain.model.TransactionClassification
 import com.ivy.sms.domain.model.WildcardId
-import com.ivy.sms.domain.model.WildcardMapping
+import com.ivy.sms.domain.model.WildcardRole
 import com.ivy.sms.domain.model.WildcardSlot
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
@@ -60,7 +59,7 @@ class ReprocessHistoricalUseCaseTest {
         val tplId = SmsTemplateId(UUID.randomUUID())
         coEvery { templateRepo.findById(tplId) } returns activeTemplate(tplId).right()
         coEvery { watermarks.scanLowerBound() } returns 0L.right()
-        coEvery { inbox.read(any(), any()) } returns emptyList<com.ivy.sms.data.SmsRow>().right()
+        coEvery { inbox.read(any(), any(), any()) } returns emptyList<com.ivy.sms.data.SmsRow>().right()
         coEvery { transactionRepo.findAll() } returns emptyList()
 
         val result = useCase.preview(tplId).getOrNull()!!
@@ -72,9 +71,17 @@ class ReprocessHistoricalUseCaseTest {
     private fun activeTemplate(id: SmsTemplateId): SmsTemplate = SmsTemplate(
         id = id,
         pattern = "test",
-        wildcardSlots = listOf(WildcardSlot(WildcardId(UUID.randomUUID()), 0, "", WildcardMapping.Amount)),
+        exampleBody = "test",
+        wildcardSlots = listOf(
+            WildcardSlot(
+                id = WildcardId(UUID.randomUUID()),
+                positionInPattern = 0,
+                contextSnippet = "",
+                exampleValue = "",
+                role = WildcardRole.Expense,
+            ),
+        ),
         state = TemplateState.ACTIVE,
-        classification = TransactionClassification.EXPENSE,
         senderIdHint = "TestBank",
         firstSeen = Instant.EPOCH,
         lastSeen = Instant.EPOCH,

@@ -27,7 +27,7 @@ import com.ivy.domain.db.migration.*
             spec = IvyRoomDatabase.DeleteSEMigration::class
         )
     ],
-    version = 132,
+    version = 134,
     exportSchema = true
 )
 @TypeConverters(RoomTypeConverters::class)
@@ -95,7 +95,9 @@ abstract class IvyRoomDatabase : RoomDatabase() {
             Migration128to129_DeleteIsDeleted(),
             Migration129to130_LoanIncludeNote(),
             Migration130to131_LoanChecklist(),
-            Migration131to132_SmsExtraction()
+            Migration131to132_SmsExtraction(),
+            Migration132to133_SmsRoleRedesign(),
+            Migration133to134_TemplateName()
         )
 
         @Suppress("SpreadOperator")

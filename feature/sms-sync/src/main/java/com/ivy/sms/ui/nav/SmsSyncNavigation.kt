@@ -1,19 +1,24 @@
 package com.ivy.sms.ui.nav
 
 import androidx.compose.runtime.Composable
+import com.ivy.data.model.AccountId
 import com.ivy.navigation.LinkSenderToWalletScreen
 import com.ivy.navigation.PendingReviewScreen
 import com.ivy.navigation.Screen
 import com.ivy.navigation.SmsExtractionScreen
 import com.ivy.navigation.SmsSourceLookupScreen
 import com.ivy.navigation.TemplateMappingScreen
+import com.ivy.navigation.WalletSmsConfigScreen
+import com.ivy.navigation.WalletSmsLinkScreen
 import com.ivy.navigation.navigation
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.ui.SmsExtractionScreen as SmsExtractionScreenImpl
 import com.ivy.sms.ui.pending.PendingReviewScreen as PendingReviewScreenImpl
+import com.ivy.sms.ui.sender.SenderPickerScreen as SenderPickerScreenImpl
 import com.ivy.sms.ui.templates.LinkSenderToWalletScreen as LinkSenderToWalletScreenImpl
 import com.ivy.sms.ui.templates.SmsSourceLookupScreen as SmsSourceLookupScreenImpl
 import com.ivy.sms.ui.templates.TemplateMappingScreen as TemplateMappingScreenImpl
+import com.ivy.sms.ui.wallet.WalletSmsConfigScreen as WalletSmsConfigScreenImpl
 import java.util.UUID
 
 /**
@@ -51,6 +56,20 @@ fun smsSyncDestination(screen: Screen?): Boolean {
         }
         is SmsSourceLookupScreen -> {
             SmsSourceLookupScreenImpl(transactionId = screen.transactionId)
+            true
+        }
+        is WalletSmsLinkScreen -> {
+            val walletId = runCatching { AccountId(UUID.fromString(screen.walletId)) }.getOrNull()
+            if (walletId != null) {
+                SenderPickerScreenImpl(walletId = walletId, onSaved = { nav.back() })
+            }
+            true
+        }
+        is WalletSmsConfigScreen -> {
+            val walletId = runCatching { AccountId(UUID.fromString(screen.walletId)) }.getOrNull()
+            if (walletId != null) {
+                WalletSmsConfigScreenImpl(walletId = walletId)
+            }
             true
         }
         else -> false

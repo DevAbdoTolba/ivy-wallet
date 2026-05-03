@@ -7,6 +7,7 @@ import androidx.core.content.ContextCompat
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
+import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.domain.model.SyncResult
 import com.ivy.sms.domain.model.SyncTrigger
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -24,6 +25,7 @@ interface SyncSmsUseCase {
 class SyncSmsUseCaseImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val scan: ScanInboxUseCase,
+    private val senderRepo: SenderAccountLinkRepository,
 ) : SyncSmsUseCase {
 
     private val mutex = Mutex()
@@ -31,6 +33,17 @@ class SyncSmsUseCaseImpl @Inject constructor(
     override suspend fun invoke(trigger: SyncTrigger): Either<String, SyncResult> {
         if (!hasReadSmsPermission()) {
             return SyncResult.PermissionMissing.right()
+        }
+        // Per-wallet redesign (2026-04-28): skip scanning entirely when no wallet has
+        // a linked sender. Without this guard the launch scan iterates the full SMS
+        // inbox on every cold start, hammers SQLite, and blocks any user action that
+        // touches the same DB (e.g. linking a sender for the first time appears stuck
+        // on "Linking…" while the launch scan churns). Once the user links at least
+        // one sender, scans run normally.
+        val hasAnyLink = senderRepo.findAll().getOrNull()?.isNotEmpty() == true
+        if (!hasAnyLink) {
+            Timber.d("SyncSms: skipping scan — no linked senders yet (trigger=$trigger)")
+            return SyncResult.Completed(0, 0, 0, 0L).right()
         }
         return mutex.withLock {
             try {

@@ -8,14 +8,17 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -23,16 +26,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.ivy.design.l0_system.UI
+import com.ivy.design.l0_system.style
+import com.ivy.wallet.ui.theme.components.IvyButton
+import com.ivy.wallet.ui.theme.components.IvyOutlinedButton
 
 @Composable
 fun PermissionGate(
@@ -55,10 +64,22 @@ fun PermissionGate(
     }
 
     var state by remember { mutableStateOf(current()) }
+    var hasAutoLaunched by rememberSaveable { mutableStateOf(false) }
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        state = if (granted) PermissionState.Granted else current()
+        onStateChanged(state)
+    }
 
     LaunchedEffect(Unit) {
         state = current()
         onStateChanged(state)
+        if (state != PermissionState.Granted && !hasAutoLaunched) {
+            hasAutoLaunched = true
+            launcher.launch(Manifest.permission.READ_SMS)
+        }
     }
 
     DisposableEffect(lifecycle) {
@@ -72,41 +93,60 @@ fun PermissionGate(
         onDispose { lifecycle.removeObserver(observer) }
     }
 
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        state = if (granted) PermissionState.Granted else current()
-        onStateChanged(state)
-    }
-
     when (state) {
         PermissionState.Granted -> content()
         PermissionState.Denied,
-        PermissionState.PermanentlyDenied -> Column(
+        PermissionState.PermanentlyDenied -> Box(
             modifier = modifier
                 .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .background(UI.colors.pure)
+                .statusBarsPadding()
+                .navigationBarsPadding(),
         ) {
-            Text(
-                text = "SMS access needed to discover and import bank-message transactions.",
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(16.dp))
-            Button(onClick = { launcher.launch(Manifest.permission.READ_SMS) }) {
-                Text("Try again")
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = {
-                val intent = Intent(
-                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.fromParts("package", context.packageName, null),
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = "SMS access needed",
+                    style = UI.typo.h2.style(
+                        color = UI.colors.pureInverse,
+                        fontWeight = FontWeight.ExtraBold,
+                        textAlign = TextAlign.Center,
+                    ),
                 )
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(intent)
-            }) {
-                Text("Open System Settings")
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "Ivy reads bank-message SMS to discover and import transactions automatically.",
+                    style = UI.typo.b2.style(
+                        color = UI.colors.gray,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                    ),
+                )
+                Spacer(Modifier.height(32.dp))
+                IvyButton(
+                    text = "Try again",
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { launcher.launch(Manifest.permission.READ_SMS) },
+                )
+                Spacer(Modifier.height(12.dp))
+                IvyOutlinedButton(
+                    text = "Open System Settings",
+                    iconStart = null,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        val intent = Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null),
+                        )
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        context.startActivity(intent)
+                    },
+                )
             }
         }
     }

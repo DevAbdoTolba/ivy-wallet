@@ -64,6 +64,12 @@ import com.ivy.legacy.utils.springBounce
 import com.ivy.legacy.utils.statusBarInset
 import com.ivy.legacy.utils.toDensityPx
 import com.ivy.legacy.utils.verticalSwipeListener
+import com.ivy.sms.startup.SmsSyncAppStartup
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+import android.widget.Toast
 import com.ivy.navigation.BudgetScreen
 import com.ivy.navigation.CategoriesScreen
 import com.ivy.navigation.IvyPreview
@@ -72,7 +78,6 @@ import com.ivy.navigation.PlannedPaymentsScreen
 import com.ivy.navigation.ReportScreen
 import com.ivy.navigation.SearchScreen
 import com.ivy.navigation.SettingsScreen
-import com.ivy.navigation.SmsExtractionScreen
 import com.ivy.navigation.navigation
 import com.ivy.ui.R
 import com.ivy.wallet.ui.theme.Blue
@@ -537,17 +542,51 @@ private fun QuickAccess(
             }
 
             Spacer(Modifier.weight(1f))
+        }
 
+        Spacer(Modifier.height(16.dp))
+
+        // Third Row — SMS sync controls live on their own line because the second
+        // row is already saturated and pushing more buttons in there crammed the
+        // labels together (2026-05-02 user feedback).
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.Top,
+        ) {
+            Spacer(Modifier.weight(1f))
+
+            val ctx = LocalContext.current
             MoreMenuButton(
-                icon = R.drawable.home_more_menu_share,
+                icon = R.drawable.home_more_menu_sync_sms,
                 label = "Sync SMS",
             ) {
-                nav.navigateTo(SmsExtractionScreen)
+                val ep = EntryPointAccessors.fromApplication(
+                    ctx.applicationContext,
+                    SmsSyncMenuEntryPoint::class.java,
+                )
+                ep.smsSyncAppStartup().triggerManualSync()
+                Toast.makeText(ctx, "Syncing SMS in background…", Toast.LENGTH_SHORT).show()
+            }
+
+            Spacer(Modifier.weight(1f))
+
+            MoreMenuButton(
+                icon = R.drawable.home_more_menu_sms_templates,
+                label = "SMS templates",
+            ) {
+                nav.navigateTo(com.ivy.navigation.SmsExtractionScreen)
             }
 
             Spacer(Modifier.weight(1f))
         }
     }
+}
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+private interface SmsSyncMenuEntryPoint {
+    fun smsSyncAppStartup(): SmsSyncAppStartup
 }
 
 @Composable

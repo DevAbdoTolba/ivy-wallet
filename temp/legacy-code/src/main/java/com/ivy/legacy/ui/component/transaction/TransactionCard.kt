@@ -193,6 +193,11 @@ fun TransactionCard(
             )
         }
 
+        if (transaction.smsSourceDedupKey != null) {
+            Spacer(Modifier.height(8.dp))
+            SmsSourceChip(transactionId = transaction.id)
+        }
+
         if (transaction.dueDate != null) {
             Spacer(Modifier.height(12.dp))
         } else {
@@ -300,6 +305,30 @@ private fun ColumnScope.TransactionTags(tags: ImmutableList<LegacyTag>) {
             Spacer(modifier = Modifier.width(6.dp))
         }
     }
+}
+
+@Composable
+private fun ColumnScope.SmsSourceChip(transactionId: UUID) {
+    val nav = navigation()
+    Text(
+        modifier = Modifier
+            .padding(horizontal = 24.dp)
+            .clip(UI.shapes.rFull)
+            .background(UI.colors.pure)
+            .clickable {
+                nav.navigateTo(
+                    com.ivy.navigation.SmsSourceLookupScreen(
+                        transactionId = transactionId.toString(),
+                    )
+                )
+            }
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        text = "from SMS",
+        style = UI.typo.nC.style(
+            color = UI.colors.pureInverse,
+            fontWeight = FontWeight.Bold,
+        ),
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)

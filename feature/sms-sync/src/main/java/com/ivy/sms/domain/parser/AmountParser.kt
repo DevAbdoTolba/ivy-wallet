@@ -9,10 +9,33 @@ object AmountParser {
     private val numberToken = Regex("[+-]?\\d{1,3}(?:[,.\\u00A0\\s]\\d{3})*(?:[.,]\\d{1,4})?")
 
     fun parseAmount(text: String): Either<String, BigDecimal> {
-        val match = numberToken.find(text)?.value
+        val normalized = normalizeArabicDigits(text)
+        val match = numberToken.find(normalized)?.value
             ?: return "AMOUNT_PARSE_ERROR:no number in '$text'".left()
         return tryNormalize(match)
             ?: "AMOUNT_PARSE_ERROR:cannot interpret '$match'".left()
+    }
+
+    /**
+     * Convert Arabic-Indic (U+0660-U+0669) and Eastern Arabic-Indic / Persian
+     * (U+06F0-U+06F9) digits to Latin 0-9 so SMS like "٨٠ج" or "٧٫٥ ر.س" parse
+     * the same as their Latin-digit counterparts. Non-digit characters pass
+     * through unchanged.
+     */
+    private fun normalizeArabicDigits(text: String): String {
+        if (text.isEmpty()) return text
+        val sb = StringBuilder(text.length)
+        for (ch in text) {
+            val code = ch.code
+            sb.append(
+                when {
+                    code in 0x0660..0x0669 -> ('0' + (code - 0x0660))
+                    code in 0x06F0..0x06F9 -> ('0' + (code - 0x06F0))
+                    else -> ch
+                },
+            )
+        }
+        return sb.toString()
     }
 
     private fun tryNormalize(raw: String): Either<String, BigDecimal>? {

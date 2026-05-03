@@ -262,7 +262,7 @@ description: "Tasks for SMS Extraction Engine"
 
 **Purpose**: Audit-trail UX, the opt-in re-process action, end-to-end verification.
 
-- [ ] T103 [P] Modify `feature/transactions/.../TransactionsScreen.kt` (or the transaction-row composable used there): when `transaction.metadata.smsSourceDedupKey != null`, render a small "from SMS" indicator chip on the row per FR-030.
+- [X] T103 [P] Modify `feature/transactions/.../TransactionsScreen.kt` (or the transaction-row composable used there): when `transaction.metadata.smsSourceDedupKey != null`, render a small "from SMS" indicator chip on the row per FR-030.
 - [X] T104 Create `feature/sms-sync/src/main/java/com/ivy/sms/ui/templates/SmsSourceLookupScreen.kt`: when the user taps an "from SMS" chip, navigate here. Show the source SMS body re-fetched from the device inbox by `(senderId, timestamp, dedupKey)`. If the SMS is no longer in the inbox, show "Original SMS no longer available".
 - [X] T105 [P] Create `feature/sms-sync/src/main/java/com/ivy/sms/domain/usecase/ReprocessHistoricalUseCase.kt` per FR-032: explicit, opt-in. Takes a templateId, runs `RouteSmsUseCase` against all historical SMS in the period that match this template AND don't already have a corresponding `metadata.smsSourceDedupKey` transaction. Returns a count preview before write; requires confirmation token.
 - [X] T106 Add a "Re-process historical messages" overflow item to `TemplateMappingScreen.kt` (or accessible from the template list when state = ACTIVE). Tap → preview dialog → confirm → run `ReprocessHistoricalUseCase`.

@@ -120,7 +120,11 @@ private fun BoxWithConstraintsScope.UI(
         onEditAccount = { _, _ -> },
         dismiss = {
             accountModalData = null
-        }
+        },
+        onLinkSmsChat = { account ->
+            accountModalData = null
+            nav.navigateTo(com.ivy.navigation.WalletSmsConfigScreen(account.id.toString()))
+        },
     )
 }
 

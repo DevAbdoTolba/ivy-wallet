@@ -12,7 +12,7 @@ import com.ivy.sms.domain.model.QuarantineReason
 import com.ivy.sms.domain.model.SmsMessage
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.TemplateState
-import com.ivy.sms.domain.model.WildcardMapping
+import com.ivy.sms.domain.model.isAmountRole
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
@@ -38,7 +38,8 @@ class RouteSmsUseCase @Inject constructor(
         }
 
         val account = senderLinks[message.senderId]
-        if (template.state == TemplateState.ACTIVE && account != null && template.classification != null) {
+        val hasAmountRole = template.wildcardSlots.any { it.role.isAmountRole() }
+        if (template.state == TemplateState.ACTIVE && account != null && hasAmountRole) {
             return when (val r = createTransaction(message, template, account)) {
                 is Either.Right -> RouteOutcome.Created(r.value).right()
                 is Either.Left -> {
@@ -54,7 +55,6 @@ class RouteSmsUseCase @Inject constructor(
 
         val reason = when {
             account == null -> QuarantineReason.SENDER_NOT_LINKED
-            template.state != TemplateState.ACTIVE -> QuarantineReason.TEMPLATE_NOT_MAPPED
             else -> QuarantineReason.TEMPLATE_NOT_MAPPED
         }
         return quarantine(message, template, reason)
@@ -79,5 +79,5 @@ class RouteSmsUseCase @Inject constructor(
     }
 }
 
-internal fun SmsTemplate.hasAmountMapping(): Boolean =
-    wildcardSlots.any { it.mapping == WildcardMapping.Amount }
+internal fun SmsTemplate.hasAmountRole(): Boolean =
+    wildcardSlots.any { it.role.isAmountRole() }

@@ -66,6 +66,7 @@ class PendingReviewPaparazziTest(
             senderId = "TestBank",
             body = "Purchase of 12.34 at Coffee Shop on 04/27/26.",
             templatePattern = "Purchase of <*> at <*> on <*>",
+            wildcardRolesByPosition = emptyMap(),
             timestamp = 1_700_000_000_000L,
             reason = reason,
             expanded = expanded,

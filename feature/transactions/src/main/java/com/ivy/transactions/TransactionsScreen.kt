@@ -457,13 +457,18 @@ private fun BoxWithConstraintsScope.UI(
         }
     )
 
+    val nav = com.ivy.navigation.navigation()
     AccountModal(
         modal = accountModalData,
         onCreateAccount = { },
         onEditAccount = onEditAccount,
         dismiss = {
             accountModalData = null
-        }
+        },
+        onLinkSmsChat = { account ->
+            accountModalData = null
+            nav.navigateTo(com.ivy.navigation.WalletSmsConfigScreen(account.id.toString()))
+        },
     )
 
     ChoosePeriodModal(

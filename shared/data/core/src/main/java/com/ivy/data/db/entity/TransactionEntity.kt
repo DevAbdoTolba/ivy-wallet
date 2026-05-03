@@ -67,6 +67,10 @@ data class TransactionEntity(
     @SerialName("smsSourceTimestamp")
     @Serializable(with = KSerializerInstant::class)
     val smsSourceTimestamp: Instant? = null,
+    @SerialName("smsCurrentTotal")
+    val smsCurrentTotal: String? = null,
+    @SerialName("smsTransactionFee")
+    val smsTransactionFee: String? = null,
     @Deprecated("Obsolete field used for cloud sync. Can't be deleted because of backwards compatibility")
     @SerialName("isSynced")
     val isSynced: Boolean = false,

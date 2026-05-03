@@ -250,7 +250,11 @@ private fun WalletSmsConfigContent(
                 onDismiss = { showPeriodPicker = false },
                 onPick = { lowerBoundMs ->
                     showPeriodPicker = false
-                    viewModel.syncNow(lowerBoundMs)
+                    // Pass walletId explicitly — the VM's stored walletId can be
+                    // null right after a ViewModelStore reset, and the previous
+                    // signature silently `return`'d in that case. That was the
+                    // root cause of "the period sheet closes and nothing happens".
+                    viewModel.syncNow(walletId, lowerBoundMs)
                 },
             )
         }

@@ -83,46 +83,61 @@ class WalletSmsConfigViewModel @Inject constructor(
         }.start()
     }
 
-    fun syncNow(lowerBoundEpochMillis: Long? = null) {
-        val id = walletId ?: return
+    /**
+     * Sync now from the wallet config screen. Takes [explicitWalletId] so the
+     * VM doesn't have to rely on the field being set — the previous version
+     * silently returned when `this.walletId` was null because of a VM-store
+     * reset race, which manifested as "the period sheet closes and nothing
+     * happens". The picker also calls this through [viewModelScope.launch]
+     * (proven working in [PeriodPickerViewModel] on the same device) instead
+     * of the raw `Thread { runBlocking }` dance which was causing the silent
+     * failure.
+     */
+    fun syncNow(explicitWalletId: AccountId, lowerBoundEpochMillis: Long? = null) {
+        Timber.d(
+            "WalletSmsConfig syncNow(walletId=${explicitWalletId.value}, lowerBound=$lowerBoundEpochMillis)",
+        )
+        this.walletId = explicitWalletId
         state = state.copy(syncing = true, error = null, scanProgress = null)
-        Thread {
+        viewModelScope.launch {
             try {
-                runBlocking {
-                    if (lowerBoundEpochMillis != null) {
-                        watermarks.writeLowerBound(lowerBoundEpochMillis)
-                        // Reset the watermark too so the scan reads from lowerBound forward.
-                        watermarks.write(0L)
-                    }
-                    syncSms(SyncTrigger.MANUAL_MENU).fold(
-                        ifLeft = {
-                            state = state.copy(
-                                syncing = false,
-                                error = it,
-                                lastSyncStatus = "Last sync failed: $it",
-                                scanProgress = null,
-                            )
-                        },
-                        ifRight = { result ->
-                            val msg = when (result) {
-                                is SyncResult.Completed -> "Last sync: just now (${result.transactionsCreated} new, ${result.itemsQuarantined} to review)"
-                                is SyncResult.PartiallyCompleted -> "Last sync: partial — ${result.transactionsCreated} new, ${result.itemsQuarantined} to review"
-                                SyncResult.PermissionMissing -> "Last sync: permission missing"
-                            }
-                            state = state.copy(
-                                syncing = false,
-                                lastSyncStatus = msg,
-                                scanProgress = null,
-                            )
-                        },
-                    )
+                if (lowerBoundEpochMillis != null) {
+                    Timber.d("WalletSmsConfig syncNow: writing lowerBound=$lowerBoundEpochMillis")
+                    watermarks.writeLowerBound(lowerBoundEpochMillis)
+                    // Reset the watermark too so the scan reads from lowerBound forward.
+                    watermarks.write(0L)
                 }
-                load(id)
+                Timber.d("WalletSmsConfig syncNow: invoking syncSms")
+                val result = syncSms(SyncTrigger.MANUAL_MENU)
+                Timber.d("WalletSmsConfig syncNow: syncSms returned $result")
+                result.fold(
+                    ifLeft = {
+                        state = state.copy(
+                            syncing = false,
+                            error = it,
+                            lastSyncStatus = "Last sync failed: $it",
+                            scanProgress = null,
+                        )
+                    },
+                    ifRight = { syncResult ->
+                        val msg = when (syncResult) {
+                            is SyncResult.Completed -> "Last sync: just now (${syncResult.transactionsCreated} new, ${syncResult.itemsQuarantined} to review)"
+                            is SyncResult.PartiallyCompleted -> "Last sync: partial — ${syncResult.transactionsCreated} new, ${syncResult.itemsQuarantined} to review"
+                            SyncResult.PermissionMissing -> "Last sync: permission missing"
+                        }
+                        state = state.copy(
+                            syncing = false,
+                            lastSyncStatus = msg,
+                            scanProgress = null,
+                        )
+                    },
+                )
+                load(explicitWalletId)
             } catch (t: Throwable) {
                 Timber.e(t, "WalletSmsConfig syncNow() crashed")
                 state = state.copy(syncing = false, error = "sync crashed: ${t.message}")
             }
-        }.start()
+        }
     }
 
     fun unlink() {

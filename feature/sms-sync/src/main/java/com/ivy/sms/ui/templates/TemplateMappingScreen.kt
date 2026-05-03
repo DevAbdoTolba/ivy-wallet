@@ -341,7 +341,7 @@ private fun TokenizedExample(
 private fun LiteralChip(text: String) {
     Text(
         text = text,
-        style = UI.typo.b2.style(
+        style = UI.typo.b1.style(
             color = UI.colors.pureInverse,
             fontWeight = FontWeight.Medium,
         ),
@@ -353,33 +353,33 @@ private fun LiteralChip(text: String) {
 private fun WildcardChipView(text: String, role: WildcardRole, onClick: () -> Unit) {
     val accent = colorForRole(role)
     val mapped = role !is WildcardRole.Unmapped
-    val bg = if (mapped) accent else accent.copy(alpha = 0.16f)
+    val bg = if (mapped) accent else accent.copy(alpha = 0.18f)
     val fg = if (mapped) Color.White else accent
-    val borderColor = if (mapped) accent else accent.copy(alpha = 0.5f)
+    val borderColor = if (mapped) accent else accent
     Row(
         modifier = Modifier
             .clip(UI.shapes.rFull)
             .background(bg)
-            .border(width = 1.dp, color = borderColor, shape = UI.shapes.rFull)
+            .border(width = 2.dp, color = borderColor, shape = UI.shapes.rFull)
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+            .padding(horizontal = 14.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = text.ifBlank { "tap" },
-            style = UI.typo.c.style(
+            text = text,
+            style = UI.typo.b1.style(
                 color = fg,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.ExtraBold,
             ),
         )
         val label = labelFor(role)
         if (label != null) {
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(8.dp))
             Text(
-                text = label,
+                text = label.uppercase(),
                 style = UI.typo.c.style(
-                    color = fg.copy(alpha = 0.85f),
-                    fontWeight = FontWeight.SemiBold,
+                    color = fg.copy(alpha = 0.9f),
+                    fontWeight = FontWeight.Bold,
                 ),
             )
         }
@@ -480,7 +480,7 @@ private fun buildTokenList(
 }
 
 private fun labelFor(role: WildcardRole): String? = when (role) {
-    WildcardRole.Unmapped -> "tap"
+    WildcardRole.Unmapped -> null
     WildcardRole.Income -> "Income"
     WildcardRole.Expense -> "Expense"
     WildcardRole.Transfer -> "Transfer"
@@ -490,5 +490,5 @@ private fun labelFor(role: WildcardRole): String? = when (role) {
     WildcardRole.DateOnly -> "Date"
     WildcardRole.TimeOnly -> "Time"
     WildcardRole.Merchant -> "Merchant"
-    WildcardRole.Ignored -> "—"
+    WildcardRole.Ignored -> null
 }

@@ -30,6 +30,26 @@ class TemplateMappingViewModel @Inject constructor(
     private var state by mutableStateOf(TemplateMappingViewState())
     private val pendingRoles = mutableMapOf<WildcardId, WildcardRole>()
 
+    /**
+     * Cached copy of the loaded template so we can rebuild the wildcard chip
+     * list whenever pendingRoles changes — without this, a user pick that
+     * landed before applyTemplate ran would be silently dropped (the previous
+     * version's applyRolePick walked an empty state.wildcards list).
+     */
+    private var loadedTemplate: SmsTemplate? = null
+
+    private fun rebuildWildcards(): kotlinx.collections.immutable.ImmutableList<WildcardChip> {
+        val template = loadedTemplate ?: return state.wildcards
+        return template.wildcardSlots.map { slot ->
+            WildcardChip(
+                id = slot.id,
+                positionInPattern = slot.positionInPattern,
+                exampleValue = slot.exampleValue,
+                role = pendingRoles[slot.id] ?: slot.role,
+            )
+        }.toImmutableList()
+    }
+
     @Composable
     override fun uiState(): TemplateMappingViewState = state
 
@@ -70,16 +90,19 @@ class TemplateMappingViewModel @Inject constructor(
     }
 
     private fun applyTemplate(template: SmsTemplate) {
-        pendingRoles.clear()
-        template.wildcardSlots.forEach { pendingRoles[it.id] = it.role }
+        loadedTemplate = template
+        // Preserve any roles the user already picked before applyTemplate ran
+        // (race: produceState in screen + raw-thread VM load both call this).
+        // Only seed defaults for slots not in pendingRoles yet.
+        for (slot in template.wildcardSlots) {
+            if (slot.id !in pendingRoles) pendingRoles[slot.id] = slot.role
+        }
         state = state.copy(
             templateId = template.id,
             pattern = template.pattern,
             exampleBody = template.exampleBody,
             name = template.name.orEmpty(),
-            wildcards = template.wildcardSlots.map {
-                WildcardChip(it.id, it.positionInPattern, it.exampleValue, it.role)
-            }.toImmutableList(),
+            wildcards = rebuildWildcards(),
             activeWildcard = null,
             error = null,
         )
@@ -91,10 +114,13 @@ class TemplateMappingViewModel @Inject constructor(
                 state = state.copy(activeWildcard = event.id)
             }
             is TemplateMappingEvent.WildcardRoleChosen -> {
-                val nextRoles = applyRolePick(state.wildcards, event.id, event.role)
+                // Write through pendingRoles first; rebuildWildcards uses it as
+                // the source of truth, so the user's pick survives even when
+                // state.wildcards happens to be empty (VM-load race).
                 pendingRoles[event.id] = event.role
+                applyUniquenessRulesToPending(event.id, event.role)
                 state = state.copy(
-                    wildcards = nextRoles,
+                    wildcards = rebuildWildcards(),
                     activeWildcard = null,
                 )
             }
@@ -134,6 +160,26 @@ class TemplateMappingViewModel @Inject constructor(
             // Mirror the cleanup in pendingRoles so save sees the right set.
             for (chip in it) pendingRoles[chip.id] = chip.role
         }.toImmutableList()
+    }
+
+    /**
+     * Mirror of applyRolePick's uniqueness rules but applied directly to the
+     * pendingRoles map (the new source of truth). Picking an amount role on
+     * one slot clears any other slot that already had an amount role; same
+     * for date-family and the unique single-role slots.
+     */
+    private fun applyUniquenessRulesToPending(chosenId: WildcardId, chosenRole: WildcardRole) {
+        val others = pendingRoles.keys.filter { it != chosenId }
+        for (id in others) {
+            val role = pendingRoles[id] ?: continue
+            val shouldClear = when {
+                chosenRole.isAmountRole() && role.isAmountRole() -> true
+                chosenRole.isDateRole() && role.isDateRole() -> true
+                isUniqueNonAmount(chosenRole) && role == chosenRole -> true
+                else -> false
+            }
+            if (shouldClear) pendingRoles[id] = WildcardRole.Unmapped
+        }
     }
 
     private fun isUniqueNonAmount(role: WildcardRole): Boolean = when (role) {

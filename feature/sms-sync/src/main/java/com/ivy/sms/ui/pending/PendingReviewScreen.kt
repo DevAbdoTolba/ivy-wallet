@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,8 +55,10 @@ import com.ivy.wallet.ui.theme.components.IvyToolbar
 
 @Composable
 fun PendingReviewScreen(
+    walletId: com.ivy.data.model.AccountId? = null,
     viewModel: PendingReviewViewModel = viewModel(),
 ) {
+    LaunchedEffect(walletId) { viewModel.setWalletFilter(walletId) }
     val state = viewModel.uiState()
     val nav = navigation()
     // Persistent progress: cumulative reviewed (DataStore) + currently
@@ -81,7 +84,7 @@ fun PendingReviewScreen(
             ) {
                 Spacer(Modifier.width(16.dp))
                 Text(
-                    text = "Review",
+                    text = if (state.scopedToWallet) "Review (this wallet)" else "Review (all)",
                     style = UI.typo.h2.style(
                         color = UI.colors.pureInverse,
                         fontWeight = FontWeight.ExtraBold,

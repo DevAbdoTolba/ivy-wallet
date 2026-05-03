@@ -8,6 +8,7 @@ import com.ivy.navigation.Screen
 import com.ivy.navigation.SmsExtractionScreen
 import com.ivy.navigation.SmsSourceLookupScreen
 import com.ivy.navigation.TemplateMappingScreen
+import com.ivy.navigation.WalletPendingReviewScreen
 import com.ivy.navigation.WalletSmsConfigScreen
 import com.ivy.navigation.WalletSmsLinkScreen
 import com.ivy.navigation.navigation
@@ -35,6 +36,13 @@ fun smsSyncDestination(screen: Screen?): Boolean {
         }
         PendingReviewScreen -> {
             PendingReviewScreenImpl()
+            true
+        }
+        is WalletPendingReviewScreen -> {
+            val walletId = runCatching { AccountId(UUID.fromString(screen.walletId)) }.getOrNull()
+            if (walletId != null) {
+                PendingReviewScreenImpl(walletId = walletId)
+            }
             true
         }
         is TemplateMappingScreen -> {

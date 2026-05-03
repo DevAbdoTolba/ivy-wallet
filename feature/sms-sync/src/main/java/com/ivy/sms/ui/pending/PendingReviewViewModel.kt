@@ -39,6 +39,29 @@ class PendingReviewViewModel @Inject constructor(
 
     private val expanded = mutableStateOf<Set<String>>(emptySet())
 
+    /**
+     * Optional wallet filter. When non-null, [uiState] only emits items
+     * whose sender is linked to this wallet — that's how the per-wallet
+     * review queue (reachable from the wallet config screen) shows just
+     * the messages that affect THAT wallet, separate from the global
+     * "Review all" queue.
+     */
+    private var walletFilter by mutableStateOf<com.ivy.data.model.AccountId?>(null)
+    private var walletSenders by mutableStateOf<Set<String>?>(null)
+
+    fun setWalletFilter(walletId: com.ivy.data.model.AccountId?) {
+        if (walletFilter == walletId) return
+        walletFilter = walletId
+        if (walletId == null) {
+            walletSenders = null
+            return
+        }
+        viewModelScope.launch {
+            val links = senderRepo.findByAccountId(walletId).getOrNull().orEmpty()
+            walletSenders = links.map { it.senderId }.toSet()
+        }
+    }
+
     init {
         // Re-drain every time the templates table changes — fires on VM init AND
         // whenever the user maps a template elsewhere and navigates back. The
@@ -95,7 +118,10 @@ class PendingReviewViewModel @Inject constructor(
         val reviewed = prefs.observeReviewedTotal().collectAsState(initial = 0)
         val mapped = prefs.observeTemplatesMappedTotal().collectAsState(initial = 0)
         val templateById = templates.value.associateBy { it.id.value.toString() }
+        // For per-wallet view: limit to senders linked to the active wallet.
+        val sendersForWallet: Set<String>? = walletSenders
         val rows = items.value.mapNotNull { e ->
+            if (sendersForWallet != null && e.senderId !in sendersForWallet) return@mapNotNull null
             val tpl = templateById[e.templateId] ?: return@mapNotNull null
             val rolesByPosition = tpl.wildcardSlots.associate { it.positionInPattern to it.role }
             PendingItemRowViewState(
@@ -115,6 +141,7 @@ class PendingReviewViewModel @Inject constructor(
             items = rows.ifEmpty { persistentListOf() },
             reviewedTotal = reviewed.value,
             templatesMappedTotal = mapped.value,
+            scopedToWallet = walletFilter != null,
         )
     }
 

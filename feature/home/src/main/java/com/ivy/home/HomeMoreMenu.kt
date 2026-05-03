@@ -24,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -579,6 +580,25 @@ private fun QuickAccess(
             }
 
             Spacer(Modifier.weight(1f))
+
+            // "Review all" — third button. Badged with the live unreviewed
+            // count so the user can see at a glance how many SMS still need
+            // their attention without opening the screen.
+            val pendingCount by remember(ctx) {
+                EntryPointAccessors.fromApplication(
+                    ctx.applicationContext,
+                    SmsSyncMenuEntryPoint::class.java,
+                ).pendingReviewItemRepository().observeCount()
+            }.collectAsState(initial = 0)
+
+            MoreMenuButton(
+                icon = R.drawable.home_more_menu_sms_templates,
+                label = if (pendingCount > 0) "Review ($pendingCount)" else "Review",
+            ) {
+                nav.navigateTo(com.ivy.navigation.PendingReviewScreen)
+            }
+
+            Spacer(Modifier.weight(1f))
         }
     }
 }
@@ -587,6 +607,7 @@ private fun QuickAccess(
 @InstallIn(SingletonComponent::class)
 private interface SmsSyncMenuEntryPoint {
     fun smsSyncAppStartup(): SmsSyncAppStartup
+    fun pendingReviewItemRepository(): com.ivy.sms.data.PendingReviewItemRepository
 }
 
 @Composable

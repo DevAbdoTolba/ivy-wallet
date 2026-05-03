@@ -37,7 +37,7 @@ import com.ivy.data.model.AccountId
 import com.ivy.design.l0_system.UI
 import com.ivy.design.l0_system.style
 import com.ivy.legacy.utils.selectEndTextFieldValue
-import com.ivy.navigation.PendingReviewScreen
+import com.ivy.navigation.WalletPendingReviewScreen
 import com.ivy.navigation.SmsExtractionScreen
 import com.ivy.navigation.WalletSmsLinkScreen
 import com.ivy.navigation.navigation
@@ -108,11 +108,21 @@ private fun WalletSmsConfigContent(
     ) {
         try {
             val acct = ep.accountRepository().findById(walletId)
-            val link = ep.senderLinkRepository()
+            val links = ep.senderLinkRepository()
                 .findByAccountId(walletId)
                 .getOrNull()
-                ?.firstOrNull()
-            val pendingCount = ep.pendingRepository().count().getOrNull() ?: 0
+                .orEmpty()
+            val link = links.firstOrNull()
+            // Per-wallet pending count: only items whose sender is linked to
+            // THIS wallet, so the badge on the per-wallet Review button matches
+            // what the user will actually see when they tap through.
+            val walletSenders = links.map { it.senderId }.toSet()
+            val pendingCount = if (walletSenders.isEmpty()) {
+                0
+            } else {
+                ep.pendingRepository().findAll().getOrNull().orEmpty()
+                    .count { it.sms.senderId in walletSenders }
+            }
             value = WalletLiveData(
                 walletName = acct?.name?.value.orEmpty(),
                 linkedSender = link?.senderId,
@@ -223,7 +233,11 @@ private fun WalletSmsConfigContent(
                             },
                             iconStart = null,
                             modifier = Modifier.weight(1f),
-                            onClick = { nav.navigateTo(PendingReviewScreen) },
+                            onClick = {
+                                nav.navigateTo(
+                                    WalletPendingReviewScreen(walletId.value.toString()),
+                                )
+                            },
                         )
                     }
 

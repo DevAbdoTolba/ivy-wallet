@@ -154,6 +154,15 @@ data object PendingReviewScreen : Screen {
     override val isLegacy: Boolean = false
 }
 
+/**
+ * Per-wallet variant of the pending review queue — filters to items whose
+ * sender is linked to [walletId]. The wallet config screen routes here so
+ * each wallet has its own scoped queue, separate from the global review.
+ */
+data class WalletPendingReviewScreen(val walletId: String) : Screen {
+    override val isLegacy: Boolean = false
+}
+
 data class TemplateMappingScreen(
     val templateId: String,
 ) : Screen {

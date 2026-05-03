@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ivy.design.l0_system.UI
 import com.ivy.design.l0_system.style
 import com.ivy.legacy.utils.selectEndTextFieldValue
+import kotlinx.collections.immutable.toImmutableList
 import com.ivy.navigation.navigation
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.WildcardId
@@ -69,16 +70,24 @@ fun TemplateMappingScreen(
 
     LaunchedEffect(templateId) { viewModel.load(templateId) }
 
-    // Belt-and-braces: fetch the template directly from the repo on every
-    // entry too. If the VM-side load is shadowed by a lifecycle race the
-    // screen still ends up with data. seedFromScreen is idempotent.
-    LaunchedEffect(templateId) {
+    // The whole template is fetched DIRECTLY from the repo into Compose state
+    // here, completely bypassing the VM's lifecycle. The VM still owns saves
+    // and role bindings, but the data the user looks at comes from this
+    // produceState. Even if the VM-store gets cleared mid-flight (which it
+    // does on every screen change in this app's custom navigation), the
+    // screen still has the template the moment the DAO call returns. We seed
+    // the VM via seedFromScreen so save() has a templateId to work with.
+    val fetchedTemplate by androidx.compose.runtime.produceState<com.ivy.sms.domain.model.SmsTemplate?>(
+        initialValue = null,
+        key1 = templateId,
+    ) {
         try {
             val ep = dagger.hilt.android.EntryPointAccessors.fromApplication(
                 context.applicationContext,
                 TemplateLookupEntryPoint::class.java,
             )
             val template = ep.templateRepo().findById(templateId).getOrNull()
+            value = template
             if (template != null) {
                 viewModel.seedFromScreen(template)
             }
@@ -90,6 +99,22 @@ fun TemplateMappingScreen(
     state.convertedFromQueue?.let {
         LaunchedEffect(it) { onSaved(it) }
     }
+
+    // Render data: prefer the VM state if it's been populated (so the user's
+    // edits are reflected) but fall back to the directly-fetched template for
+    // the immutable parts. This is what makes the SMS body visible regardless
+    // of VM state weirdness.
+    val displayPattern = state.pattern.ifBlank { fetchedTemplate?.pattern.orEmpty() }
+    val displayBody = state.exampleBody.ifBlank { fetchedTemplate?.exampleBody.orEmpty() }
+    val displayWildcards = if (state.wildcards.isNotEmpty()) {
+        state.wildcards
+    } else {
+        val slots = fetchedTemplate?.wildcardSlots
+            ?.map { WildcardChip(it.id, it.positionInPattern, it.exampleValue, it.role) }
+            .orEmpty()
+        slots.toImmutableList()
+    }
+    val isLoading = fetchedTemplate == null && state.pattern.isBlank() && state.exampleBody.isBlank()
 
     // Local field state, re-initialised ONLY when the loaded template id changes
     // so each keystroke doesn't reset the cursor to the end. We push every
@@ -144,15 +169,34 @@ fun TemplateMappingScreen(
                     ),
                 )
 
-                CompositionLocalProvider(LocalLayoutDirection provides directionFor(state.exampleBody)) {
-                    TokenizedExample(
-                        exampleBody = state.exampleBody,
-                        pattern = state.pattern,
-                        wildcards = state.wildcards,
-                        onWildcardTap = { id ->
-                            viewModel.onEvent(TemplateMappingEvent.WildcardTapped(id))
-                        },
-                    )
+                CompositionLocalProvider(LocalLayoutDirection provides directionFor(displayBody)) {
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(UI.shapes.r4)
+                                .background(UI.colors.medium)
+                                .padding(16.dp),
+                        ) {
+                            androidx.compose.material3.LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(UI.shapes.rFull),
+                                color = com.ivy.wallet.ui.theme.Green,
+                                trackColor = UI.colors.pure,
+                            )
+                        }
+                    } else {
+                        TokenizedExample(
+                            exampleBody = displayBody,
+                            pattern = displayPattern,
+                            wildcards = displayWildcards,
+                            onWildcardTap = { id ->
+                                viewModel.onEvent(TemplateMappingEvent.WildcardTapped(id))
+                            },
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(4.dp))
@@ -187,7 +231,7 @@ fun TemplateMappingScreen(
                     )
                 }
 
-                val canSave = state.wildcards.any {
+                val canSave = displayWildcards.any {
                     it.role == WildcardRole.Income ||
                         it.role == WildcardRole.Expense ||
                         it.role == WildcardRole.Transfer
@@ -221,7 +265,7 @@ fun TemplateMappingScreen(
     if (activeId != null) {
         WildcardMappingBottomSheet(
             wildcardId = activeId,
-            currentRoles = state.wildcards.associate { it.id to it.role },
+            currentRoles = displayWildcards.associate { it.id to it.role },
             onChoose = { role ->
                 viewModel.onEvent(TemplateMappingEvent.WildcardRoleChosen(activeId, role))
             },

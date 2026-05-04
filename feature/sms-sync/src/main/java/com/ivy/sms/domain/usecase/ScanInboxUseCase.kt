@@ -126,6 +126,24 @@ class ScanInboxUseCase @Inject constructor(
         if (newWatermark > watermark) {
             watermarks.write(newWatermark)
         }
+        // Update per-sender link watermarks so the wallet config screen's
+        // "Last sync" status (and the never-synced auto-pop check) flips
+        // out of the "Never synced" state. Each link gets the newest message
+        // timestamp from ITS sender — falls back to global newWatermark when
+        // the sender produced no rows this scan, so the link still records
+        // that a sync happened against it.
+        if (links.isNotEmpty()) {
+            val rowsBySender = rows.groupBy { it.address }
+            for (link in links) {
+                val perSenderMax = rowsBySender[link.senderId]
+                    ?.maxOfOrNull { it.dateEpochMillis } ?: newWatermark
+                if (perSenderMax <= 0L) continue
+                val instant = java.time.Instant.ofEpochMilli(perSenderMax)
+                if (link.watermark == null || link.watermark.isBefore(instant)) {
+                    senderRepo.upsert(link.copy(watermark = instant))
+                }
+            }
+        }
         // Clear progress so the next subscriber doesn't see a stale "100% done"
         // snapshot when they haven't started a sync yet.
         _progress.value = null

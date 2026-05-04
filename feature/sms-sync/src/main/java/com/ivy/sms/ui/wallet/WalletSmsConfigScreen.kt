@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -287,19 +288,20 @@ private fun WalletSmsConfigContent(
 
         // BoxScope-level overlays — IvyModal needs to live here, not at the
         // top of the @Composable function, because its receiver is BoxScope.
-        if (showPeriodPicker) {
-            SyncPeriodSheet(
-                onDismiss = { showPeriodPicker = false },
-                onPick = { lowerBoundMs ->
-                    showPeriodPicker = false
-                    // Pass walletId explicitly — the VM's stored walletId can be
-                    // null right after a ViewModelStore reset, and the previous
-                    // signature silently `return`'d in that case. That was the
-                    // root cause of "the period sheet closes and nothing happens".
-                    viewModel.syncNow(walletId, lowerBoundMs)
-                },
-            )
-        }
+        // SyncPeriodSheet stays mounted always so it can animate in/out;
+        // visibility is the source of truth.
+        SyncPeriodSheet(
+            visible = showPeriodPicker,
+            onDismiss = { showPeriodPicker = false },
+            onPick = { lowerBoundMs ->
+                showPeriodPicker = false
+                // Pass walletId explicitly — the VM's stored walletId can be
+                // null right after a ViewModelStore reset, and the previous
+                // signature silently `return`'d in that case. That was the
+                // root cause of "the period sheet closes and nothing happens".
+                viewModel.syncNow(walletId, lowerBoundMs)
+            },
+        )
 
         UnlinkConfirmModal(
             visible = showUnlinkConfirm && displayLinkedSender != null,
@@ -550,9 +552,24 @@ private fun SyncProgressCard(state: WalletSmsConfigViewState) {
 
 @Composable
 private fun SyncPeriodSheet(
+    visible: Boolean,
     onDismiss: () -> Unit,
     onPick: (Long) -> Unit,
 ) {
+    // Slide-and-fade animation matching the project's IvyModal vibe — the
+    // earlier hard-cut felt jarring after every other modal in the app
+    // glides. `percentVisible` drives both the scrim alpha and a translation
+    // on the inner column so the panel rises from the bottom while the
+    // dimmer fades in. Stays mounted during the exit animation thanks to
+    // the `visible || percentVisible > 0` guard, then unmounts cleanly.
+    val percentVisible by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 240),
+        visibilityThreshold = 0.01f,
+        label = "syncPeriodSheetPercent",
+    )
+    if (!visible && percentVisible <= 0.01f) return
+
     val now = Instant.now()
     val options = listOf(
         "Last week" to now.minus(7, ChronoUnit.DAYS).toEpochMilli(),
@@ -565,13 +582,20 @@ private fun SyncPeriodSheet(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.55f))
+            .background(Color.Black.copy(alpha = 0.55f * percentVisible))
             .clickable(onClick = onDismiss),
     ) {
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    val y = placeable.height * (1f - percentVisible)
+                    layout(placeable.width, placeable.height) {
+                        placeable.placeRelative(0, y.toInt())
+                    }
+                }
                 .clip(UI.shapes.r2Top)
                 .background(UI.colors.pure)
                 .navigationBarsPadding()

@@ -231,20 +231,19 @@ private fun Map<WildcardId, String>.allByRole(
 }
 
 /**
- * Align a (possibly merged-collapsed) pattern with a concrete SMS body and return
- * the captured value for every wildcard slot.
+ * Align a pattern with a concrete SMS body and return the captured value for
+ * every wildcard slot. The pattern may include consecutive `<*>` runs (Drain's
+ * digit-wildcard split keeps each digit slot separate). For a run, the body
+ * tokens between the run's start and the next pattern literal are distributed
+ * one-per-slot in order; if the body has more tokens than the run has slots,
+ * the LAST slot absorbs the leftover.
  *
- * Drain merges fragment runs of variable tokens into a single `<*>`, so a pattern
- * may be shorter than the body (e.g. pattern `Spent EGP <*> at <*>` matches body
- * `Spent EGP 70 at Coffee Shop` — the trailing wildcard absorbs two tokens). A
- * naive index-by-index extraction would mis-align everything past the first
- * collapsed wildcard, which is exactly why pending items kept their old
- * "AMOUNT_NOT_PARSEABLE" reason after the user mapped the template.
- *
- * Algorithm: walk the pattern. For each literal, scan the body forward to find
- * the next matching token (case-insensitive) and consume it. For each `<*>`,
- * grab all body tokens up to the next literal (or end-of-body if no more
- * literals follow) and join them — that joined string is the slot value.
+ * Earlier this version returned the SAME captured string for every slot in
+ * the run because each iteration restarted from the same `bodyIdx` and
+ * computed the same `matchIdx`. For the user that meant "synced 6 messages,
+ * got 2 transactions" — the other 4 had patterns with consecutive wildcards
+ * (after the digit-wildcard split) and the second-onwards slots came back
+ * empty, so AmountParser failed and routing quarantined them.
  */
 internal fun extractWildcardValues(
     template: SmsTemplate,
@@ -256,42 +255,57 @@ internal fun extractWildcardValues(
 
     val out = mutableMapOf<WildcardId, String>()
     var bodyIdx = 0
+    var patternIdx = 0
 
-    for ((patternIdx, ptok) in patternTokens.withIndex()) {
+    while (patternIdx < patternTokens.size) {
+        val ptok = patternTokens[patternIdx]
         if (ptok != com.ivy.sms.data.WILDCARD_TOKEN) {
             val matchIdx = (bodyIdx until bodyTokens.size).firstOrNull {
                 bodyTokens[it].equals(ptok, ignoreCase = true)
             } ?: return null
             bodyIdx = matchIdx + 1
+            patternIdx++
             continue
         }
 
-        // Wildcard: find next literal pattern token to know where this <*> stops.
-        val nextLiteralPatternIdx = (patternIdx + 1 until patternTokens.size).firstOrNull {
+        // Greedy wildcard run: collect every consecutive <*> in the pattern.
+        val runStart = patternIdx
+        var runEnd = patternIdx
+        while (runEnd + 1 < patternTokens.size &&
+            patternTokens[runEnd + 1] == com.ivy.sms.data.WILDCARD_TOKEN
+        ) {
+            runEnd++
+        }
+        val runLength = runEnd - runStart + 1
+
+        val nextLiteralPatternIdx = (runEnd + 1 until patternTokens.size).firstOrNull {
             patternTokens[it] != com.ivy.sms.data.WILDCARD_TOKEN
         }
-
-        val slot = slotByPosition[patternIdx]
-        if (nextLiteralPatternIdx == null) {
-            // Trailing wildcard — consume rest of body.
-            if (slot != null && bodyIdx < bodyTokens.size) {
-                out[slot.id] = bodyTokens.subList(bodyIdx, bodyTokens.size).joinToString(" ")
-            }
-            bodyIdx = bodyTokens.size
+        val stopAt = if (nextLiteralPatternIdx == null) {
+            bodyTokens.size
         } else {
             val nextLiteral = patternTokens[nextLiteralPatternIdx]
-            val matchIdx = (bodyIdx until bodyTokens.size).firstOrNull {
+            (bodyIdx until bodyTokens.size).firstOrNull {
                 bodyTokens[it].equals(nextLiteral, ignoreCase = true)
             } ?: return null
-            if (slot != null && matchIdx > bodyIdx) {
-                out[slot.id] = bodyTokens.subList(bodyIdx, matchIdx).joinToString(" ")
-            }
-            // Don't advance past matchIdx — the literal will be consumed on the
-            // next loop iteration. Bare-empty wildcards (matchIdx == bodyIdx) are
-            // legal: pattern `<*> X` against body `X` leaves the leading slot empty.
-            bodyIdx = matchIdx
         }
+        val available = bodyTokens.subList(bodyIdx, stopAt)
+        // 1-to-1 distribution: slot N gets body[N], the LAST slot absorbs any
+        // leftover body tokens (typical for trailing merchant strings). If
+        // there are fewer body tokens than slots, the trailing slots stay
+        // empty — the consumer (AmountParser etc.) will skip them.
+        for (i in 0 until runLength) {
+            val slot = slotByPosition[runStart + i] ?: continue
+            val tokenForSlot = when {
+                i >= available.size -> ""
+                i == runLength - 1 -> available.subList(i, available.size).joinToString(" ")
+                else -> available[i]
+            }
+            if (tokenForSlot.isNotBlank()) out[slot.id] = tokenForSlot
+        }
+        bodyIdx = stopAt
+        patternIdx = runEnd + 1
     }
-
     return out
 }
+

@@ -47,19 +47,10 @@ class PendingReviewViewModel @Inject constructor(
      * "Review all" queue.
      */
     private var activeWalletFilter by mutableStateOf<com.ivy.data.model.AccountId?>(null)
-    private var walletSenders by mutableStateOf<Set<String>?>(null)
 
     fun setWalletFilter(walletId: com.ivy.data.model.AccountId?) {
         if (activeWalletFilter == walletId) return
         activeWalletFilter = walletId
-        if (walletId == null) {
-            walletSenders = null
-            return
-        }
-        viewModelScope.launch {
-            val links = senderRepo.findByAccountId(walletId).getOrNull().orEmpty()
-            walletSenders = links.map { it.senderId }.toSet()
-        }
     }
 
     init {
@@ -117,9 +108,18 @@ class PendingReviewViewModel @Inject constructor(
         val templates = templateRepo.observeAll().collectAsState(initial = emptyList())
         val reviewed = prefs.observeReviewedTotal().collectAsState(initial = 0)
         val mapped = prefs.observeTemplatesMappedTotal().collectAsState(initial = 0)
+        val discovered = prefs.observeDiscoveredTotal().collectAsState(initial = 0)
+        // Reactive sender filter: subscribing to senderRepo.observeAll() avoids
+        // the previous launch-then-set-state race where the screen rendered
+        // unfiltered global items briefly and never recovered if viewModelScope
+        // hiccupped on the user's device. With Flow-backed state, the moment
+        // links land we get the right Set immediately.
+        val allLinks = senderRepo.observeAll().collectAsState(initial = emptyList())
+        val activeFilter = activeWalletFilter
+        val sendersForWallet: Set<String>? = activeFilter?.let { wid ->
+            allLinks.value.filter { it.accountId == wid }.map { it.senderId }.toSet()
+        }
         val templateById = templates.value.associateBy { it.id.value.toString() }
-        // For per-wallet view: limit to senders linked to the active wallet.
-        val sendersForWallet: Set<String>? = walletSenders
         val rows = items.value.mapNotNull { e ->
             if (sendersForWallet != null && e.senderId !in sendersForWallet) return@mapNotNull null
             val tpl = templateById[e.templateId] ?: return@mapNotNull null
@@ -141,6 +141,7 @@ class PendingReviewViewModel @Inject constructor(
             items = rows.ifEmpty { persistentListOf() },
             reviewedTotal = reviewed.value,
             templatesMappedTotal = mapped.value,
+            discoveredTotal = discovered.value,
             scopedToWallet = activeWalletFilter != null,
         )
     }

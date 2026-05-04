@@ -196,21 +196,21 @@ class CreateTransactionFromSmsUseCase @Inject constructor(
 }
 
 /**
- * Best-effort short label drawn from the SMS body: takes the first few
- * non-numeric tokens (skipping digit-only chunks that would just look like noise
- * in the title), capped at ~30 chars. Used as the last-resort fallback when the
- * user hasn't named the template AND no merchant was captured.
+ * Best-effort short label drawn from the SMS body — takes the first few
+ * tokens verbatim (digits included), capped at ~30 chars. Earlier this
+ * skipped digit-bearing tokens, which produced titles like "Withdrawal of"
+ * instead of "Withdrawal of 100" and the user couldn't tell two transactions
+ * apart at a glance. Now if there's a token among the first few words —
+ * a number, a date, anything — it carries through to the title.
  */
 private fun firstWordsOf(body: String): String? {
     if (body.isBlank()) return null
-    val digit = Regex("[0-9\\u0660-\\u0669\\u06F0-\\u06F9]")
     val words = body.split(Regex("\\s+"))
         .filter { it.isNotBlank() }
-        .filterNot { digit.containsMatchIn(it) }
-        .take(4)
+        .take(5)
     if (words.isEmpty()) return null
     val joined = words.joinToString(" ")
-    return if (joined.length <= 30) joined else joined.take(30).trimEnd() + "…"
+    return if (joined.length <= 36) joined else joined.take(36).trimEnd() + "…"
 }
 
 private fun Map<WildcardId, String>.firstByRole(

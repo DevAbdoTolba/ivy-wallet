@@ -37,11 +37,35 @@ class SmsWatermarkPreferences @Inject constructor(
     /** Cumulative count of templates the user has mapped from Unmapped → Active. */
     private val templatesMappedTotalKey = intPreferencesKey("sms.review.totalTemplatesMapped")
 
+    /**
+     * Cumulative count of pending-review items EVER discovered by the parser
+     * — incremented on every successful `pendingRepo.enqueue` and never
+     * decremented. Drives the review-screen hero's denominator so the bar
+     * reflects "X of Y total reviewed" with Y monotonically growing, even
+     * when items disappear from the queue via blacklist/clear (which the
+     * resolved-counter doesn't catch).
+     */
+    private val discoveredTotalKey = intPreferencesKey("sms.review.totalDiscovered")
+
     fun observeReviewedTotal(): Flow<Int> =
         dataStore.data.map { it[reviewedTotalKey] ?: 0 }
 
     fun observeTemplatesMappedTotal(): Flow<Int> =
         dataStore.data.map { it[templatesMappedTotalKey] ?: 0 }
+
+    fun observeDiscoveredTotal(): Flow<Int> =
+        dataStore.data.map { it[discoveredTotalKey] ?: 0 }
+
+    suspend fun incrementDiscoveredTotal(by: Int = 1): Either<String, Unit> = withContext(dispatchers.io) {
+        runCatching {
+            dataStore.edit { prefs ->
+                prefs[discoveredTotalKey] = (prefs[discoveredTotalKey] ?: 0) + by
+            }
+        }.fold(
+            onSuccess = { Unit.right() },
+            onFailure = { "STORAGE_ERROR:${it.message}".left() },
+        )
+    }
 
     suspend fun incrementReviewedTotal(by: Int = 1): Either<String, Unit> = withContext(dispatchers.io) {
         runCatching {

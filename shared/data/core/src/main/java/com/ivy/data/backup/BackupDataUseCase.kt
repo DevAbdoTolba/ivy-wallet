@@ -93,6 +93,7 @@ class BackupDataUseCase @Inject constructor(
     private val scanLowerBoundKey = longPreferencesKey("sms.scan.period.lowerBoundEpochMillis")
     private val reviewedTotalKey = androidx.datastore.preferences.core.intPreferencesKey("sms.review.totalResolved")
     private val templatesMappedTotalKey = androidx.datastore.preferences.core.intPreferencesKey("sms.review.totalTemplatesMapped")
+    private val discoveredTotalKey = androidx.datastore.preferences.core.intPreferencesKey("sms.review.totalDiscovered")
 
     suspend fun exportToFile(
         zipFileUri: Uri
@@ -142,6 +143,9 @@ class BackupDataUseCase @Inject constructor(
             val templatesMappedTotal = async {
                 runCatching { dataStore.data.first()[templatesMappedTotalKey] }.getOrNull()
             }
+            val discoveredTotal = async {
+                runCatching { dataStore.data.first()[discoveredTotalKey] }.getOrNull()
+            }
 
             val completeData = IvyWalletCompleteData(
                 accounts = accounts.await(),
@@ -161,6 +165,7 @@ class BackupDataUseCase @Inject constructor(
                 smsScanLowerBoundEpochMillis = scanLowerBound.await(),
                 smsReviewedTotal = reviewedTotal.await(),
                 smsTemplatesMappedTotal = templatesMappedTotal.await(),
+                smsDiscoveredTotal = discoveredTotal.await(),
             )
 
             json.encodeToString(completeData)
@@ -372,6 +377,11 @@ class BackupDataUseCase @Inject constructor(
             completeData.smsTemplatesMappedTotal?.let { v ->
                 runCatching {
                     dataStore.edit { it[templatesMappedTotalKey] = v }
+                }
+            }
+            completeData.smsDiscoveredTotal?.let { v ->
+                runCatching {
+                    dataStore.edit { it[discoveredTotalKey] = v }
                 }
             }
             completeData.smsScanLowerBoundEpochMillis?.let { lower ->

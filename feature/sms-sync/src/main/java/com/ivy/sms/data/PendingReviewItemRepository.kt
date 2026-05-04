@@ -37,6 +37,7 @@ class PendingReviewItemRepositoryImpl @Inject constructor(
     private val templateRepo: SmsTemplateRepository,
     private val mapper: PendingReviewItemMapper,
     private val dispatchers: DispatchersProvider,
+    private val prefs: SmsWatermarkPreferences,
 ) : PendingReviewItemRepository {
 
     override suspend fun findAll(): Either<String, List<PendingReviewItem>> = withContext(dispatchers.io) {
@@ -84,6 +85,10 @@ class PendingReviewItemRepositoryImpl @Inject constructor(
     override suspend fun enqueue(item: PendingReviewItem): Either<String, Unit> = withContext(dispatchers.io) {
         try {
             writeDao.insert(with(mapper) { item.toEntity() })
+            // Bump the lifetime "discovered" counter so the review-screen
+            // hero's denominator climbs monotonically. Dedup hits below skip
+            // this on purpose — the same dedupKey shouldn't double-count.
+            prefs.incrementDiscoveredTotal()
             Unit.right()
         } catch (e: SQLiteConstraintException) {
             Timber.d("Pending item already enqueued for dedupKey=${item.sms.dedupKey}")

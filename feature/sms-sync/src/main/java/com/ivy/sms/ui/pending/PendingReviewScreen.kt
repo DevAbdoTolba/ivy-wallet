@@ -61,12 +61,13 @@ fun PendingReviewScreen(
     LaunchedEffect(walletId) { viewModel.setWalletFilter(walletId) }
     val state = viewModel.uiState()
     val nav = navigation()
-    // Persistent progress: cumulative reviewed (DataStore) + currently
-    // remaining = total ever queued. Survives back-navigation and process
-    // restart, so the user sees their progress grow over time instead of
-    // a counter that resets to zero on every screen entry.
+    // Persistent progress sourced entirely from DataStore counters so
+    // back-navigation, process restart, AND blacklist/clear ops don't
+    // shrink the denominator. discoveredTotal is monotonic on enqueue,
+    // reviewedTotal monotonic on resolve. Fallback to current items.size
+    // for legacy installs that haven't accumulated a discovered count yet.
     val resolved = state.reviewedTotal
-    val totalEverQueued = (resolved + state.items.size).coerceAtLeast(state.items.size)
+    val totalEverQueued = maxOf(state.discoveredTotal, resolved + state.items.size)
     val templatesLeft = remember(state.items) {
         state.items.map { it.templateId.value }.toSet().size
     }

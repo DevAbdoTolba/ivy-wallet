@@ -29,6 +29,10 @@ data class PendingReviewViewState(
      *  even after closing and reopening the screen. */
     val reviewedTotal: Int = 0,
     val templatesMappedTotal: Int = 0,
+    /** Lifetime count of pending items ever discovered. Drives the hero's
+     *  denominator so it never shrinks when items leave the queue via
+     *  blacklist/clear (which don't increment [reviewedTotal]). */
+    val discoveredTotal: Int = 0,
     /** True when this view is scoped to a single wallet (the per-wallet
      *  Review button); false on the global "Review all" entry. Lets the
      *  screen tweak its toolbar title and hero copy to make scope explicit. */

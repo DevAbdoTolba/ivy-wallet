@@ -128,6 +128,7 @@ private fun WalletSmsConfigContent(
                 linkedSender = link?.senderId,
                 lastSyncStatus = formatLastSyncStatus(link?.watermark),
                 pendingCount = pendingCount,
+                neverSynced = link != null && link.watermark == null,
             )
         } catch (t: Throwable) {
             timber.log.Timber.e(t, "WalletSmsConfig live load failed")
@@ -144,6 +145,23 @@ private fun WalletSmsConfigContent(
         if (state.autoOpenSyncSheet) {
             showPeriodPicker = true
             viewModel.consumeAutoOpenSyncSheet()
+        }
+    }
+
+    // Belt-and-braces: any time the wallet has a linked sender but has NEVER
+    // been synced, auto-pop the period sheet on first composition. Catches
+    // the cases where the JustLinkedSignal doesn't reach the VM (process
+    // restart between link and arrival, or the Singleton was already
+    // consumed). Once-per-screen-instance via rememberSaveable so a
+    // back-navigation refresh doesn't re-open it.
+    var autoPoppedForNeverSynced by androidx.compose.runtime.saveable.rememberSaveable(walletId.value.toString()) {
+        mutableStateOf(false)
+    }
+    LaunchedEffect(liveData?.neverSynced, liveData?.linkedSender) {
+        val live = liveData ?: return@LaunchedEffect
+        if (live.linkedSender != null && live.neverSynced && !autoPoppedForNeverSynced && !state.syncing) {
+            autoPoppedForNeverSynced = true
+            showPeriodPicker = true
         }
     }
 
@@ -301,6 +319,7 @@ private data class WalletLiveData(
     val linkedSender: String?,
     val lastSyncStatus: String,
     val pendingCount: Int,
+    val neverSynced: Boolean = false,
 )
 
 private fun formatLastSyncStatus(watermark: java.time.Instant?): String {

@@ -9,6 +9,7 @@ import com.ivy.data.db.dao.write.WriteSenderAccountLinkDao
 import com.ivy.data.model.AccountId
 import com.ivy.data.repository.AccountRepository
 import com.ivy.sms.domain.model.SenderAccountLink
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,6 +18,7 @@ interface SenderAccountLinkRepository {
     suspend fun findAll(): Either<String, List<SenderAccountLink>>
     suspend fun findBySenderId(senderId: String): Either<String, SenderAccountLink?>
     suspend fun findByAccountId(accountId: AccountId): Either<String, List<SenderAccountLink>>
+    fun observeAll(): kotlinx.coroutines.flow.Flow<List<SenderAccountLink>>
     suspend fun upsert(link: SenderAccountLink): Either<String, Unit>
     suspend fun delete(senderId: String): Either<String, Unit>
 }
@@ -56,6 +58,11 @@ class SenderAccountLinkRepositoryImpl @Inject constructor(
             onFailure = { "STORAGE_ERROR:${it.message}".left() },
         )
     }
+
+    override fun observeAll(): kotlinx.coroutines.flow.Flow<List<SenderAccountLink>> =
+        readDao.observeAll().map { entities ->
+            entities.mapNotNull { e -> with(mapper) { e.toDomain() }.getOrNull() }
+        }
 
     override suspend fun findByAccountId(accountId: AccountId): Either<String, List<SenderAccountLink>> = withContext(dispatchers.io) {
         runCatching { readDao.findByAccountId(accountId.value.toString()) }.fold(

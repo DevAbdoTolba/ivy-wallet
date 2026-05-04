@@ -54,4 +54,7 @@ data class IvyWalletCompleteData(
     /** Cumulative templates-mapped counter shown in the review hero. */
     @SerialName("smsTemplatesMappedTotal")
     val smsTemplatesMappedTotal: Int? = null,
+    /** Cumulative pending items ever discovered (monotonic on enqueue). */
+    @SerialName("smsDiscoveredTotal")
+    val smsDiscoveredTotal: Int? = null,
 )

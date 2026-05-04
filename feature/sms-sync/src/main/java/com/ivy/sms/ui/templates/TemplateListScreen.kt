@@ -150,12 +150,13 @@ fun TemplateListScreen(
                         }
                         if (isOpen) {
                             items(rows, key = { it.id.value }) { row ->
-                                // Kick off a Jaccard preload on first compose so the row
-                                // can show the accurate count next to "Show messages"
-                                // without the user needing to tap it.
-                                LaunchedEffect(row.id) {
-                                    viewModel.onEvent(TemplateListEvent.PreloadMatching(row.id))
-                                }
+                                // Eager findMatching preload was removed: with N
+                                // templates per group it spawned N inbox-content-resolver
+                                // queries on every accordion expand, hammering the
+                                // dispatcher and visibly stalling the UI. The row now
+                                // displays Drain's matchCount; the actual scoped count
+                                // populates lazily once the user taps "Show messages"
+                                // (and the modal then displays the accurate number).
                                 TemplateRow(
                                     row = row,
                                     displayCount = state.displayCountByTemplate[row.id] ?: row.matchCount,

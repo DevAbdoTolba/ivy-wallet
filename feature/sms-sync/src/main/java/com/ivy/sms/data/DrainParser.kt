@@ -45,23 +45,19 @@ class DrainParser @Inject constructor() {
         val leaf = descend(tokens, createIfMissing = true)
         val best = bestMatch(leaf, tokens)
         if (best != null) {
-            // mergeTemplates threads the candidate's rawTokens through so it can
-            // tell digit wildcards apart from word wildcards: digit wildcards
-            // are NEVER collapsed (each digit gets its own slot — this is what
-            // keeps "Balance 416.44" mappable when the same template also has
-            // amount + fee digits earlier in the body), while consecutive
-            // non-digit mismatches still collapse into one slot to avoid
-            // bloating the pattern with merchant-name churn.
-            val (merged, mergedExamples) = mergeTemplates(best.templatePattern, tokens, rawTokens)
+            // Reverted to the collapsing merge (and matching example refresh)
+            // because the digit-wildcard split was breaking routing: it
+            // produced patterns with consecutive `<*>` runs whose slot count
+            // exceeded the body-token count, leaving the amount slot empty
+            // and quarantining the message. The "416.44 not chip" symptom
+            // it was meant to fix is far less important than not creating
+            // transactions at all.
+            val merged = mergeTemplates(best.templatePattern, tokens)
             val updatedExamples = best.exampleValues.toMutableMap()
-            for ((idx, raw) in mergedExamples) {
-                // Prefer existing example unless it's blank or non-digit (the
-                // latter happens when an earlier merge captured the wrong raw
-                // token because of position misalignment). Replacing with a
-                // digit-bearing example heals the mapping screen.
-                val current = updatedExamples[idx]
-                if (current.isNullOrBlank() || (digitChar.containsMatchIn(raw) && !digitChar.containsMatchIn(current))) {
-                    updatedExamples[idx] = raw
+            for (i in merged.indices) {
+                if (merged[i] == WILDCARD_TOKEN && i !in updatedExamples) {
+                    val raw = rawTokens.getOrNull(i) ?: continue
+                    if (raw.isNotBlank()) updatedExamples[i] = raw
                 }
             }
             best.templatePattern = merged
@@ -188,50 +184,29 @@ class DrainParser @Inject constructor() {
     }
 
     /**
-     * Merge the cluster's existing template with a new candidate message. Walks the
-     * candidate token-by-token, keeping each token that ALSO appears as a stable
-     * literal in the existing template (in any position). Wildcards collapse for
-     * non-digit mismatches (merchant churn) but NEVER for digit-derived wildcards —
-     * each digit gets its own slot in the merged pattern so the user can map
-     * every amount, balance, fee, and date independently.
-     *
-     * Returns the merged token list AND a map of mergedIdx → candidate's raw token
-     * for every wildcard position. The caller uses that to refresh
-     * [DrainCluster.exampleValues] without the position-misalignment bug that
-     * previously stranded the third digit's example value at a non-digit raw token.
+     * Merge the cluster's existing template with a new candidate message. Walks
+     * the candidate token-by-token, keeping each token that also appears as a
+     * stable literal in the existing template (in any position) and replacing
+     * the rest with a single collapsed `<*>` wildcard. Adjacent wildcards
+     * collapse into one — that keeps slot count stable so runtime extraction
+     * doesn't end up with empty slots when a body has fewer variable tokens
+     * than the merged pattern's slot positions.
      */
-    private fun mergeTemplates(
-        existing: List<String>,
-        candidate: List<String>,
-        candidateRaw: List<String>,
-    ): Pair<List<String>, Map<Int, String>> {
+    private fun mergeTemplates(existing: List<String>, candidate: List<String>): List<String> {
         val existingLiterals = existing.filter { it != WILDCARD_TOKEN }.toSet()
         val merged = mutableListOf<String>()
-        val examples = mutableMapOf<Int, String>()
-        var prevWildcardWasNonDigit = false
-        for ((cIdx, tok) in candidate.withIndex()) {
-            val raw = candidateRaw.getOrNull(cIdx).orEmpty()
+        var prevWildcard = false
+        for (tok in candidate) {
             val stable = tok != WILDCARD_TOKEN && tok in existingLiterals
             if (stable) {
                 merged.add(tok)
-                prevWildcardWasNonDigit = false
-                continue
-            }
-            val isDigitWildcard = tok == WILDCARD_TOKEN && digitChar.containsMatchIn(raw)
-            if (isDigitWildcard) {
-                // Digit wildcards always get their own slot.
+                prevWildcard = false
+            } else if (!prevWildcard) {
                 merged.add(WILDCARD_TOKEN)
-                examples[merged.size - 1] = raw
-                prevWildcardWasNonDigit = false
-            } else if (!prevWildcardWasNonDigit) {
-                // First non-digit wildcard in this run.
-                merged.add(WILDCARD_TOKEN)
-                if (raw.isNotBlank()) examples[merged.size - 1] = raw
-                prevWildcardWasNonDigit = true
+                prevWildcard = true
             }
-            // else: collapsed into the previous non-digit wildcard run; drop.
         }
-        return merged to examples
+        return merged
     }
 
     private fun patternToTokens(pattern: String): List<String> =

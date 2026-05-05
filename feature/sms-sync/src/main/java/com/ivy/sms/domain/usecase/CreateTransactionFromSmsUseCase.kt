@@ -26,6 +26,9 @@ import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
+import timber.log.Timber
+
+private const val TRACE = "SmsTrace"
 
 class CreateTransactionFromSmsUseCase @Inject constructor(
     private val accountRepository: AccountRepository,
@@ -36,17 +39,40 @@ class CreateTransactionFromSmsUseCase @Inject constructor(
         template: SmsTemplate,
         account: AccountId,
     ): Either<String, TransactionId> {
+        val tag = "tpl=${template.id.value} body='${message.body.take(60)}…'"
+        Timber.tag(TRACE).d("CREATE → enter %s pattern='%s'", tag, template.pattern)
+
         val amountSlot = template.wildcardSlots.firstOrNull { it.role.isAmountRole() }
-            ?: return "TEMPLATE_NOT_MAPPED:no amount-role wildcard".left()
+        if (amountSlot == null) {
+            Timber.tag(TRACE).w("CREATE ✗ no amount-role slot %s", tag)
+            return "TEMPLATE_NOT_MAPPED:no amount-role wildcard".left()
+        }
 
         val values = extractWildcardValues(template, message)
-            ?: return "AMOUNT_NOT_PARSEABLE:token alignment failure".left()
+        if (values == null) {
+            Timber.tag(TRACE).w("CREATE ✗ extract returned null (alignment fail) %s", tag)
+            return "AMOUNT_NOT_PARSEABLE:token alignment failure".left()
+        }
+        Timber.tag(TRACE).d(
+            "CREATE   extract %s → %s",
+            tag,
+            values.entries.joinToString { "${it.key.value}='${it.value}'" },
+        )
 
         val amountText = values[amountSlot.id]
-            ?: return "AMOUNT_NOT_PARSEABLE:no amount value".left()
+        if (amountText == null) {
+            Timber.tag(TRACE).w(
+                "CREATE ✗ no amount value at slot=%s role=%s %s",
+                amountSlot.id.value, amountSlot.role, tag,
+            )
+            return "AMOUNT_NOT_PARSEABLE:no amount value".left()
+        }
 
         val rawAmount = AmountParser.parseAmount(amountText).getOrNull()
-            ?: return "AMOUNT_NOT_PARSEABLE:'$amountText'".left()
+        if (rawAmount == null) {
+            Timber.tag(TRACE).w("CREATE ✗ AmountParser failed on '%s' %s", amountText, tag)
+            return "AMOUNT_NOT_PARSEABLE:'$amountText'".left()
+        }
 
         val acct = accountRepository.findById(account)
             ?: return "STORAGE_ERROR:account not found".left()
@@ -184,13 +210,25 @@ class CreateTransactionFromSmsUseCase @Inject constructor(
                 toAccount = account,
                 toValue = value,
             )
-            else -> return "TEMPLATE_NOT_MAPPED:non-amount role on amount slot".left()
+            else -> {
+                Timber.tag(TRACE).w("CREATE ✗ non-amount role on amount slot %s", tag)
+                return "TEMPLATE_NOT_MAPPED:non-amount role on amount slot".left()
+            }
         }
 
         return runCatching { transactionRepository.save(tx) }
             .fold(
-                onSuccess = { transactionId.right() },
-                onFailure = { "STORAGE_ERROR:${it.message}".left() },
+                onSuccess = {
+                    Timber.tag(TRACE).d(
+                        "CREATE ✓ saved txn=%s amount=%s role=%s %s",
+                        transactionId.value, effectiveAmount, amountSlot.role, tag,
+                    )
+                    transactionId.right()
+                },
+                onFailure = {
+                    Timber.tag(TRACE).e(it, "CREATE ✗ repo.save threw %s", tag)
+                    "STORAGE_ERROR:${it.message}".left()
+                },
             )
     }
 }

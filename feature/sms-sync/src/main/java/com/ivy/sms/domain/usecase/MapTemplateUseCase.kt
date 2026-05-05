@@ -104,6 +104,10 @@ class MapTemplateUseCase @Inject constructor(
         // message wasn't even read".
         val pending = pendingRepo.findAll().getOrNull().orEmpty()
             .filter { it.sms.senderId == updated.senderIdHint }
+        timber.log.Timber.tag("SmsTrace").i(
+            "MAP → reprocess tpl=%s sender=%s pendingForSender=%d",
+            updated.id.value, updated.senderIdHint, pending.size,
+        )
         if (pending.isEmpty()) {
             _progress.value = null
             return MapTemplateResult(0).right()

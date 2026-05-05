@@ -48,27 +48,35 @@ class FindMatchingMessagesUseCase @Inject constructor(
         template: SmsTemplate,
         limit: Int = 100,
     ): Either<String, List<SmsMessage>> {
-        cache[template.id]?.let { return it.right() }
+        cache[template.id]?.let {
+            timber.log.Timber.tag("SmsTrace")
+                .d("FIND   cache hit tpl=%s size=%d", template.id.value, it.size)
+            return it.right()
+        }
         val sender = template.senderIdHint.ifBlank { return emptyList<SmsMessage>().right() }
         val rows = inbox.read(
             lowerBoundEpochMillis = 0L,
             watermarkEpochMillis = 0L,
             senderFilter = sender,
         ).getOrNull().orEmpty()
+        timber.log.Timber.tag("SmsTrace")
+            .d("FIND → tpl=%s sender=%s rowsFromInbox=%d drainCount=%d", template.id.value, sender, rows.size, template.matchCount)
 
         val matches = mutableListOf<SmsMessage>()
+        var alignFailed = 0
         for (row in rows.sortedByDescending { it.dateEpochMillis }) {
             val msg = with(mapper) { row.toDomain() }
-            // Strict alignment: only count messages the template's pattern can
-            // actually extract wildcard values from. The same check the runtime
-            // routing pipeline uses, so the row count == the number of
-            // transactions that will actually be created when the template is
-            // mapped (or has already been mapped).
             if (extractWildcardValues(template, msg) != null) {
                 matches.add(msg)
                 if (matches.size >= limit) break
+            } else {
+                alignFailed++
             }
         }
+        timber.log.Timber.tag("SmsTrace").d(
+            "FIND ← tpl=%s aligned=%d alignFailed=%d total=%d",
+            template.id.value, matches.size, alignFailed, rows.size,
+        )
         cache[template.id] = matches.toList()
         return matches.right()
     }

@@ -16,6 +16,9 @@ import com.ivy.sms.domain.model.isAmountRole
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
+import timber.log.Timber
+
+private const val TRACE = "SmsTrace"
 
 sealed interface RouteOutcome {
     data object Blacklisted : RouteOutcome
@@ -32,8 +35,11 @@ class RouteSmsUseCase @Inject constructor(
         template: SmsTemplate,
         senderLinks: Map<String, AccountId>,
     ): Either<String, RouteOutcome> {
-        // Blacklist short-circuit MUST come BEFORE the Tier 1 check.
+        val tag = "tpl=${template.id.value} sender=${message.senderId} body='${message.body.take(60)}…'"
+        Timber.tag(TRACE).d("ROUTE → enter %s state=%s", tag, template.state)
+
         if (template.state == TemplateState.BLACKLISTED) {
+            Timber.tag(TRACE).d("ROUTE ✗ BLACKLISTED %s", tag)
             return RouteOutcome.Blacklisted.right()
         }
 
@@ -41,13 +47,17 @@ class RouteSmsUseCase @Inject constructor(
         val hasAmountRole = template.wildcardSlots.any { it.role.isAmountRole() }
         if (template.state == TemplateState.ACTIVE && account != null && hasAmountRole) {
             return when (val r = createTransaction(message, template, account)) {
-                is Either.Right -> RouteOutcome.Created(r.value).right()
+                is Either.Right -> {
+                    Timber.tag(TRACE).d("ROUTE ✓ CREATED txn=%s %s", r.value.value, tag)
+                    RouteOutcome.Created(r.value).right()
+                }
                 is Either.Left -> {
                     val reason = when {
                         r.value.startsWith("AMOUNT_NOT_PARSEABLE") -> QuarantineReason.AMOUNT_NOT_PARSEABLE
                         r.value.startsWith("CURRENCY_MISMATCH") -> QuarantineReason.CURRENCY_MISMATCH
                         else -> QuarantineReason.AMOUNT_NOT_PARSEABLE
                     }
+                    Timber.tag(TRACE).w("ROUTE ✗ QUARANTINED reason=%s detail='%s' %s", reason, r.value, tag)
                     quarantine(message, template, reason)
                 }
             }
@@ -55,8 +65,13 @@ class RouteSmsUseCase @Inject constructor(
 
         val reason = when {
             account == null -> QuarantineReason.SENDER_NOT_LINKED
+            !hasAmountRole -> QuarantineReason.TEMPLATE_NOT_MAPPED
             else -> QuarantineReason.TEMPLATE_NOT_MAPPED
         }
+        Timber.tag(TRACE).w(
+            "ROUTE ✗ QUARANTINED pre-route reason=%s state=%s account=%s hasAmount=%s %s",
+            reason, template.state, account, hasAmountRole, tag,
+        )
         return quarantine(message, template, reason)
     }
 

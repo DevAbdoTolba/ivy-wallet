@@ -69,6 +69,10 @@ class ScanInboxUseCase @Inject constructor(
             inbox.read(lowerBound, watermark, senderFilter = link.senderId)
                 .getOrNull().orEmpty()
         }.sortedBy { it.dateEpochMillis }
+        timber.log.Timber.tag("SmsTrace").i(
+            "SCAN → links=%d lowerBound=%d watermark=%d rows=%d",
+            links.size, lowerBound, watermark, rows.size,
+        )
 
         var transactionsCreated = 0
         var itemsQuarantined = 0
@@ -105,7 +109,12 @@ class ScanInboxUseCase @Inject constructor(
             }
 
             when (val r = route(message, template, senderToAccount)) {
-                is Either.Left -> { /* swallow individual-row failures, continue */ }
+                is Either.Left -> {
+                    timber.log.Timber.tag("SmsTrace").w(
+                        "SCAN  route returned Left detail='%s' tpl=%s",
+                        r.value, template.id.value,
+                    )
+                }
                 is Either.Right -> when (r.value) {
                     is RouteOutcome.Created -> transactionsCreated++
                     is RouteOutcome.Quarantined -> itemsQuarantined++
@@ -148,6 +157,14 @@ class ScanInboxUseCase @Inject constructor(
         // snapshot when they haven't started a sync yet.
         _progress.value = null
 
+        timber.log.Timber.tag("SmsTrace").i(
+            "SCAN ← total=%d created=%d quarantined=%d newTpls=%d duration=%dms",
+            rows.size,
+            transactionsCreated,
+            itemsQuarantined,
+            newTemplates,
+            System.currentTimeMillis() - started,
+        )
         ScanSummary(
             newMessagesProcessed = rows.size,
             transactionsCreated = transactionsCreated,

@@ -21,6 +21,8 @@ import com.ivy.ui.ComposeViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -54,47 +56,46 @@ class PendingReviewViewModel @Inject constructor(
     }
 
     init {
-        // Re-drain every time the templates table changes — fires on VM init AND
-        // whenever the user maps a template elsewhere and navigates back. The
-        // latch-once approach previously here missed re-mappings done while this
-        // VM stayed alive across navigation, which is exactly when the user is
-        // most confused ("I just mapped it, why is it still here?").
+        // Drain pending items only when the SET of active template ids actually
+        // changes — not on every observeAll emit. The previous version re-ran
+        // for every upsert (including matchCount-only refreshes), which fanned
+        // out into 268 pending × 2 templates = 536 route calls per emit and
+        // explained the 2247 AMOUNT_NOT_PARSEABLE log lines. distinctUntilChanged
+        // on the active-id set means drainPending fires only when a template
+        // moves into or out of ACTIVE — which IS the situation that can free
+        // stuck items.
         viewModelScope.launch {
-            templateRepo.observeAll().collect { templates ->
-                drainPending(templates.filter { it.state == TemplateState.ACTIVE })
-            }
+            templateRepo.observeAll()
+                .map { all -> all.filter { it.state == TemplateState.ACTIVE }.map { it.id }.toSet() }
+                .distinctUntilChanged()
+                .collect { _ -> drainPending() }
         }
     }
 
     /**
-     * For every queued pending item, try every active template from the same
-     * sender — not just the template the item was originally quarantined under.
-     *
-     * This fixes the "first-ever pending item is stuck" bug: if Drain clustered
-     * the original SMS into Template A but the user mapped a similar-looking
-     * Template B, the existing per-templateId drain would never resolve A's
-     * pending item. Walking *all* same-sender ACTIVE templates lets B's mapping
-     * pick up A's stranded item too. extractWildcardValues already returns null
-     * if the body doesn't actually align with the template's literals, so we
-     * can't false-positive here.
+     * For every queued pending item, route via that item's OWN (re-fetched)
+     * template — picks up the latest state if it just transitioned to ACTIVE,
+     * but stays a single route() per item rather than the previous
+     * pending × candidates fan-out. The "first-ever item stuck" case the
+     * fan-out was meant to handle is already covered by [MapTemplateUseCase]'s
+     * post-save reprocess, which routes each pending item via its own template
+     * the moment its template gets mapped — so this drain just needs to handle
+     * later state changes (e.g., a template flipping back to ACTIVE after
+     * being un-blacklisted).
      */
-    private suspend fun drainPending(activeTemplates: List<com.ivy.sms.domain.model.SmsTemplate>) {
+    private suspend fun drainPending() {
         try {
             val items = pendingRepo.findAll().getOrNull().orEmpty()
             if (items.isEmpty()) return
             val links = senderRepo.findAll().getOrNull().orEmpty()
             val senderToAccount = links.associate { it.senderId to it.accountId }
             for (item in items) {
-                val candidates = activeTemplates.filter {
-                    it.senderIdHint == item.sms.senderId
-                }
-                for (tpl in candidates) {
-                    val outcome = route(item.sms, tpl, senderToAccount).getOrNull()
-                    if (outcome is RouteOutcome.Created) {
-                        pendingRepo.dismiss(item.id)
-                        prefs.incrementReviewedTotal()
-                        break
-                    }
+                val tpl = templateRepo.findById(item.template.id).getOrNull() ?: continue
+                if (tpl.state != TemplateState.ACTIVE) continue
+                val outcome = route(item.sms, tpl, senderToAccount).getOrNull()
+                if (outcome is RouteOutcome.Created) {
+                    pendingRepo.dismiss(item.id)
+                    prefs.incrementReviewedTotal()
                 }
             }
         } catch (t: Throwable) {

@@ -328,15 +328,25 @@ internal fun extractWildcardValues(
             } ?: return null
         }
         val available = bodyTokens.subList(bodyIdx, stopAt)
-        // 1-to-1 distribution: slot N gets body[N], the LAST slot absorbs any
-        // leftover body tokens (typical for trailing merchant strings). If
-        // there are fewer body tokens than slots, the trailing slots stay
-        // empty — the consumer (AmountParser etc.) will skip them.
+        // 1-to-1 distribution. The LAST slot absorbs leftover body tokens
+        // ONLY if its mapped role expects free text (Merchant, Ignored,
+        // Unmapped). For digit-bearing roles — amount, balance, fee, date —
+        // we keep a single token, otherwise the balance slot ends up
+        // storing "502.16. <bunch of trailing Arabic words>" because the
+        // pattern's trailing wildcard sucks in everything to end-of-body
+        // (the user's "balance not caught" symptom).
         for (i in 0 until runLength) {
             val slot = slotByPosition[runStart + i] ?: continue
+            val isLast = i == runLength - 1
+            val role = slot.role
+            val absorbsLeftover = isLast && (
+                role == WildcardRole.Merchant ||
+                    role == WildcardRole.Ignored ||
+                    role == WildcardRole.Unmapped
+                )
             val tokenForSlot = when {
                 i >= available.size -> ""
-                i == runLength - 1 -> available.subList(i, available.size).joinToString(" ")
+                absorbsLeftover -> available.subList(i, available.size).joinToString(" ")
                 else -> available[i]
             }
             if (tokenForSlot.isNotBlank()) out[slot.id] = tokenForSlot

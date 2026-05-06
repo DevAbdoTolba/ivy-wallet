@@ -175,7 +175,7 @@ class TemplateMappingViewModel @Inject constructor(
                 chip.id == chosenId -> chip.copy(role = chosenRole)
                 chosenRole.isAmountRole() && chip.role.isAmountRole() ->
                     chip.copy(role = WildcardRole.Unmapped)
-                chosenRole.isDateRole() && chip.role.isDateRole() ->
+                dateRolesConflict(chosenRole, chip.role) ->
                     chip.copy(role = WildcardRole.Unmapped)
                 isUniqueNonAmount(chosenRole) && chip.role == chosenRole ->
                     chip.copy(role = WildcardRole.Unmapped)
@@ -199,12 +199,29 @@ class TemplateMappingViewModel @Inject constructor(
             val role = pendingRoles[id] ?: continue
             val shouldClear = when {
                 chosenRole.isAmountRole() && role.isAmountRole() -> true
-                chosenRole.isDateRole() && role.isDateRole() -> true
+                dateRolesConflict(chosenRole, role) -> true
                 isUniqueNonAmount(chosenRole) && role == chosenRole -> true
                 else -> false
             }
             if (shouldClear) pendingRoles[id] = WildcardRole.Unmapped
         }
+    }
+
+    /**
+     * Date-role conflict matrix:
+     *   - DateFull is mutually exclusive with DateOnly AND TimeOnly (it
+     *     already encodes both, so combining wouldn't make sense).
+     *   - DateOnly + TimeOnly may COEXIST — that's the SMS-with-separate-
+     *     date-and-time-tokens case the user reported. Picking TimeOnly
+     *     after DateOnly (or vice versa) must NOT clear the other.
+     *   - DateOnly is unique among DateOnly slots; same for TimeOnly.
+     */
+    private fun dateRolesConflict(chosen: WildcardRole, other: WildcardRole): Boolean = when {
+        chosen == WildcardRole.DateFull && other.isDateRole() -> true
+        other == WildcardRole.DateFull && chosen.isDateRole() -> true
+        chosen == WildcardRole.DateOnly && other == WildcardRole.DateOnly -> true
+        chosen == WildcardRole.TimeOnly && other == WildcardRole.TimeOnly -> true
+        else -> false
     }
 
     private fun isUniqueNonAmount(role: WildcardRole): Boolean = when (role) {

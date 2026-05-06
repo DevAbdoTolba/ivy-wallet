@@ -150,13 +150,16 @@ fun TemplateListScreen(
                         }
                         if (isOpen) {
                             items(rows, key = { it.id.value }) { row ->
-                                // Eager findMatching preload was removed: with N
-                                // templates per group it spawned N inbox-content-resolver
-                                // queries on every accordion expand, hammering the
-                                // dispatcher and visibly stalling the UI. The row now
-                                // displays Drain's matchCount; the actual scoped count
-                                // populates lazily once the user taps "Show messages"
-                                // (and the modal then displays the accurate number).
+                                // Preload routes through the VM's serialized
+                                // queue (Channel-backed, single consumer) so
+                                // accordion expansion no longer fires N parallel
+                                // findMatching calls. Each id queues at most
+                                // once and the displayCount updates as soon as
+                                // the worker processes that template — fixes
+                                // the "card says 11 but modal says 2" mismatch.
+                                LaunchedEffect(row.id) {
+                                    viewModel.onEvent(TemplateListEvent.PreloadMatching(row.id))
+                                }
                                 TemplateRow(
                                     row = row,
                                     displayCount = state.displayCountByTemplate[row.id] ?: row.matchCount,

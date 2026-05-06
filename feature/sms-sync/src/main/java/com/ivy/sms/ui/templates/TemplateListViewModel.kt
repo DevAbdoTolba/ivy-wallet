@@ -19,6 +19,8 @@ import com.ivy.sms.domain.usecase.ScanInboxUseCase
 import com.ivy.ui.ComposeViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -43,6 +45,26 @@ class TemplateListViewModel @Inject constructor(
     private var matchingModalTemplate by mutableStateOf<SmsTemplateId?>(null)
     private var matchingModalLimit by mutableStateOf(MATCHING_MODAL_PAGE_SIZE)
     private val preloadedIds = mutableSetOf<SmsTemplateId>()
+
+    /**
+     * Serialized preload queue. Row composition emits PreloadMatching events
+     * for each visible template; without this they all hit findMatching at
+     * once and saturate the IO dispatcher (the original "accordion lag" bug).
+     * A single consumer coroutine drains the channel one id at a time, so
+     * preloads happen in the background without UI stalls AND every row's
+     * displayCount eventually matches what the modal will show — fixing the
+     * "card says 11 but modal says 2" mismatch.
+     */
+    private val preloadQueue = Channel<SmsTemplateId>(capacity = Channel.UNLIMITED)
+
+    init {
+        viewModelScope.launch {
+            preloadQueue.consumeAsFlow().collect { id ->
+                if (id in matchingByTemplate) return@collect
+                loadMatchingSync(id)
+            }
+        }
+    }
 
     fun setNavigators(
         onTemplate: (SmsTemplateId) -> Unit,
@@ -108,20 +130,24 @@ class TemplateListViewModel @Inject constructor(
     }
 
     /**
-     * Fire-and-forget background load that lets each row show the accurate
-     * Jaccard match count next to "Show messages" without the user needing
-     * to tap. Skips ids we've already kicked off so repeated row recompositions
-     * don't pile up duplicate launches.
+     * Background-load each row's match count without firing N parallel
+     * findMatching calls (the saturation that caused the original
+     * accordion lag). Idempotent: each id queues at most once.
      */
     private fun preloadMatching(id: SmsTemplateId) {
         if (!preloadedIds.add(id)) return
         if (id in matchingByTemplate) return
-        loadMatching(id)
+        preloadQueue.trySend(id)
     }
 
+    /** On-tap path: needs an immediate fetch, doesn't wait for the queue. */
     private fun loadMatching(id: SmsTemplateId) {
+        viewModelScope.launch { loadMatchingSync(id) }
+    }
+
+    private suspend fun loadMatchingSync(id: SmsTemplateId) {
         loadingTemplateIds = loadingTemplateIds + id
-        viewModelScope.launch {
+        try {
             val tpl = templateRepo.findById(id).getOrNull()
             val bodies = if (tpl != null) {
                 findMatching(tpl).getOrNull().orEmpty().map { it.body }
@@ -130,6 +156,7 @@ class TemplateListViewModel @Inject constructor(
             }
             matchingByTemplate = matchingByTemplate + (id to bodies)
             displayCounts = displayCounts + (id to bodies.size)
+        } finally {
             loadingTemplateIds = loadingTemplateIds - id
         }
     }

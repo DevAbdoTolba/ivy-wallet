@@ -4,6 +4,7 @@ import arrow.core.Either
 import arrow.core.right
 import com.ivy.sms.data.SmsInboxDataSource
 import com.ivy.sms.data.SmsMessageMapper
+import com.ivy.sms.data.SmsWatermarkPreferences
 import com.ivy.sms.domain.model.SmsMessage
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
@@ -30,6 +31,7 @@ private val whitespaceRegex = Regex("\\s+")
 class FindMatchingMessagesUseCase @Inject constructor(
     private val inbox: SmsInboxDataSource,
     private val mapper: SmsMessageMapper,
+    private val watermarks: SmsWatermarkPreferences,
 ) {
     /**
      * Process-lifetime cache so re-entering the templates screen doesn't
@@ -54,13 +56,24 @@ class FindMatchingMessagesUseCase @Inject constructor(
             return it.right()
         }
         val sender = template.senderIdHint.ifBlank { return emptyList<SmsMessage>().right() }
+        // Honour the user's chosen sync period — the row's "X messages" count
+        // and the modal's listed bodies must be the same set the sync scanned,
+        // otherwise the user sees "5 messages" but only 1 transaction because
+        // the other 4 were older than their picked period and never routed.
+        // SyncSmsUseCase invalidates this cache after each scan, so updating
+        // the period via the wallet's "Sync now" sheet is reflected here on
+        // the next view.
+        val lowerBound = watermarks.scanLowerBound().getOrNull() ?: 0L
         val rows = inbox.read(
-            lowerBoundEpochMillis = 0L,
+            lowerBoundEpochMillis = lowerBound,
             watermarkEpochMillis = 0L,
             senderFilter = sender,
         ).getOrNull().orEmpty()
         timber.log.Timber.tag("SmsTrace")
-            .d("FIND → tpl=%s sender=%s rowsFromInbox=%d drainCount=%d", template.id.value, sender, rows.size, template.matchCount)
+            .d(
+                "FIND → tpl=%s sender=%s lowerBound=%d rowsFromInbox=%d drainCount=%d",
+                template.id.value, sender, lowerBound, rows.size, template.matchCount,
+            )
 
         val matches = mutableListOf<SmsMessage>()
         var alignFailed = 0

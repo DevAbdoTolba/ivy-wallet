@@ -27,6 +27,7 @@ class SyncSmsUseCaseImpl @Inject constructor(
     private val scan: ScanInboxUseCase,
     private val senderRepo: SenderAccountLinkRepository,
     private val findMatching: FindMatchingMessagesUseCase,
+    private val renormalize: RenormalizePersistedSmsDataUseCase,
 ) : SyncSmsUseCase {
 
     private val mutex = Mutex()
@@ -48,6 +49,18 @@ class SyncSmsUseCaseImpl @Inject constructor(
         }
         return mutex.withLock {
             try {
+                // ORDERING GUARANTEE: the one-shot renormalization of persisted
+                // templates/pending bodies must COMPLETE before the scan seeds
+                // DrainParser from those templates (discover.seed() is the
+                // first thing ScanInboxUseCase does). Running it here, inside
+                // the same mutex every scan path serializes on, makes that
+                // sequential by construction — and no other scan can interleave
+                // with the pass. After the first application it is a single
+                // DataStore version read.
+                when (val n = renormalize()) {
+                    is Either.Left -> return@withLock n.value.left()
+                    is Either.Right -> Unit
+                }
                 when (val r = scan()) {
                     is Either.Left -> r.value.left()
                     is Either.Right -> {

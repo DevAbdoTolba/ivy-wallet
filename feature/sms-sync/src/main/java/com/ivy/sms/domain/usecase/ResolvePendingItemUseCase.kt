@@ -33,7 +33,9 @@ class ResolvePendingItemUseCase @Inject constructor(
         val senderToAccount = links.associate { it.senderId to it.accountId }
         var converted = 0
         for (item in items) {
-            val outcome = route(item.sms, template, senderToAccount).getOrNull()
+            // userInitiated: the user explicitly mapped/saved — bypasses the
+            // per-sender auto-route gate so held items can actually convert.
+            val outcome = route(item.sms, template, senderToAccount, userInitiated = true).getOrNull()
             if (outcome is RouteOutcome.Created) {
                 pendingRepo.dismiss(item.id)
                 converted++

@@ -40,6 +40,16 @@ class SmsBodyNormalizerTest {
     }
 
     @Test
+    fun `arabic decimal separator becomes ascii dot`() {
+        SmsBodyNormalizer.normalize("رصيدك ٧٫٥ ر.س") shouldBe "رصيدك 7.5 ر.س"
+    }
+
+    @Test
+    fun `arabic thousands separator becomes ascii comma`() {
+        SmsBodyNormalizer.normalize("Total ١٬٥٠٠ EGP") shouldBe "Total 1,500 EGP"
+    }
+
+    @Test
     fun `whitespace collapses and the body is trimmed`() {
         SmsBodyNormalizer.normalize("  Receive   100   EGP\t\n now  ") shouldBe
             "Receive 100 EGP now"

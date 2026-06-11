@@ -25,8 +25,23 @@ interface PendingReviewItemRepository {
     fun observeCount(): Flow<Int>
     fun observeAllRaw(): Flow<List<com.ivy.data.db.entity.PendingReviewItemEntity>>
 
+    /** Entity-level read for maintenance passes — unlike [findAll] it does NOT
+     *  skip rows whose template fails to load, so every persisted row is seen. */
+    suspend fun findAllRaw(): Either<String, List<com.ivy.data.db.entity.PendingReviewItemEntity>>
+
+    /** Rewrites only the stored body text (renormalization). The dedupKey is
+     *  the raw-body identity under the unique index and stays untouched. */
+    suspend fun updateBody(id: String, body: String): Either<String, Unit>
+
     suspend fun enqueue(item: PendingReviewItem): Either<String, Unit>
     suspend fun dismiss(id: PendingReviewItemId): Either<String, Unit>
+
+    /**
+     * Removes the pending twin of an SMS that just became a transaction.
+     * Quiet no-op when no row carries that dedup key — does NOT touch the
+     * reviewed counter (this is an automatic resolution, not a user review).
+     */
+    suspend fun dismissByDedupKey(dedupKey: String): Either<String, Unit>
     suspend fun clearByTemplate(templateId: SmsTemplateId): Either<String, Unit>
 }
 
@@ -82,6 +97,21 @@ class PendingReviewItemRepositoryImpl @Inject constructor(
     override fun observeAllRaw(): Flow<List<com.ivy.data.db.entity.PendingReviewItemEntity>> =
         readDao.observeAll().flowOn(dispatchers.io)
 
+    override suspend fun findAllRaw(): Either<String, List<com.ivy.data.db.entity.PendingReviewItemEntity>> =
+        withContext(dispatchers.io) {
+            runCatching { readDao.findAll() }.fold(
+                onSuccess = { it.right() },
+                onFailure = { "STORAGE_ERROR:${it.message}".left() },
+            )
+        }
+
+    override suspend fun updateBody(id: String, body: String): Either<String, Unit> = withContext(dispatchers.io) {
+        runCatching { writeDao.updateBody(id, body) }.fold(
+            onSuccess = { Unit.right() },
+            onFailure = { "STORAGE_ERROR:${it.message}".left() },
+        )
+    }
+
     override suspend fun enqueue(item: PendingReviewItem): Either<String, Unit> = withContext(dispatchers.io) {
         try {
             writeDao.insert(with(mapper) { item.toEntity() })
@@ -100,6 +130,13 @@ class PendingReviewItemRepositoryImpl @Inject constructor(
 
     override suspend fun dismiss(id: PendingReviewItemId): Either<String, Unit> = withContext(dispatchers.io) {
         runCatching { writeDao.deleteById(id.value.toString()) }.fold(
+            onSuccess = { Unit.right() },
+            onFailure = { "STORAGE_ERROR:${it.message}".left() },
+        )
+    }
+
+    override suspend fun dismissByDedupKey(dedupKey: String): Either<String, Unit> = withContext(dispatchers.io) {
+        runCatching { writeDao.deleteByDedupKey(dedupKey) }.fold(
             onSuccess = { Unit.right() },
             onFailure = { "STORAGE_ERROR:${it.message}".left() },
         )

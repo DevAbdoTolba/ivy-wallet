@@ -243,6 +243,17 @@ class TransactionRepository @Inject constructor(
         }
     }
 
+    /**
+     * Id of the transaction already imported from the SMS with this dedup key,
+     * or null when the message was never converted. Used as the
+     * transaction-level dedup guard by the SMS extraction engine — kept as a
+     * single-row DAO lookup so it stays cheap on every routed message.
+     */
+    suspend fun findIdBySmsSourceDedupKey(dedupKey: String): TransactionId? =
+        withContext(dispatchersProvider.io) {
+            transactionDao.findBySmsSourceDedupKey(dedupKey)?.let { TransactionId(it.id) }
+        }
+
     suspend fun findByIds(ids: List<TransactionId>): List<Transaction> {
         return withContext(dispatchersProvider.io) {
             val tagMap = async { findTagsForTransactionIds(ids) }

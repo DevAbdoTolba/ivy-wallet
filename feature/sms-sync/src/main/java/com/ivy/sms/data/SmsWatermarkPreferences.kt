@@ -2,6 +2,7 @@ package com.ivy.sms.data
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -22,7 +23,22 @@ class SmsWatermarkPreferences @Inject constructor(
     private val dispatchers: DispatchersProvider,
 ) {
 
+    /**
+     * LEGACY global watermark — superseded by the per-sender watermark on
+     * [com.ivy.sms.domain.model.SenderAccountLink], which is the actual read
+     * bound (strictly-greater semantics: it stores the newest processed DATE
+     * and scans read only DATE > watermark). Still advanced after each scan
+     * and read once per scan as the fallback bound for links that predate
+     * per-link watermarks. Never reset on sync-now — the old reset forced
+     * full rescans of every sender and enabled duplicate transactions.
+     */
     private val watermarkKey = longPreferencesKey("sms.watermark.epochMillis")
+
+    /**
+     * Global scan-period lower bound. Fallback for links without their own
+     * [com.ivy.sms.domain.model.SenderAccountLink.historicalLowerBound]
+     * (which the wallet sync-period sheet writes per sender).
+     */
     private val lowerBoundKey = longPreferencesKey("sms.scan.period.lowerBoundEpochMillis")
 
     /**
@@ -46,6 +62,15 @@ class SmsWatermarkPreferences @Inject constructor(
      * resolved-counter doesn't catch).
      */
     private val discoveredTotalKey = intPreferencesKey("sms.review.totalDiscovered")
+
+    /**
+     * Highest [com.ivy.sms.data.NORMALIZER_VERSION] whose one-shot
+     * renormalization pass has completed over persisted templates/pending
+     * bodies. Null on installs that have never run the pass. Written only
+     * AFTER the pass finishes, so an interrupted pass re-runs (the normalizer
+     * is idempotent, re-running is safe).
+     */
+    private val normalizerAppliedVersionKey = intPreferencesKey("sms.normalizer.appliedVersion")
 
     fun observeReviewedTotal(): Flow<Int> =
         dataStore.data.map { it[reviewedTotalKey] ?: 0 }
@@ -89,6 +114,24 @@ class SmsWatermarkPreferences @Inject constructor(
         )
     }
 
+    suspend fun normalizerAppliedVersion(): Either<String, Int?> = withContext(dispatchers.io) {
+        runCatching {
+            dataStore.data.first()[normalizerAppliedVersionKey]
+        }.fold(
+            onSuccess = { it.right() },
+            onFailure = { "STORAGE_ERROR:${it.message}".left() },
+        )
+    }
+
+    suspend fun writeNormalizerAppliedVersion(version: Int): Either<String, Unit> = withContext(dispatchers.io) {
+        runCatching {
+            dataStore.edit { it[normalizerAppliedVersionKey] = version }
+        }.fold(
+            onSuccess = { Unit.right() },
+            onFailure = { "STORAGE_ERROR:${it.message}".left() },
+        )
+    }
+
     suspend fun read(): Either<String, Long?> = withContext(dispatchers.io) {
         runCatching {
             dataStore.data.first()[watermarkKey]
@@ -101,6 +144,34 @@ class SmsWatermarkPreferences @Inject constructor(
     suspend fun write(epochMillis: Long): Either<String, Unit> = withContext(dispatchers.io) {
         runCatching {
             dataStore.edit { it[watermarkKey] = epochMillis }
+        }.fold(
+            onSuccess = { Unit.right() },
+            onFailure = { "STORAGE_ERROR:${it.message}".left() },
+        )
+    }
+
+    /**
+     * Per-sender auto-route switch (default true). When false, Tier-1 matches
+     * from that sender are quarantined for review instead of silently becoming
+     * transactions — see [com.ivy.sms.domain.usecase.RouteSmsUseCase]. Stored
+     * here (not on the Room link entity) deliberately: no migration needed and
+     * the preference survives an unlink/relink cycle.
+     */
+    private fun autoRouteKey(senderId: String) =
+        booleanPreferencesKey("sms.autoRoute.$senderId")
+
+    suspend fun autoRouteEnabled(senderId: String): Either<String, Boolean> = withContext(dispatchers.io) {
+        runCatching {
+            dataStore.data.first()[autoRouteKey(senderId)] ?: true
+        }.fold(
+            onSuccess = { it.right() },
+            onFailure = { "STORAGE_ERROR:${it.message}".left() },
+        )
+    }
+
+    suspend fun writeAutoRoute(senderId: String, enabled: Boolean): Either<String, Unit> = withContext(dispatchers.io) {
+        runCatching {
+            dataStore.edit { it[autoRouteKey(senderId)] = enabled }
         }.fold(
             onSuccess = { Unit.right() },
             onFailure = { "STORAGE_ERROR:${it.message}".left() },

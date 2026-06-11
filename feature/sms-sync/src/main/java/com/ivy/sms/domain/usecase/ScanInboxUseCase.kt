@@ -5,6 +5,7 @@ import arrow.core.left
 import arrow.core.right
 import com.ivy.base.threading.DispatchersProvider
 import com.ivy.data.model.AccountId
+import com.ivy.sms.data.BuildFingerprintProvider
 import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.data.SmsInboxDataSource
 import com.ivy.sms.data.SmsMessageMapper
@@ -33,6 +34,7 @@ class ScanInboxUseCase @Inject constructor(
     private val discover: DiscoverTemplatesUseCase,
     private val route: RouteSmsUseCase,
     private val smsMessageMapper: SmsMessageMapper,
+    private val buildFingerprint: BuildFingerprintProvider,
     private val dispatchers: DispatchersProvider,
 ) {
 
@@ -60,24 +62,52 @@ class ScanInboxUseCase @Inject constructor(
             return@withContext ScanSummary(0, 0, 0, 0, System.currentTimeMillis() - started).right()
         }
 
-        // Pull rows scoped to each linked sender. The per-sender watermark on each
-        // SenderAccountLink would let us bound this even tighter, but for the first
-        // implementation we read from the global lower bound and filter by address.
-        val lowerBound = watermarks.scanLowerBound().getOrNull() ?: 0L
-        val watermark = watermarks.read().getOrNull() ?: 0L
+        // Per-sender incremental read: each link is bounded by its OWN
+        // watermark, so configuring one wallet never re-reads another's
+        // history and a newly linked sender's backlog is scanned from the
+        // period lower bound instead of being skipped by a global bound.
+        // Boundary semantics are strictly-greater: a link's watermark stores
+        // the newest DATE already processed for that sender and the inbox
+        // query returns only DATE > watermark (see SmsInboxDataSource.read),
+        // so the boundary row is not re-routed on every scan.
+        val globalLowerBound = watermarks.scanLowerBound().getOrNull() ?: 0L
+        // LEGACY global watermark, read once per scan. Only consulted for
+        // links without their own watermark: a link that already existed when
+        // the global watermark last advanced (linkedAt <= watermark) was
+        // covered by those global scans and inherits the bound; a genuinely
+        // fresh link (linkedAt after the watermark) reads from the period
+        // lower bound so its history is backfilled. SMS DATEs never exceed
+        // wall-clock time, so linkedAt <= globalWatermark implies the link
+        // predates the scan that wrote it.
+        val globalWatermark = watermarks.read().getOrNull() ?: 0L
         val rows = links.flatMap { link ->
-            inbox.read(lowerBound, watermark, senderFilter = link.senderId)
-                .getOrNull().orEmpty()
+            inbox.read(
+                lowerBoundEpochMillis = link.historicalLowerBound?.toEpochMilli()
+                    ?: globalLowerBound,
+                watermarkEpochMillis = link.watermark?.toEpochMilli()
+                    ?: globalWatermark.takeIf { link.linkedAt.toEpochMilli() <= it }
+                    ?: 0L,
+                senderFilter = link.senderId,
+            ).getOrNull().orEmpty()
         }.sortedBy { it.dateEpochMillis }
+        // Build fingerprint + active per-link watermarks: makes every capture
+        // attributable to a build and shows exactly which bound each sender
+        // was read with.
+        timber.log.Timber.tag("SmsTrace").i(
+            "SCAN   build=%s linkWatermarks=%s",
+            buildFingerprint.fingerprint,
+            links.joinToString(prefix = "[", postfix = "]") {
+                "${it.senderId}=${it.watermark?.toEpochMilli() ?: "none"}"
+            },
+        )
         timber.log.Timber.tag("SmsTrace").i(
             "SCAN → links=%d lowerBound=%d watermark=%d rows=%d",
-            links.size, lowerBound, watermark, rows.size,
+            links.size, globalLowerBound, globalWatermark, rows.size,
         )
 
         var transactionsCreated = 0
         var itemsQuarantined = 0
         var newTemplates = 0
-        val previousTemplateIds = HashSet<String>()
 
         // Seed an initial 0 / total snapshot before the loop so subscribers can
         // size their progress bars immediately instead of waiting for the first row.
@@ -102,10 +132,15 @@ class ScanInboxUseCase @Inject constructor(
                     )
                     continue
                 }
-                is Either.Right -> r.value
-            }
-            if (previousTemplateIds.add(template.id.value.toString())) {
-                newTemplates++
+                is Either.Right -> {
+                    // Count only true creations — every template merely
+                    // refreshed by this scan used to be reported as
+                    // "discovered", inflating the number on each sync.
+                    if (r.value.created) {
+                        newTemplates++
+                    }
+                    r.value.template
+                }
             }
 
             when (val r = route(message, template, senderToAccount)) {
@@ -131,26 +166,25 @@ class ScanInboxUseCase @Inject constructor(
             )
         }
 
-        val newWatermark = rows.maxOfOrNull { it.dateEpochMillis } ?: watermark
-        if (newWatermark > watermark) {
-            watermarks.write(newWatermark)
+        // Advance the LEGACY global watermark — it is only the fallback bound
+        // for links that predate per-link watermarks (see read above).
+        val newGlobalWatermark = rows.maxOfOrNull { it.dateEpochMillis } ?: globalWatermark
+        if (newGlobalWatermark > globalWatermark) {
+            watermarks.write(newGlobalWatermark)
         }
-        // Update per-sender link watermarks so the wallet config screen's
-        // "Last sync" status (and the never-synced auto-pop check) flips
-        // out of the "Never synced" state. Each link gets the newest message
-        // timestamp from ITS sender — falls back to global newWatermark when
-        // the sender produced no rows this scan, so the link still records
-        // that a sync happened against it.
-        if (links.isNotEmpty()) {
-            val rowsBySender = rows.groupBy { it.address }
-            for (link in links) {
-                val perSenderMax = rowsBySender[link.senderId]
-                    ?.maxOfOrNull { it.dateEpochMillis } ?: newWatermark
-                if (perSenderMax <= 0L) continue
-                val instant = java.time.Instant.ofEpochMilli(perSenderMax)
-                if (link.watermark == null || link.watermark.isBefore(instant)) {
-                    senderRepo.upsert(link.copy(watermark = instant))
-                }
+        // Per-sender watermarks are the real read bound. Stamp each link with
+        // the newest DATE processed from ITS sender — and ONLY senders that
+        // actually produced rows this scan. The old `?: newWatermark`
+        // fallback stamped zero-row senders with the global value, marking a
+        // newly linked sender's never-scanned history as synced and leaving
+        // the gap unreachable by any later scan.
+        val rowsBySender = rows.groupBy { it.address }
+        for (link in links) {
+            val perSenderMax = rowsBySender[link.senderId]
+                ?.maxOfOrNull { it.dateEpochMillis } ?: continue
+            val instant = java.time.Instant.ofEpochMilli(perSenderMax)
+            if (link.watermark == null || link.watermark.isBefore(instant)) {
+                senderRepo.upsert(link.copy(watermark = instant))
             }
         }
         // Clear progress so the next subscriber doesn't see a stale "100% done"

@@ -2,6 +2,7 @@ package com.ivy.sms.domain.usecase
 
 import com.ivy.data.model.AccountId
 import com.ivy.sms.data.PendingReviewItemRepository
+import com.ivy.sms.data.SmsWatermarkPreferences
 import com.ivy.sms.domain.model.SmsMessage
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
@@ -21,7 +22,8 @@ class RouteSmsBlacklistTest {
 
     private val createTransaction = mockk<CreateTransactionFromSmsUseCase>(relaxed = true)
     private val pendingRepo = mockk<PendingReviewItemRepository>(relaxed = true)
-    private val route = RouteSmsUseCase(createTransaction, pendingRepo)
+    private val prefs = mockk<SmsWatermarkPreferences>(relaxed = true)
+    private val route = RouteSmsUseCase(createTransaction, pendingRepo, prefs)
 
     @Test
     fun blacklistedTemplate_neitherCreatesTransactionNorEnqueues() = runTest {

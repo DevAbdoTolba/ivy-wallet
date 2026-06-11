@@ -35,22 +35,34 @@ class FindMatchingMessagesUseCase @Inject constructor(
 ) {
     /**
      * Process-lifetime cache so re-entering the templates screen doesn't
-     * re-scan the inbox for every expand-tap. Keyed by templateId — a
-     * pattern change re-creates the template id (Drain), so cached entries
-     * are implicitly invalidated when the template moves on.
+     * re-scan the inbox for every expand-tap. Keyed by (templateId, pattern
+     * hash) — the old templateId-only key assumed "a pattern change
+     * re-creates the template id (Drain)", which is FALSE: MapTemplateUseCase
+     * and DiscoverTemplatesUseCase both upsert the SAME id, so the row
+     * counts/modal lists stayed stale after the user edited a pattern.
      */
-    private val cache = ConcurrentHashMap<SmsTemplateId, List<SmsMessage>>()
+    private data class CacheKey(val templateId: SmsTemplateId, val patternHash: Int)
+
+    private val cache = ConcurrentHashMap<CacheKey, List<SmsMessage>>()
 
     /** Drops cached results — call after a sync that may have ingested new SMS. */
     fun invalidate() {
         cache.clear()
     }
 
+    /** Drops cached results for one template — call after a pattern edit is
+     *  persisted (MapTemplateUseCase upsert) so the templates list reflects
+     *  the new pattern immediately, not on the next sync. */
+    fun invalidate(templateId: SmsTemplateId) {
+        cache.keys.removeAll { it.templateId == templateId }
+    }
+
     suspend operator fun invoke(
         template: SmsTemplate,
         limit: Int = 100,
     ): Either<String, List<SmsMessage>> {
-        cache[template.id]?.let {
+        val cacheKey = CacheKey(template.id, template.pattern.hashCode())
+        cache[cacheKey]?.let {
             timber.log.Timber.tag("SmsTrace")
                 .d("FIND   cache hit tpl=%s size=%d", template.id.value, it.size)
             return it.right()
@@ -90,7 +102,7 @@ class FindMatchingMessagesUseCase @Inject constructor(
             "FIND ← tpl=%s aligned=%d alignFailed=%d total=%d",
             template.id.value, matches.size, alignFailed, rows.size,
         )
-        cache[template.id] = matches.toList()
+        cache[cacheKey] = matches.toList()
         return matches.right()
     }
 }

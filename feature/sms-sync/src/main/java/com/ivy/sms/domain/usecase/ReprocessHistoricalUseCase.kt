@@ -11,6 +11,8 @@ import com.ivy.sms.data.SmsInboxDataSource
 import com.ivy.sms.data.SmsMessageMapper
 import com.ivy.sms.data.SmsTemplateRepository
 import com.ivy.sms.data.SmsWatermarkPreferences
+import com.ivy.sms.domain.model.SmsMessage
+import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.TemplateState
 import kotlinx.coroutines.withContext
@@ -44,23 +46,12 @@ class ReprocessHistoricalUseCase @Inject constructor(
         if (template.state != TemplateState.ACTIVE) {
             return@withContext "VALIDATION:template not ACTIVE".left()
         }
-        val lower = watermarks.scanLowerBound().getOrNull() ?: 0L
-        val rows = inbox.read(lower, 0L).getOrNull().orEmpty()
-        val matchingTokens = template.pattern.split(Regex("\\s+")).size
-        val candidates = rows.filter {
-            with(smsMessageMapper) { it.toDomain() }.body.split(Regex("\\s+")).size == matchingTokens
-        }
-        val existingDedups = transactionRepo.findAll()
-            .mapNotNull { it.metadata.smsSourceDedupKey }
-            .toSet()
-        val newOnly = candidates.filter { row ->
-            val msg = with(smsMessageMapper) { row.toDomain() }
-            msg.dedupKey !in existingDedups
-        }
+        val aligned = alignedMessages(template)
+        val existingDedups = existingDedupKeys()
         ReprocessPreview(
             templateId = templateId,
-            matchingMessages = candidates.size,
-            newTransactionsToCreate = newOnly.size,
+            matchingMessages = aligned.size,
+            newTransactionsToCreate = aligned.count { it.dedupKey !in existingDedups },
         ).right()
     }
 
@@ -73,19 +64,17 @@ class ReprocessHistoricalUseCase @Inject constructor(
         if (template.state != TemplateState.ACTIVE) {
             return@withContext "VALIDATION:template not ACTIVE".left()
         }
-        val lower = watermarks.scanLowerBound().getOrNull() ?: 0L
-        val rows = inbox.read(lower, 0L).getOrNull().orEmpty()
-        val existingDedups = transactionRepo.findAll()
-            .mapNotNull { it.metadata.smsSourceDedupKey }
-            .toSet()
+        val aligned = alignedMessages(template)
+        val existingDedups = existingDedupKeys()
         val links = senderRepo.findAll().getOrNull().orEmpty()
         val senderToAccount: Map<String, AccountId> = links.associate { it.senderId to it.accountId }
         var created = 0
         var quarantined = 0
-        for (row in rows) {
-            val message = with(smsMessageMapper) { row.toDomain() }
+        for (message in aligned) {
             if (message.dedupKey in existingDedups) continue
-            when (val outcome = route(message, template, senderToAccount).getOrNull()) {
+            // userInitiated: the user typed the confirmation token — bypass
+            // the per-sender auto-route gate.
+            when (route(message, template, senderToAccount, userInitiated = true).getOrNull()) {
                 is RouteOutcome.Created -> created++
                 is RouteOutcome.Quarantined -> quarantined++
                 is RouteOutcome.Blacklisted, null -> { /* skip */ }
@@ -93,4 +82,27 @@ class ReprocessHistoricalUseCase @Inject constructor(
         }
         ReprocessResult(transactionsCreated = created, itemsQuarantined = quarantined).right()
     }
+
+    /**
+     * The candidate set shared by [preview] and [confirm]: inbox rows from
+     * the template's OWN sender whose bodies the pattern actually aligns
+     * (extractWildcardValues — the same predicate routing uses), so the
+     * preview number is exactly the set confirm routes. Non-aligning rows
+     * are SKIPPED, never quarantined — confirm used to route every inbox row
+     * from every sender against the chosen template, flooding the pending
+     * queue with OTPs/promos and inflating the lifetime discovered counter.
+     * Templates without a sender hint (legacy rows) reprocess nothing.
+     */
+    private suspend fun alignedMessages(template: SmsTemplate): List<SmsMessage> {
+        val sender = template.senderIdHint.ifBlank { return emptyList() }
+        val lower = watermarks.scanLowerBound().getOrNull() ?: 0L
+        val rows = inbox.read(lower, 0L, senderFilter = sender).getOrNull().orEmpty()
+        return rows
+            .map { with(smsMessageMapper) { it.toDomain() } }
+            .filter { extractWildcardValues(template, it) != null }
+    }
+
+    private suspend fun existingDedupKeys(): Set<String> = transactionRepo.findAll()
+        .mapNotNull { it.metadata.smsSourceDedupKey }
+        .toSet()
 }

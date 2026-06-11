@@ -7,16 +7,22 @@ import javax.inject.Inject
 
 class SmsMessageMapper @Inject constructor() {
     fun SmsRow.toDomain(): SmsMessage {
-        // Single normalize chokepoint — every downstream stage (Drain
-        // tokenize, alignment, dedup hash) sees the canonical body, so
-        // invisible bidi marks and Arabic-Indic digits don't fragment
+        // Single normalize chokepoint — every downstream PARSING stage (Drain
+        // tokenize, alignment, amount/date regexes) sees the canonical body,
+        // so invisible bidi marks and Arabic-Indic digits don't fragment
         // clusters or produce false wildcards.
-        val normalizedBody = SmsBodyNormalizer.normalize(body)
-        val bodyHash = sha256Hex(normalizedBody)
+        //
+        // The dedup key deliberately hashes the RAW body: identity must never
+        // change when normalization rules evolve, or every key persisted by
+        // earlier builds (transaction smsSourceDedupKey, the pending_review_item
+        // unique index) stops matching and re-reads duplicate everything.
+        // Bumping NORMALIZER_VERSION re-normalizes persisted TEXT
+        // (RenormalizePersistedSmsDataUseCase) but keys stay stable.
+        val bodyHash = sha256Hex(body)
         return SmsMessage(
             dedupKey = dedupKey(address, dateEpochMillis, bodyHash),
             senderId = address,
-            body = normalizedBody,
+            body = SmsBodyNormalizer.normalize(body),
             timestamp = Instant.ofEpochMilli(dateEpochMillis),
         )
     }

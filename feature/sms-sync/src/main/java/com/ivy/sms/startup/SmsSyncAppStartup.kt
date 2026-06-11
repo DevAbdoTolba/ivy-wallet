@@ -3,6 +3,7 @@ package com.ivy.sms.startup
 import com.ivy.base.threading.DispatchersProvider
 import com.ivy.sms.domain.model.SyncResult
 import com.ivy.sms.domain.model.SyncTrigger
+import com.ivy.sms.domain.usecase.RenormalizePersistedSmsDataUseCase
 import com.ivy.sms.domain.usecase.SyncSmsUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -26,6 +27,7 @@ interface SmsSyncAppStartup {
 @Singleton
 class SmsSyncAppStartupImpl @Inject constructor(
     private val syncSms: SyncSmsUseCase,
+    private val renormalize: RenormalizePersistedSmsDataUseCase,
     dispatchers: DispatchersProvider,
 ) : SmsSyncAppStartup {
 
@@ -37,6 +39,16 @@ class SmsSyncAppStartupImpl @Inject constructor(
     override fun scheduleLaunchScan() {
         applicationScope.launch {
             try {
+                // Versioned one-shot renormalization of persisted templates /
+                // pending bodies, run BEFORE the launch scan. SyncSmsUseCase
+                // re-invokes it inside its scan mutex (the actual ordering
+                // guarantee for every scan path); this eager call additionally
+                // covers launches where the sync early-returns (permission
+                // missing / no linked senders) so persisted data still gets
+                // normalized. Safe here: scheduleLaunchScan runs at process
+                // start, before any UI can trigger a scan, and the use case is
+                // internally serialized + version-stamped (repeat = no-op).
+                renormalize().onLeft { Timber.w("Renormalization pass error: $it") }
                 syncSms(SyncTrigger.APP_LAUNCH).fold(
                     { Timber.w("App-launch sync error: $it") },
                     { _syncResult.value = it },

@@ -6,6 +6,7 @@ import arrow.core.right
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.TransactionId
 import com.ivy.sms.data.PendingReviewItemRepository
+import com.ivy.sms.data.SmsWatermarkPreferences
 import com.ivy.sms.domain.model.PendingReviewItem
 import com.ivy.sms.domain.model.PendingReviewItemId
 import com.ivy.sms.domain.model.QuarantineReason
@@ -29,11 +30,21 @@ sealed interface RouteOutcome {
 class RouteSmsUseCase @Inject constructor(
     private val createTransaction: CreateTransactionFromSmsUseCase,
     private val pendingRepo: PendingReviewItemRepository,
+    private val prefs: SmsWatermarkPreferences,
 ) {
+    /**
+     * [userInitiated]: true when the user explicitly asked for this routing
+     * (mapping-save reprocess, pending-item conversion, historical reprocess).
+     * Those paths bypass the per-sender auto-route gate — otherwise turning
+     * auto-route off would make pending items permanently unresolvable.
+     * Scan-time routing (inbox scans, drain on template activation) keeps the
+     * default and quarantines Tier-1 matches while the toggle is off.
+     */
     suspend operator fun invoke(
         message: SmsMessage,
         template: SmsTemplate,
         senderLinks: Map<String, AccountId>,
+        userInitiated: Boolean = false,
     ): Either<String, RouteOutcome> {
         val tag = "tpl=${template.id.value} sender=${message.senderId} body='${message.body.take(60)}…'"
         Timber.tag(TRACE).d("ROUTE → enter %s state=%s", tag, template.state)
@@ -46,6 +57,13 @@ class RouteSmsUseCase @Inject constructor(
         val account = senderLinks[message.senderId]
         val hasAmountRole = template.wildcardSlots.any { it.role.isAmountRole() }
         if (template.state == TemplateState.ACTIVE && account != null && hasAmountRole) {
+            if (!userInitiated) {
+                val autoRoute = prefs.autoRouteEnabled(message.senderId).getOrNull() ?: true
+                if (!autoRoute) {
+                    Timber.tag(TRACE).d("ROUTE ✗ AUTO_ROUTE_DISABLED %s", tag)
+                    return quarantine(message, template, QuarantineReason.AUTO_ROUTE_DISABLED)
+                }
+            }
             return when (val r = createTransaction(message, template, account)) {
                 is Either.Right -> {
                     Timber.tag(TRACE).d("ROUTE ✓ CREATED txn=%s %s", r.value.value, tag)

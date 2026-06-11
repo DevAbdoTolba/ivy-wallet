@@ -28,9 +28,12 @@ object AmountParser {
 
     /**
      * Convert Arabic-Indic (U+0660-U+0669) and Eastern Arabic-Indic / Persian
-     * (U+06F0-U+06F9) digits to Latin 0-9 so SMS like "٨٠ج" or "٧٫٥ ر.س" parse
-     * the same as their Latin-digit counterparts. Non-digit characters pass
-     * through unchanged.
+     * (U+06F0-U+06F9) digits to Latin 0-9, the Arabic decimal separator
+     * U+066B (٫) to '.' and the Arabic thousands separator U+066C (٬) to ','
+     * so SMS like "٨٠ج" or "٧٫٥ ر.س" parse the same as their Latin
+     * counterparts. Without the separator mapping "٧٫٥" collapsed to "7٫5"
+     * and the ASCII-only regex matched the bare "7" — a silently wrong
+     * amount. Other characters pass through unchanged.
      */
     private fun normalizeArabicDigits(text: String): String {
         if (text.isEmpty()) return text
@@ -41,6 +44,8 @@ object AmountParser {
                 when {
                     code in 0x0660..0x0669 -> ('0' + (code - 0x0660))
                     code in 0x06F0..0x06F9 -> ('0' + (code - 0x06F0))
+                    code == 0x066B -> '.'
+                    code == 0x066C -> ','
                     else -> ch
                 },
             )
@@ -80,10 +85,22 @@ object AmountParser {
             }
             lastDot >= 0 -> {
                 val afterDot = cleaned.length - lastDot - 1
-                if (afterDot == 3) {
-                    listOf(cleaned.replace(".", ""), cleaned)
-                } else {
-                    listOf(cleaned)
+                val dotCount = cleaned.count { it == '.' }
+                when {
+                    // Multi-group dotted thousands: "1.234.567" → 1234567.
+                    dotCount > 1 && afterDot == 3 -> listOf(cleaned.replace(".", ""))
+                    // Multiple dots with a non-3-digit tail: dotted thousands
+                    // groups plus a decimal tail, "1.234.56" → 1234.56.
+                    dotCount > 1 -> listOf(
+                        cleaned.substring(0, lastDot).replace(".", "") +
+                            "." + cleaned.substring(lastDot + 1),
+                    )
+                    // A LONE dot with a 3-digit tail is genuinely ambiguous
+                    // ("1.500" is 1500 in many locales), but Egyptian banks
+                    // print 3-decimal balances ("500.000 EGP" meaning 500) —
+                    // prefer the DECIMAL reading: the silent 1000x inflation
+                    // is the dangerous error direction.
+                    else -> listOf(cleaned)
                 }
             }
             else -> listOf(cleaned)

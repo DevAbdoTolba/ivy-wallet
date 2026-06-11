@@ -5,6 +5,7 @@ import arrow.core.right
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.TransactionId
 import com.ivy.sms.data.PendingReviewItemRepository
+import com.ivy.sms.data.SmsWatermarkPreferences
 import com.ivy.sms.domain.model.QuarantineReason
 import com.ivy.sms.domain.model.SmsMessage
 import com.ivy.sms.domain.model.SmsTemplate
@@ -27,7 +28,10 @@ class RouteSmsUseCaseTest {
 
     private val createTransaction = mockk<CreateTransactionFromSmsUseCase>()
     private val pendingRepo = mockk<PendingReviewItemRepository>(relaxed = true)
-    private val route = RouteSmsUseCase(createTransaction, pendingRepo)
+    private val prefs = mockk<SmsWatermarkPreferences> {
+        coEvery { autoRouteEnabled(any()) } returns true.right()
+    }
+    private val route = RouteSmsUseCase(createTransaction, pendingRepo, prefs)
 
     private fun template(state: TemplateState, hasAmount: Boolean = true): SmsTemplate = SmsTemplate(
         id = SmsTemplateId(UUID.randomUUID()),
@@ -116,5 +120,48 @@ class RouteSmsUseCaseTest {
 
         outcome.shouldBeInstanceOf<RouteOutcome.Quarantined>()
         coVerify(exactly = 0) { createTransaction(any(), any(), any()) }
+    }
+
+    @Test
+    fun autoRouteOff_quarantinesTier1Match_insteadOfCreating() = runTest {
+        val tpl = template(TemplateState.ACTIVE)
+        val account = AccountId(UUID.randomUUID())
+        coEvery { prefs.autoRouteEnabled("TestBank") } returns false.right()
+        coEvery { pendingRepo.enqueue(any()) } returns Unit.right()
+
+        val outcome = route(message, tpl, mapOf("TestBank" to account)).getOrNull()
+
+        outcome.shouldBeInstanceOf<RouteOutcome.Quarantined>()
+        (outcome as RouteOutcome.Quarantined).reason shouldBe QuarantineReason.AUTO_ROUTE_DISABLED
+        coVerify(exactly = 0) { createTransaction(any(), any(), any()) }
+    }
+
+    @Test
+    fun autoRouteOff_userInitiatedRouting_stillCreates() = runTest {
+        val tpl = template(TemplateState.ACTIVE)
+        val account = AccountId(UUID.randomUUID())
+        val txId = TransactionId(UUID.randomUUID())
+        coEvery { prefs.autoRouteEnabled("TestBank") } returns false.right()
+        coEvery { createTransaction(message, tpl, account) } returns txId.right()
+
+        val outcome = route(
+            message, tpl, mapOf("TestBank" to account), userInitiated = true,
+        ).getOrNull()
+
+        outcome.shouldBeInstanceOf<RouteOutcome.Created>()
+        (outcome as RouteOutcome.Created).transactionId shouldBe txId
+    }
+
+    @Test
+    fun autoRoutePrefReadFails_defaultsToCreating() = runTest {
+        val tpl = template(TemplateState.ACTIVE)
+        val account = AccountId(UUID.randomUUID())
+        val txId = TransactionId(UUID.randomUUID())
+        coEvery { prefs.autoRouteEnabled("TestBank") } returns "STORAGE_ERROR:io".left()
+        coEvery { createTransaction(message, tpl, account) } returns txId.right()
+
+        val outcome = route(message, tpl, mapOf("TestBank" to account)).getOrNull()
+
+        outcome.shouldBeInstanceOf<RouteOutcome.Created>()
     }
 }

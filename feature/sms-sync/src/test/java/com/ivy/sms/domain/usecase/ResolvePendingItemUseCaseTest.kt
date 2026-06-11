@@ -87,12 +87,15 @@ class ResolvePendingItemUseCaseTest {
         coEvery { senderRepo.findAll() } returns listOf(
             SenderAccountLink("TestBank", AccountId(UUID.randomUUID()), Instant.EPOCH),
         ).right()
-        coEvery { route(any(), any(), any()) } returns RouteOutcome.Created(TransactionId(UUID.randomUUID())).right()
+        coEvery { route(any(), any(), any(), any()) } returns RouteOutcome.Created(TransactionId(UUID.randomUUID())).right()
 
         val result = useCase.convertViaTemplateMapping(tplId).getOrNull()!!
 
         result.converted shouldBe 2
         coVerify { pendingRepo.dismiss(item1.id) }
         coVerify { pendingRepo.dismiss(item2.id) }
+        // The user explicitly mapped/saved — routing must bypass the
+        // per-sender auto-route gate or held items could never convert.
+        coVerify(exactly = 2) { route(any(), any(), any(), userInitiated = true) }
     }
 }

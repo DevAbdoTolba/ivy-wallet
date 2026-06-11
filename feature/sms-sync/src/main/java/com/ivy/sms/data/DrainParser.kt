@@ -7,38 +7,36 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * In-memory clustering engine for SMS bodies. Originally a Drain port (He et al. 2017)
- * but rebuilt 2026-05-02 to handle the variable-length-merchant problem that classic
- * Drain (which buckets by exact token count) cannot:
+ * In-memory clustering engine for SMS bodies. Originally a Drain port (He et al. 2017),
+ * rebuilt 2026-05-02 as a length-agnostic set-Jaccard matcher, and rebuilt again
+ * 2026-06-11 back to classic Drain descent + positional similarity. The Jaccard
+ * variant compared unordered token SETS, and Egyptian bank SMS reuse a small
+ * boilerplate vocabulary (تم, خصم, من, حسابك, جم…) — a debit notification and a
+ * fee notification routinely shared >40% of their vocabulary while having
+ * completely different structure, so unrelated formats merged into Frankenstein
+ * clusters whose rewritten pattern aligned with neither format.
  *
- *   "Spent EGP <*> at Cafe"          (5 tokens)
- *   "Spent EGP <*> at Coffee Shop"   (6 tokens)
+ * Current design:
+ *   - Descent is `root → senderId → token count → first PREFIX_DEPTH stable
+ *     (non-wildcard) tokens`. Sender partitioning keeps two senders that share
+ *     boilerplate from ever sharing a cluster. Token-count bucketing restores
+ *     the classic-Drain guarantee that in-leaf merges are always same-length,
+ *     which keeps wildcard slot positions stable across merges. The trade-off
+ *     (variable-length variants of one format cluster per length) is accepted:
+ *     cross-format merges were the worse failure mode.
+ *   - Similarity is classic Drain simSeq: tokens matching at the same position /
+ *     max(length), computed over the digit-collapsed views of both sides.
+ *   - All cluster-side comparisons (descent keys, similarity, merge equality)
+ *     are case-insensitive; stored patterns and example values keep original
+ *     casing — mirroring extraction's `equals(ignoreCase = true)` alignment.
  *
- * In Drain these go to different leaves and never merge. With bank SMS where merchant
- * names vary in word count constantly, that produced one cluster per unique-length
- * message — making the Templates screen useless.
- *
- * The new approach:
- *   - Bucket by the **first 3 stable (non-wildcard) tokens** only. Length is ignored.
- *   - Within a bucket, similarity is **Jaccard over stable token sets** (intersection
- *     of literals / union of literals).
- *   - Threshold lowered to 0.4: messages from the same template share most boilerplate
- *     even when the variable middle differs in length.
- *   - Merge collapses any non-shared tokens to a single `<*>` placeholder, preserving
- *     the order of the first message's stable tokens.
- *
- * Digit-collapse rule (2026-05-07, descent only):
- *   We still treat digit-bearing tokens as `<*>` *for tree descent and Jaccard
- *   matching* — that way a "Spent 100 EGP at Cafe" and "Spent 250 EGP at Cafe"
- *   land in the same cluster. But the SAVED pattern is now the raw tokens of
- *   the first sample. Wildcards only appear in the saved pattern when a
- *   later sample actually disagrees at a position (mergeTemplates).
- *
- *   Why the change: the old rule pre-marked every digit token as a wildcard
- *   in the saved pattern, so a stable "2024" in a greeting got auto-classified
- *   as variable. With a single sample we can't tell variable from constant —
- *   so we don't guess. The user marks unknown wildcards manually on the
- *   mapping screen; the tap-to-toggle UI handles the rest.
+ * Digit-collapse rule (2026-05-07, descent + scoring only):
+ *   Digit-bearing tokens are treated as `<*>` for tree descent and similarity
+ *   so "Spent 100 EGP at Cafe" and "Spent 250 EGP at Cafe" land in the same
+ *   cluster. The SAVED pattern stays raw (first sample verbatim): wildcards
+ *   appear in it only when a later sample genuinely disagrees at a position
+ *   (mergeTemplates), because with a single sample we can't tell variable from
+ *   constant. The user marks unknown wildcards manually on the mapping screen.
  */
 @Singleton
 class DrainParser @Inject constructor() {
@@ -50,28 +48,21 @@ class DrainParser @Inject constructor() {
     @Synchronized
     fun consume(message: SmsMessage): DrainCluster {
         val rawTokens = tokenize(message.body)
-        // Digit-collapsed view used ONLY for cluster descent + Jaccard scoring.
+        // Digit-collapsed view used ONLY for cluster descent + similarity scoring.
         // Saved templatePattern stays as rawTokens (or earlier merged result)
         // so we don't lie about which positions actually vary.
         val descentTokens = preNormalize(rawTokens)
-        val leaf = descend(descentTokens, createIfMissing = true)
+        val leaf = descend(message.senderId, descentTokens)
         val best = bestMatch(leaf, descentTokens)
         if (best != null) {
             // Merge the cluster's existing pattern against the new sample's
             // RAW tokens (not preNormalized). A position becomes `<*>` only
             // when this sample's literal genuinely disagrees with the
-            // cluster's stable literals — that's the structurally-required
-            // signal of variability, no guessing.
+            // cluster's pattern — that's the structurally-required signal
+            // of variability, no guessing.
             val merged = mergeTemplates(best.templatePattern, rawTokens)
-            val updatedExamples = best.exampleValues.toMutableMap()
-            for (i in merged.indices) {
-                if (merged[i] == WILDCARD_TOKEN && i !in updatedExamples) {
-                    val raw = rawTokens.getOrNull(i) ?: continue
-                    if (raw.isNotBlank()) updatedExamples[i] = raw
-                }
-            }
-            best.templatePattern = merged
-            best.exampleValues = updatedExamples
+            best.templatePattern = merged.pattern
+            best.exampleValues = merged.exampleValues
             best.messageCount += 1
             return best
         }
@@ -95,7 +86,12 @@ class DrainParser @Inject constructor() {
         root.clusters.clear()
         for (t in seed) {
             val tokens = patternToTokens(t.pattern)
-            val leaf = descend(tokens, createIfMissing = true)
+            // Descend with the SAME digit-collapsed view consume() uses.
+            // First-sample patterns persist raw digit literals; descending on
+            // them verbatim used to re-home the cluster at a leaf no incoming
+            // message could ever reach (messages descend digit-collapsed),
+            // minting a duplicate template per amount on every reseed.
+            val leaf = descend(t.senderIdHint, preNormalize(tokens))
             val examples: ExampleValues = t.wildcardSlots
                 .associate { it.positionInPattern to it.exampleValue }
             leaf.clusters.add(
@@ -124,29 +120,31 @@ class DrainParser @Inject constructor() {
     }
 
     /**
-     * Length-agnostic descent: walk into a child per the first PREFIX_DEPTH stable
-     * (non-wildcard) tokens. Messages with the same boilerplate prefix bucket together
-     * regardless of overall length.
+     * Classic Drain descent, sender-partitioned: root → senderId → token count →
+     * first PREFIX_DEPTH stable (non-wildcard) tokens. Keys are lowercased so
+     * case variants of the same sender/boilerplate bucket together; the stored
+     * patterns themselves keep original casing.
      */
-    private fun descend(tokens: List<String>, createIfMissing: Boolean): DrainNode {
+    private fun descend(senderId: String, tokens: List<String>): DrainNode {
+        var node = childOrCreate(root, senderId.lowercase())
+        node = childOrCreate(node, tokens.size.toString())
         val stablePrefix = tokens.asSequence()
             .filter { it != WILDCARD_TOKEN }
             .take(PREFIX_DEPTH)
+            .map { it.lowercase() }
             .toList()
         if (stablePrefix.isEmpty()) {
             // Body is all-wildcards — bucket all of them under a sentinel key.
-            return childOrCreate(root, WILDCARD_TOKEN, createIfMissing) ?: root
+            return childOrCreate(node, WILDCARD_TOKEN)
         }
-        var node = root
         for (key in stablePrefix) {
-            node = childOrCreate(node, key, createIfMissing) ?: return node
+            node = childOrCreate(node, key)
         }
         return node
     }
 
-    private fun childOrCreate(parent: DrainNode, key: String, createIfMissing: Boolean): DrainNode? {
+    private fun childOrCreate(parent: DrainNode, key: String): DrainNode {
         parent.children[key]?.let { return it }
-        if (!createIfMissing) return null
         if (parent.children.size >= maxChildren) {
             return parent.children.getOrPut(WILDCARD_TOKEN) { DrainNode() }
         }
@@ -158,53 +156,100 @@ class DrainParser @Inject constructor() {
         var bestScore = 0.0
         var best: DrainCluster? = null
         for (c in leaf.clusters) {
-            val score = jaccardSimilarity(c.templatePattern, tokens)
+            // Score against the digit-collapsed view of the stored pattern so
+            // consume-time and rebuild-time matching use identical keys.
+            val score = positionalAgreement(preNormalize(c.templatePattern), tokens)
             if (score > bestScore) {
                 bestScore = score
+                best = c
+            } else if (score == bestScore && best != null && tieBreakWins(c, best)) {
+                // Deterministic tie-break: leaf.clusters order equals repo
+                // findAll() order after a reseed, so "first at max score"
+                // varied with DB row order across sessions.
                 best = c
             }
         }
         return if (bestScore >= similarity) best else null
     }
 
-    /**
-     * Jaccard similarity over stable (non-wildcard) tokens only. Length-agnostic so
-     * variable-length merchant names don't fragment clusters.
-     */
-    private fun jaccardSimilarity(a: List<String>, b: List<String>): Double {
-        val literalsA = a.filter { it != WILDCARD_TOKEN }.toSet()
-        val literalsB = b.filter { it != WILDCARD_TOKEN }.toSet()
-        if (literalsA.isEmpty() && literalsB.isEmpty()) return 1.0
-        val intersect = literalsA.intersect(literalsB).size
-        val union = literalsA.union(literalsB).size
-        if (union == 0) return 0.0
-        return intersect.toDouble() / union.toDouble()
-    }
+    /** Prefer the cluster with more samples; then the smaller templateId. */
+    private fun tieBreakWins(challenger: DrainCluster, incumbent: DrainCluster): Boolean =
+        challenger.messageCount > incumbent.messageCount ||
+            (challenger.messageCount == incumbent.messageCount &&
+                challenger.templateId < incumbent.templateId)
 
     /**
-     * Merge the cluster's existing template with a new candidate message. Walks
-     * the candidate token-by-token, keeping each token that also appears as a
-     * stable literal in the existing template (in any position) and replacing
-     * the rest with a single collapsed `<*>` wildcard. Adjacent wildcards
-     * collapse into one — that keeps slot count stable so runtime extraction
-     * doesn't end up with empty slots when a body has fewer variable tokens
-     * than the merged pattern's slot positions.
+     * Classic Drain simSeq: tokens equal (case-insensitive) at the same position /
+     * max(length). Both sides must already be digit-collapsed so amounts compare
+     * as `<*>` == `<*>`. Replaced set-Jaccard (2026-06-11): unordered vocabulary
+     * overlap merged structurally different formats sharing Arabic boilerplate.
      */
-    private fun mergeTemplates(existing: List<String>, candidate: List<String>): List<String> {
-        val existingLiterals = existing.filter { it != WILDCARD_TOKEN }.toSet()
-        val merged = mutableListOf<String>()
+    private fun positionalAgreement(a: List<String>, b: List<String>): Double {
+        val longest = maxOf(a.size, b.size)
+        if (longest == 0) return 1.0
+        var matches = 0
+        for (i in 0 until minOf(a.size, b.size)) {
+            if (a[i].equals(b[i], ignoreCase = true)) matches++
+        }
+        return matches.toDouble() / longest
+    }
+
+    private data class MergeResult(
+        val pattern: List<String>,
+        val exampleValues: ExampleValues,
+    )
+
+    /**
+     * Merge the cluster's existing template with a new candidate message.
+     *
+     * Same-length merge (the only case reachable through descent, which buckets
+     * by token count): token-by-token — equal (case-insensitive) keeps the
+     * existing literal, any disagreement becomes `<*>`. Wildcard positions never
+     * move, so user-bound slot roles keyed by positionInPattern survive merges.
+     *
+     * Length-differing merge (only legacy persisted patterns whose adjacent
+     * wildcards were collapsed by the pre-2026-06-11 merge): falls back to the
+     * old run-collapse walk over the candidate.
+     *
+     * exampleValues are rebuilt from scratch on every merge — one aligned raw
+     * candidate token per wildcard position of the MERGED pattern. Stale
+     * position keys from before the merge are pruned, never carried over.
+     */
+    private fun mergeTemplates(existing: List<String>, candidate: List<String>): MergeResult {
+        if (existing.size == candidate.size) {
+            val pattern = List(existing.size) { i ->
+                val tok = existing[i]
+                if (tok != WILDCARD_TOKEN && tok.equals(candidate[i], ignoreCase = true)) {
+                    tok
+                } else {
+                    WILDCARD_TOKEN
+                }
+            }
+            val examples = mutableMapOf<Int, String>()
+            for (i in pattern.indices) {
+                if (pattern[i] == WILDCARD_TOKEN) examples[i] = candidate[i]
+            }
+            return MergeResult(pattern, examples)
+        }
+        val existingLiterals = existing.asSequence()
+            .filter { it != WILDCARD_TOKEN }
+            .map { it.lowercase() }
+            .toSet()
+        val pattern = mutableListOf<String>()
+        val examples = mutableMapOf<Int, String>()
         var prevWildcard = false
         for (tok in candidate) {
-            val stable = tok != WILDCARD_TOKEN && tok in existingLiterals
+            val stable = tok != WILDCARD_TOKEN && tok.lowercase() in existingLiterals
             if (stable) {
-                merged.add(tok)
+                pattern.add(tok)
                 prevWildcard = false
             } else if (!prevWildcard) {
-                merged.add(WILDCARD_TOKEN)
+                examples[pattern.size] = tok
+                pattern.add(WILDCARD_TOKEN)
                 prevWildcard = true
             }
         }
-        return merged
+        return MergeResult(pattern, examples)
     }
 
     private fun patternToTokens(pattern: String): List<String> =

@@ -16,8 +16,10 @@ import java.text.Normalizer
  *      Bank SMS sprinkle these around amounts and Arabic runs; they make
  *      identical-looking strings unequal and inflate the wildcard count.
  *   3. Arabic-Indic (U+0660-9) and Eastern Arabic-Indic (U+06F0-9) digits →
- *      ASCII 0-9. The amount regex is ASCII-only; without this "٥٠٢.١٦"
- *      silently produces AMOUNT_NOT_PARSEABLE.
+ *      ASCII 0-9, plus the Arabic decimal separator (U+066B ٫) → '.' and the
+ *      Arabic thousands separator (U+066C ٬) → ','. The amount regex is
+ *      ASCII-only; without this "٥٠٢.١٦" silently produces
+ *      AMOUNT_NOT_PARSEABLE and "٧٫٥" parses as 7 instead of 7.5.
  *   4. Whitespace collapse + trim. Java's `\s` only matches ASCII spacing,
  *      so Unicode spacing — non-breaking space (U+00A0), the narrow no-break
  *      space (U+202F) banks love to put before "EGP"/Arabic words, ogham
@@ -30,6 +32,15 @@ import java.text.Normalizer
  *   - Strip punctuation (would destroy 502.16 / 1,500 / 14:30 / 07/05/2026).
  *   - Strip stop words (token positions matter for alignment).
  */
+/**
+ * Version of the normalization rules below. Bump on ANY rule change and the
+ * one-shot [com.ivy.sms.domain.usecase.RenormalizePersistedSmsDataUseCase]
+ * pass re-runs over persisted template patterns / example bodies / pending
+ * bodies (tracked via the `sms.normalizer.appliedVersion` preference).
+ * Dedup keys are NOT affected — they hash the raw body (see SmsMessageMapper).
+ */
+internal const val NORMALIZER_VERSION: Int = 1
+
 object SmsBodyNormalizer {
 
     private val invisibleMarks = Regex(
@@ -59,6 +70,10 @@ object SmsBodyNormalizer {
                 when {
                     code in 0x0660..0x0669 -> ('0' + (code - 0x0660))
                     code in 0x06F0..0x06F9 -> ('0' + (code - 0x06F0))
+                    // Arabic decimal/thousands separators — AmountParser and
+                    // the tokenizer only understand the ASCII forms.
+                    code == 0x066B -> '.'
+                    code == 0x066C -> ','
                     else -> ch
                 },
             )

@@ -235,4 +235,9 @@ interface TransactionDao {
     suspend fun findAllByLoanId(
         loanId: UUID
     ): List<TransactionEntity>
+
+    @Query("SELECT * FROM transactions WHERE isDeleted = 0 AND smsSourceDedupKey = :dedupKey LIMIT 1")
+    suspend fun findBySmsSourceDedupKey(
+        dedupKey: String
+    ): TransactionEntity?
 }

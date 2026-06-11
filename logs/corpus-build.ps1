@@ -10,6 +10,14 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding           = [System.Text.Encoding]::UTF8
 
+# Tree-descent prefix depth for cluster signatures. MUST match
+# DrainParser.PREFIX_DEPTH (feature/sms-sync/src/main/java/com/ivy/sms/data/
+# DrainParserState.kt) or the offline auto-clusters stop approximating
+# production Drain clusters. Bumped 3 -> 5 (2026-05-14) alongside the
+# production change. Written into the corpus header as `prefixDepth` so a
+# stale corpus is detectable on the next rebuild.
+$PrefixDepth = 5
+
 if (-not (Test-Path $DumpFile)) {
     Write-Error "Dump file not found: $DumpFile"
     exit 1
@@ -30,6 +38,24 @@ if (-not (Test-Path $gitIgnore)) {
 Write-Host "Reading dump:  $DumpFile"
 Write-Host "Writing corpus: $outFile"
 Write-Host ""
+
+# Depth guard: a corpus generated at a different PREFIX_DEPTH has cluster
+# ids/signatures that no longer line up with what this run produces, and the
+# rebuild below OVERWRITES the file. Warn loudly before clobbering it.
+if (Test-Path $outFile) {
+    $existingDepth = $null
+    if ((Get-Content -LiteralPath $outFile -Raw -Encoding utf8) -match '"prefixDepth":\s*(\d+)') {
+        $existingDepth = [int]$matches[1]
+    }
+    if ($existingDepth -ne $PrefixDepth) {
+        $depthLabel = if ($null -eq $existingDepth) { 'UNKNOWN (no prefixDepth field; predates the depth-5 bump)' } else { "$existingDepth" }
+        Write-Host "!!! WARNING: existing sms-corpus.json was generated at prefix depth $depthLabel" -ForegroundColor Red
+        Write-Host "!!! while this script clusters at depth $PrefixDepth - cluster ids/signatures will shift," -ForegroundColor Red
+        Write-Host "!!! and regenerating OVERWRITES every annotation in the old file." -ForegroundColor Red
+        Write-Host "!!! Copy it aside now if you need to port annotations forward." -ForegroundColor Red
+        Write-Host ""
+    }
+}
 
 # ----- 1. Parse rows out of the dump file. -----
 # Each record is `Row: <id> address=<sender>, date=<ms>, body=<text>`. Bodies
@@ -52,7 +78,7 @@ foreach ($chunk in $rowChunks) {
 }
 Write-Host "Parsed $($records.Count) records."
 
-# ----- 2. Cluster signature: sender | tokenCount | first-3-stable-tokens. -----
+# ----- 2. Cluster signature: sender | tokenCount | first-$PrefixDepth-stable-tokens. -----
 # Mirrors what DrainParser does for descent (digit-collapse for clustering
 # only) so a corpus cluster ~ a Drain cluster.
 function Get-ClusterSignature($body, $sender) {
@@ -91,11 +117,12 @@ function Get-ClusterSignature($body, $sender) {
     if ($tokens.Count -eq 0) {
         return @{ key = "$sender|0|"; tokens = $tokens }
     }
-    # First-N stable tokens; keep in sync with DrainParser.PREFIX_DEPTH so
-    # the corpus auto-cluster mirrors how production Drain would group these
-    # bodies. Bumped 3 → 5 (2026-05-14) alongside the production change to
-    # stop sibling SMS structures from collapsing into one signature.
-    $stable = $tokens | Where-Object { $_ -notmatch '\d' } | Select-Object -First 5
+    # First $PrefixDepth stable tokens; keep $PrefixDepth in sync with
+    # DrainParser.PREFIX_DEPTH so the corpus auto-cluster mirrors how
+    # production Drain would group these bodies. Bumped 3 -> 5 (2026-05-14)
+    # alongside the production change to stop sibling SMS structures from
+    # collapsing into one signature.
+    $stable = $tokens | Where-Object { $_ -notmatch '\d' } | Select-Object -First $PrefixDepth
     return @{
         key    = "$sender|$($tokens.Count)|" + ($stable -join '|')
         tokens = $tokens
@@ -148,6 +175,7 @@ foreach ($key in $bySig.Keys | Sort-Object) {
 $nowIso = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 $corpus = [ordered]@{
     version        = 1
+    prefixDepth    = $PrefixDepth
     generatedAt    = $nowIso
     sourceDump     = (Resolve-Path $DumpFile).Path
     totalMessages  = $records.Count

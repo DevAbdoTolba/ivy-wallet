@@ -9,10 +9,13 @@ that runs in <10s against your real SMS history.
 - **dump-sms.bat / .ps1** — dumps SMS bodies for the named senders into a
   timestamped `*_sms-dump.txt` (gitignored). UTF-8 throughout.
 - **corpus-build.bat / .ps1** — parses a dump file, auto-clusters messages by
-  sender + token-count + first-three-stable-tokens, writes the clustered JSON
-  to `feature/sms-sync/src/test/resources/sms-corpus.json` (gitignored).
-- **capture.bat / .ps1** — unrelated: captures `adb logcat -s SmsTrace` for
-  live debugging.
+  sender + token-count + first-five-stable-tokens (depth 5, kept in sync with
+  `DrainParser.PREFIX_DEPTH` and recorded in the corpus header as
+  `prefixDepth`), writes the clustered JSON to
+  `feature/sms-sync/src/test/resources/sms-corpus.json` (gitignored). It warns
+  loudly when the corpus on disk was generated at a different depth.
+- **capture.bat** — unrelated: UTF-8-clean capture of `adb logcat -s SmsTrace
+  LoanTrace AndroidRuntime ActivityManager` for live debugging.
 
 ## End-to-end loop
 
@@ -26,6 +29,12 @@ logs\corpus-build.bat logs\2026-05-09_19-33-55_sms-dump.txt
 # 3. Run the corpus test (no device, no build of the app).
 gradlew :feature:sms-sync:testDebugUnitTest --tests "com.ivy.sms.parser.SmsCorpusTest"
 ```
+
+> **Warning — regeneration destroys annotations.** `corpus-build` always
+> writes every cluster with `"annotation": null` and no `expectedValues`, so
+> re-running step 2 silently wipes any hand-written annotation work in the
+> existing `sms-corpus.json`. Copy the file aside before regenerating and
+> port your annotation blocks back in afterwards.
 
 The first run will:
 

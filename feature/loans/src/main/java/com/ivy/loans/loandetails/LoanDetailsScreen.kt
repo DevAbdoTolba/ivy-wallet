@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Divider
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -57,6 +57,7 @@ import com.ivy.legacy.utils.formatNicely
 import com.ivy.legacy.utils.isNotNullOrBlank
 import com.ivy.legacy.utils.rememberInteractionSource
 import com.ivy.legacy.utils.setStatusBarDarkTextCompat
+import com.ivy.loans.loan.FAB_BUTTON_SIZE
 import com.ivy.loans.loan.data.DisplayLoanRecord
 import com.ivy.loans.loandetails.ui.LoanItemCard
 import com.ivy.loans.loandetails.ui.LoanItemModal
@@ -77,6 +78,7 @@ import com.ivy.wallet.ui.theme.MediumWhite
 import com.ivy.wallet.ui.theme.components.BalanceRow
 import com.ivy.wallet.ui.theme.components.ItemIconMDefaultIcon
 import com.ivy.wallet.ui.theme.components.IvyButton
+import com.ivy.wallet.ui.theme.components.IvyCircleButton
 import com.ivy.wallet.ui.theme.components.IvyIcon
 import com.ivy.wallet.ui.theme.components.ProgressBar
 import com.ivy.wallet.ui.theme.components.getCustomIconIdS
@@ -152,6 +154,9 @@ private fun BoxWithConstraintsScope.UI(
                             },
                             onEditLoan = {
                                 onEventHandler.invoke(LoanDetailsScreenEvent.OnEditLoanClick)
+                            },
+                            onAddRecord = {
+                                onEventHandler.invoke(LoanDetailsScreenEvent.OnAddRecord)
                             }
                         )
                     }
@@ -197,9 +202,26 @@ private fun BoxWithConstraintsScope.UI(
                     )
                 }
 
-                if (state.displayLoanItems.isEmpty() && !state.isLoading && state.loan != null) {
+                // Loan records (payments) render below the checklist items.
+                if (state.loan != null) {
+                    loanRecords(
+                        loan = state.loan,
+                        displayLoanRecords = state.displayLoanRecords,
+                        onClick = { displayLoanRecord ->
+                            onEventHandler.invoke(
+                                LoanRecordModalEvent.OnClickLoanRecord(
+                                    displayLoanRecord
+                                )
+                            )
+                        }
+                    )
+                }
+
+                if (state.displayLoanItems.isEmpty() && state.displayLoanRecords.isEmpty() &&
+                    !state.isLoading && state.loan != null
+                ) {
                     item {
-                        NoLoanRecordsEmptyState()
+                        NoLoanItemsEmptyState()
                         Spacer(Modifier.height(96.dp))
                     }
                 }
@@ -211,23 +233,17 @@ private fun BoxWithConstraintsScope.UI(
             }
         }
 
-        FloatingActionButton(
+        IvyCircleButton(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(24.dp),
-            onClick = {
-                onEventHandler.invoke(LoanDetailsScreenEvent.OnAddLoanItem)
-            },
-            containerColor = itemColor,
-            contentColor = findContrastTextColor(itemColor)
+                .padding(24.dp)
+                .size(FAB_BUTTON_SIZE),
+            icon = R.drawable.ic_add,
+            backgroundGradient = Gradient.solid(itemColor),
+            tint = findContrastTextColor(itemColor),
+            hasShadow = true
         ) {
-            Text(
-                text = "+",
-                style = UI.typo.h2.style(
-                    fontWeight = FontWeight.Bold,
-                    color = findContrastTextColor(itemColor)
-                )
-            )
+            onEventHandler.invoke(LoanDetailsScreenEvent.OnAddLoanItem)
         }
     }
 
@@ -251,6 +267,27 @@ private fun BoxWithConstraintsScope.UI(
         },
     )
 
+    LoanRecordModal(
+        modal = state.loanRecordModalData, onCreate = {
+        onEventHandler.invoke(LoanRecordModalEvent.OnCreateLoanRecord(it))
+    }, onEdit = {
+        onEventHandler.invoke(LoanRecordModalEvent.OnEditLoanRecord(it))
+    }, onDelete = { loanRecord ->
+        onEventHandler.invoke(LoanRecordModalEvent.OnDeleteLoanRecord(loanRecord))
+    }, accounts = state.accounts, dismiss = {
+        onEventHandler.invoke(LoanRecordModalEvent.OnDismissLoanRecord)
+    }, onCreateAccount = { createAccountData ->
+        onEventHandler.invoke(LoanDetailsScreenEvent.OnCreateAccount(createAccountData))
+    },
+        dateTime = state.dateTime,
+        onSetDate = {
+            onEventHandler.invoke(LoanRecordModalEvent.OnChangeDate)
+        },
+        onSetTime = {
+            onEventHandler.invoke(LoanRecordModalEvent.OnChangeTime)
+        },
+    )
+
     DeleteModal(
         visible = state.isDeleteModalVisible,
         title = stringResource(R.string.confirm_deletion),
@@ -260,6 +297,17 @@ private fun BoxWithConstraintsScope.UI(
         }
     ) {
         onEventHandler.invoke(DeleteLoanModalEvent.OnDeleteLoan)
+    }
+
+    DeleteModal(
+        visible = state.deleteLoanItemId != null,
+        title = stringResource(R.string.confirm_deletion),
+        description = stringResource(R.string.loan_item_confirm_deletion_description),
+        dismiss = {
+            onEventHandler.invoke(LoanDetailsScreenEvent.OnDismissDeleteLoanItem)
+        }
+    ) {
+        onEventHandler.invoke(LoanDetailsScreenEvent.OnConfirmDeleteLoanItem)
     }
 
     ProgressModal(
@@ -273,7 +321,13 @@ private fun BoxWithConstraintsScope.UI(
         loanItem = state.selectedLoanItem,
         baseCurrency = state.baseCurrency,
         onSave = { title, amount ->
-            onEventHandler.invoke(LoanDetailsScreenEvent.OnSaveLoanItem(title, amount))
+            onEventHandler.invoke(
+                LoanDetailsScreenEvent.OnSaveLoanItem(
+                    title = title,
+                    amount = amount,
+                    editingItemId = state.selectedLoanItem?.id
+                )
+            )
         },
         onDismiss = {
             onEventHandler.invoke(LoanDetailsScreenEvent.OnDismissLoanItemModal)
@@ -291,6 +345,7 @@ private fun Header(
     onAmountClick: () -> Unit,
     onEditLoan: () -> Unit,
     onDeleteLoan: () -> Unit,
+    onAddRecord: () -> Unit,
     loanAmountPaid: Double = 0.0,
     selectedLoanAccount: Account? = null,
 ) {
@@ -340,6 +395,7 @@ private fun Header(
             loanAmountPaid = loanAmountPaid,
             loanTotalAmount = loanTotalAmount,
             selectedLoanAccount = selectedLoanAccount,
+            onAddRecord = onAddRecord,
         )
 
         Spacer(Modifier.height(20.dp))
@@ -413,6 +469,7 @@ private fun LoanInfoCard(
     baseCurrency: String,
     loanTotalAmount: Double,
     amountPaid: Double,
+    onAddRecord: () -> Unit,
     loanAmountPaid: Double = 0.0,
     selectedLoanAccount: Account? = null,
 ) {
@@ -423,8 +480,9 @@ private fun LoanInfoCard(
     }
 
     val contrastColor = findContrastTextColor(backgroundColor)
-    val percentPaid = amountPaid / loanTotalAmount
-    val loanPercentPaid = loanAmountPaid / loanTotalAmount
+    // Guard against 0-total loans (e.g. restored backups) — 0.0 / 0.0 is NaN
+    val percentPaid = if (loanTotalAmount != 0.0) amountPaid / loanTotalAmount else 0.0
+    val loanPercentPaid = if (loanTotalAmount != 0.0) loanAmountPaid / loanTotalAmount else 0.0
     val leftToPay = loanTotalAmount - amountPaid
     val nav = navigation()
 
@@ -610,7 +668,26 @@ private fun LoanInfoCard(
             )
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
+
+        IvyButton(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .align(Alignment.CenterHorizontally),
+            text = stringResource(R.string.add_record),
+            shadowAlpha = 0.1f,
+            backgroundGradient = Gradient.solid(contrastColor),
+            textStyle = UI.typo.b2.style(
+                color = findContrastTextColor(contrastColor),
+                fontWeight = FontWeight.Bold
+            ),
+            wrapContentMode = false
+        ) {
+            onAddRecord()
+        }
+
+        Spacer(Modifier.height(12.dp))
     }
 }
 
@@ -851,7 +928,7 @@ private fun InitialRecordItem(
 }
 
 @Composable
-private fun NoLoanRecordsEmptyState() {
+private fun NoLoanItemsEmptyState() {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -866,7 +943,7 @@ private fun NoLoanRecordsEmptyState() {
         Spacer(Modifier.height(24.dp))
 
         Text(
-            text = stringResource(R.string.no_records),
+            text = stringResource(R.string.no_items),
             style = UI.typo.b1.style(
                 color = Gray,
                 fontWeight = FontWeight.ExtraBold
@@ -877,7 +954,7 @@ private fun NoLoanRecordsEmptyState() {
 
         Text(
             modifier = Modifier.padding(horizontal = 32.dp),
-            text = stringResource(R.string.no_records_for_the_loan),
+            text = stringResource(R.string.no_items_for_the_loan),
             style = UI.typo.b2.style(
                 color = Gray,
                 fontWeight = FontWeight.Medium,

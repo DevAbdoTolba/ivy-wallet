@@ -3,7 +3,6 @@ package com.ivy.wallet.domain.deprecated.logic
 import androidx.compose.ui.graphics.toArgb
 import com.ivy.data.db.dao.read.LoanDao
 import com.ivy.data.db.dao.write.WriteLoanDao
-import com.ivy.data.repository.LoanRepository
 import com.ivy.legacy.datamodel.Loan
 import com.ivy.legacy.utils.ioThread
 import com.ivy.wallet.domain.deprecated.logic.model.CreateLoanData
@@ -15,7 +14,6 @@ import javax.inject.Inject
 class LoanCreator @Inject constructor(
     private val dao: LoanDao,
     private val loanWriter: WriteLoanDao,
-    private val loanRepository: LoanRepository,
 ) {
     suspend fun create(
         data: CreateLoanData,

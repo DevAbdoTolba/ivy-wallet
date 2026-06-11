@@ -8,7 +8,7 @@ import java.util.UUID
 
 @Dao
 interface LoanItemDao {
-    @Query("SELECT * FROM loan_items WHERE contactId = :contactId ORDER BY createdAt DESC")
+    @Query("SELECT * FROM loan_items WHERE contactId = :contactId ORDER BY createdAt DESC, id")
     fun findAllByContactId(contactId: UUID): Flow<List<LoanItemEntity>>
 
     @Query("SELECT * FROM loan_items WHERE id = :id")

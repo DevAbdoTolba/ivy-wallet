@@ -7,10 +7,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -25,7 +22,14 @@ import com.ivy.data.model.LoanItem
 import com.ivy.design.l0_system.UI
 import com.ivy.design.l0_system.style
 import com.ivy.legacy.utils.format
+import com.ivy.ui.R
+import com.ivy.wallet.ui.theme.Red
+import com.ivy.wallet.ui.theme.components.IvyIcon
 import com.ivy.wallet.ui.theme.findContrastTextColor
+
+// Single loan-color tint for settled/summary surfaces — ItemizeLoanSheet reuses it
+// so checklist rows and the itemize summary stay visually consistent.
+const val LOAN_SETTLED_TINT_ALPHA = 0.18f
 
 @Composable
 fun LoanItemCard(
@@ -39,9 +43,9 @@ fun LoanItemCard(
 ) {
     val bgColor by animateColorAsState(
         targetValue = if (loanItem.isSettled) {
-            loanColor.copy(alpha = 0.18f)
+            loanColor.copy(alpha = LOAN_SETTLED_TINT_ALPHA)
         } else {
-            UI.colors.medium.copy(alpha = 0.35f)
+            UI.colors.medium
         },
         label = "loanItemBg"
     )
@@ -104,20 +108,20 @@ fun LoanItemCard(
         }
 
         IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-            Icon(
-                imageVector = Icons.Default.Edit,
-                contentDescription = "Edit",
+            IvyIcon(
+                modifier = Modifier.size(18.dp),
+                icon = R.drawable.ic_edit,
                 tint = UI.colors.pureInverse.copy(alpha = 0.55f),
-                modifier = Modifier.size(18.dp)
+                contentDescription = stringResource(R.string.edit)
             )
         }
 
         IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Delete",
-                tint = com.ivy.wallet.ui.theme.Red.copy(alpha = 0.7f),
-                modifier = Modifier.size(18.dp)
+            IvyIcon(
+                modifier = Modifier.size(18.dp),
+                icon = R.drawable.ic_delete,
+                tint = Red.copy(alpha = 0.7f),
+                contentDescription = stringResource(R.string.delete)
             )
         }
     }
@@ -148,11 +152,11 @@ private fun SettledMark(
         contentAlignment = Alignment.Center
     ) {
         if (isSettled) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = "Settled",
+            IvyIcon(
+                modifier = Modifier.size(18.dp),
+                icon = R.drawable.ic_check,
                 tint = findContrastTextColor(loanColor),
-                modifier = Modifier.size(18.dp)
+                contentDescription = stringResource(R.string.settled)
             )
         }
     }

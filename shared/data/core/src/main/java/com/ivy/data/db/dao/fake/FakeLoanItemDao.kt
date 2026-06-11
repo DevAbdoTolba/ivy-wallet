@@ -12,8 +12,12 @@ class FakeLoanItemDao : LoanItemDao, WriteLoanItemDao {
     private val items = MutableStateFlow<List<LoanItemEntity>>(emptyList())
 
     override fun findAllByContactId(contactId: UUID): Flow<List<LoanItemEntity>> {
-        return items.map { list -> 
-            list.filter { it.contactId == contactId }.sortedByDescending { it.createdAt }
+        return items.map { list ->
+            list.filter { it.contactId == contactId }
+                .sortedWith(
+                    compareByDescending<LoanItemEntity> { it.createdAt }
+                        .thenBy { it.id.toString() }
+                )
         }
     }
 

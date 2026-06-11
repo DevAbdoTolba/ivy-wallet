@@ -1,217 +1,109 @@
 package com.ivy.loans.loandetails.ui
 
-import android.view.View
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.BoxWithConstraintsScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ivy.data.model.LoanItem
-import com.ivy.design.l0_system.UI
-import com.ivy.design.l0_system.style
-import com.ivy.design.utils.hideKeyboard
-import com.ivy.legacy.utils.formatInputAmount
-import com.ivy.legacy.utils.localDecimalSeparator
+import com.ivy.legacy.legacy.ui.theme.modal.ModalNameInput
+import com.ivy.legacy.utils.onScreenStart
+import com.ivy.legacy.utils.selectEndTextFieldValue
 import com.ivy.ui.R
-import com.ivy.wallet.ui.theme.Red
+import com.ivy.wallet.ui.theme.modal.IvyModal
+import com.ivy.wallet.ui.theme.modal.ModalAddSave
+import com.ivy.wallet.ui.theme.modal.ModalAmountSection
+import com.ivy.wallet.ui.theme.modal.ModalTitle
+import com.ivy.wallet.ui.theme.modal.edit.AmountModal
+import java.util.UUID
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoanItemModal(
+fun BoxWithConstraintsScope.LoanItemModal(
     visible: Boolean,
     loanItem: LoanItem?,
     baseCurrency: String,
     onSave: (title: String, amount: Double) -> Unit,
     onDismiss: () -> Unit
 ) {
-    if (!visible) return
-
-    var title by remember(loanItem) { mutableStateOf(loanItem?.title ?: "") }
-    var amount by remember(loanItem) { mutableStateOf(loanItem?.amount?.toString() ?: "") }
-    
-    val view = LocalView.current
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = UI.colors.pure,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .navigationBarsPadding()
-                .imePadding()
-        ) {
-            Text(
-                text = if (loanItem == null) "Add Loan Item" else "Edit Loan Item",
-                style = UI.typo.nH2.style(
-                    color = UI.colors.pureInverse,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Title") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = UI.colors.pureInverse,
-                    unfocusedTextColor = UI.colors.pureInverse,
-                    focusedBorderColor = UI.colors.pureInverse,
-                    unfocusedBorderColor = UI.colors.medium
-                )
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                text = amount.ifEmpty { "0" },
-                style = UI.typo.nH1.style(
-                    color = UI.colors.pureInverse,
-                    fontWeight = FontWeight.Black,
-                    textAlign = TextAlign.Center
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp)
-            )
-
-            NumericKeypad(
-                onNumberPressed = { num ->
-                    val formatted = formatInputAmount(baseCurrency, amount, num, 2)
-                    if (formatted != null) {
-                        amount = formatted
-                    }
-                },
-                onDecimalPoint = {
-                    val separator = localDecimalSeparator()
-                    if (!amount.contains(separator)) {
-                        amount += separator
-                    }
-                },
-                onBackspace = {
-                    if (amount.isNotEmpty()) {
-                        amount = amount.dropLast(1)
-                    }
-                }
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            Button(
-                onClick = {
-                    val amountDouble = amount.replace(",", ".").replace(" ", "").replace("\u00A0", "").toDoubleOrNull() ?: 0.0
-                    if (title.isNotBlank() && amountDouble > 0) {
-                        view.hideKeyboard()
-                        onSave(title, amountDouble)
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                enabled = title.isNotBlank() && (amount.replace(",", ".").replace(" ", "").replace("\u00A0", "").toDoubleOrNull() ?: 0.0) > 0,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = UI.colors.pureInverse,
-                    contentColor = UI.colors.pure
-                ),
-                shape = UI.shapes.r4
-            ) {
-                Text(
-                    text = "SAVE",
-                    style = UI.typo.b1.style(
-                        color = UI.colors.pure,
-                        fontWeight = FontWeight.Black
-                    )
-                )
-            }
-            
-            Spacer(Modifier.height(16.dp))
-        }
+    var titleTextFieldValue by remember(visible, loanItem) {
+        mutableStateOf(selectEndTextFieldValue(loanItem?.title))
     }
-}
-
-@Composable
-private fun NumericKeypad(
-    onNumberPressed: (String) -> Unit,
-    onDecimalPoint: () -> Unit,
-    onBackspace: () -> Unit
-) {
-    val rows = listOf(
-        listOf("1", "2", "3"),
-        listOf("4", "5", "6"),
-        listOf("7", "8", "9")
-    )
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        rows.forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                row.forEach { num ->
-                    KeypadButton(text = num, onClick = { onNumberPressed(num) })
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            KeypadButton(text = localDecimalSeparator(), onClick = onDecimalPoint)
-            KeypadButton(text = "0", onClick = { onNumberPressed("0") })
-            IconButton(
-                onClick = onBackspace,
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(UI.colors.medium.copy(alpha = 0.1f))
-            ) {
-                Icon(
-                    painter = androidx.compose.ui.res.painterResource(com.ivy.ui.R.drawable.ic_backspace),
-                    contentDescription = "Backspace",
-                    tint = Red,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
+    var amount by remember(visible, loanItem) {
+        mutableStateOf(loanItem?.amount ?: 0.0)
     }
-}
+    var amountModalVisible by remember(visible) { mutableStateOf(false) }
+    val modalId = remember(visible, loanItem) { UUID.randomUUID() }
 
-@Composable
-private fun KeypadButton(
-    text: String,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(64.dp)
-            .clip(CircleShape)
-            .clickable(onClick = onClick)
-            .background(UI.colors.medium.copy(alpha = 0.1f)),
-        contentAlignment = Alignment.Center
+    IvyModal(
+        id = modalId,
+        visible = visible,
+        dismiss = onDismiss,
+        PrimaryAction = {
+            ModalAddSave(
+                item = loanItem,
+                enabled = titleTextFieldValue.text.isNotBlank() && amount > 0
+            ) {
+                onSave(titleTextFieldValue.text.trim(), amount)
+            }
+        }
     ) {
-        Text(
-            text = text,
-            style = UI.typo.nH2.style(
-                color = UI.colors.pureInverse,
-                fontWeight = FontWeight.Bold
-            )
+        onScreenStart {
+            // Amount-first entry for new items — same flow as LoanRecordModal
+            if (loanItem == null) {
+                amountModalVisible = true
+            }
+        }
+
+        Spacer(Modifier.height(32.dp))
+
+        ModalTitle(
+            text = if (loanItem != null) {
+                stringResource(R.string.edit_item)
+            } else {
+                stringResource(R.string.add_item)
+            }
         )
+
+        Spacer(Modifier.height(24.dp))
+
+        ModalNameInput(
+            hint = stringResource(R.string.item_title),
+            autoFocusKeyboard = false,
+            textFieldValue = titleTextFieldValue,
+            setTextFieldValue = {
+                titleTextFieldValue = it
+            }
+        )
+
+        Spacer(Modifier.height(24.dp))
+
+        ModalAmountSection(
+            label = stringResource(R.string.enter_item_amount_uppercase),
+            currency = baseCurrency,
+            amount = amount,
+            amountPaddingTop = 40.dp,
+            amountPaddingBottom = 40.dp,
+        ) {
+            amountModalVisible = true
+        }
+    }
+
+    val amountModalId = remember(visible, loanItem, amount) {
+        UUID.randomUUID()
+    }
+    AmountModal(
+        id = amountModalId,
+        visible = amountModalVisible,
+        currency = baseCurrency,
+        initialAmount = amount,
+        dismiss = { amountModalVisible = false }
+    ) { newAmount ->
+        amount = newAmount
     }
 }

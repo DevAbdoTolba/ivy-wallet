@@ -24,7 +24,18 @@ class RoomTypeConverters {
     fun saveUUID(id: UUID?) = id?.toString()
 
     @TypeConverter
-    fun parseUUID(id: String?) = id?.let { UUID.fromString(id) }
+    fun parseUUID(id: String?) = id?.let { UUID.fromString(it.withUuidDashes()) }
+
+    // Migration130to131 used to seed loan_items.id with 32-char dash-less hex
+    // strings, which UUID.fromString rejects. Re-insert the dashes defensively.
+    @Suppress("MagicNumber")
+    private fun String.withUuidDashes(): String =
+        if (length == 32 && '-' !in this) {
+            "${substring(0, 8)}-${substring(8, 12)}-${substring(12, 16)}-" +
+                "${substring(16, 20)}-${substring(20)}"
+        } else {
+            this
+        }
 
     @TypeConverter
     fun saveTheme(value: Theme?) = value?.name

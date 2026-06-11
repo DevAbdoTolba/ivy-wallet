@@ -9,7 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.viewModelScope
 import com.ivy.base.legacy.SharedPrefs
-import com.ivy.base.model.processByType
+import com.ivy.base.model.LoanRecordType
 import com.ivy.base.time.TimeConverter
 import com.ivy.base.time.TimeProvider
 import com.ivy.data.db.dao.read.LoanRecordDao
@@ -207,14 +207,18 @@ class LoanViewModel @Inject constructor(
 
     private fun saveItemizedLoan(loanId: UUID, items: List<ItemizeEntry>) {
         viewModelScope.launch {
+            // Strictly increasing createdAt per item — batch saves within the
+            // same millisecond would otherwise have an unstable DB order.
+            val base = Instant.now()
             items.filter { it.title.isNotBlank() && it.amount > 0 }
-                .forEach { entry ->
+                .forEachIndexed { index, entry ->
                     loanRepository.saveLoanItem(
                         LoanItem(
                             contactId = LoanId(loanId),
                             title = entry.title.trim(),
                             amount = entry.amount,
                             isSettled = false,
+                            createdAt = base.plusMillis(index.toLong()),
                         )
                     )
                 }
@@ -432,17 +436,23 @@ class LoanViewModel @Inject constructor(
     }
 
     /**
-     *  Calculates the total amount paid and the total loan amount based on checklist items.
+     *  Calculates the total amount paid and the total loan amount.
+     *  Paid = settled checklist items + non-interest DECREASE loan records, so
+     *  upgraded users whose repayment history lives in loan_records keep their
+     *  progress.
      *  @return A Pair containing the total amount paid and the total loan amount.
      */
     private suspend fun calculateAmountPaidAndTotalAmount(loan: Loan): Pair<Double, Double> {
         val items = loanRepository.getLoanItems(LoanId(loan.id)).first()
+        val recordsPaid = ioThread { loanRecordDao.findAllByLoanId(loanId = loan.id) }
+            .filter { !it.interest && it.loanRecordType == LoanRecordType.DECREASE }
+            .sumOf { it.convertedAmount ?: it.amount }
         return if (items.isEmpty()) {
-            // Non-itemized loan: keep the original loan.amount as total, nothing paid yet
-            0.0 to loan.amount
+            // Non-itemized loan: keep the original loan.amount as total
+            recordsPaid to loan.amount
         } else {
             val total = items.sumOf { it.amount }
-            val paid = items.filter { it.isSettled }.sumOf { it.amount }
+            val paid = items.filter { it.isSettled }.sumOf { it.amount } + recordsPaid
             paid to total
         }
     }

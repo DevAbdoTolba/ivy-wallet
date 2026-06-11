@@ -1,6 +1,7 @@
 package com.ivy.loans.loandetails
 
 import com.ivy.data.model.LoanItem
+import com.ivy.data.model.LoanItemId
 import com.ivy.legacy.datamodel.Account
 import com.ivy.legacy.datamodel.Loan
 import com.ivy.loans.loan.data.DisplayLoanItem
@@ -25,6 +26,7 @@ data class LoanDetailsScreenState(
     val loanRecordModalData: LoanRecordModalData?,
     val loanItemModalVisible: Boolean = false,
     val selectedLoanItem: LoanItem? = null,
+    val deleteLoanItemId: LoanItemId? = null,
     val waitModalVisible: Boolean,
     val isDeleteModalVisible: Boolean,
     val dateTime: Instant,

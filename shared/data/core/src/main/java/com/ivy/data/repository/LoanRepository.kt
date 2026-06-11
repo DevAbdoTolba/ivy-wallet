@@ -24,8 +24,8 @@ class LoanRepository @Inject constructor(
 ) {
     fun getLoanItems(contactId: LoanId): Flow<List<LoanItem>> {
         return loanItemDao.findAllByContactId(contactId.value).map { entities ->
-            entities.map { entity ->
-                with(mapper) { entity.toDomain() }.getOrNull()!!
+            entities.mapNotNull { entity ->
+                with(mapper) { entity.toDomain() }.getOrNull()
             }
         }
     }

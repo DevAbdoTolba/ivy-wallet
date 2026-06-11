@@ -44,11 +44,30 @@ data class TemplateMappingViewState(
     val convertedFromQueue: Int? = null,
     /** Pending items the reprocess COULDN'T route — they stay in the queue.
      *  When > 0, the screen shows "Partially mapped" feedback so the user
-     *  doesn't see a misleading "Needs roles assigned" badge later. */
+     *  doesn't see a misleading "Needs roles assigned" badge later.
+     *  Broken down per reason so the card can tell the user whether to edit
+     *  the pattern (alignment), check the amount (parse), or link the
+     *  sender — lumping everything under "failed alignment" steered users
+     *  into re-editing patterns that were fine. */
     val failedAlignment: Int? = null,
-    /** Total pending items the reprocess considered for this template. */
-    val totalPending: Int? = null,
-)
+    val failedAmountParse: Int? = null,
+    val failedSenderNotLinked: Int? = null,
+    val failedOther: Int? = null,
+    /** Pending items belonging to THIS template (the card's denominator). */
+    val totalOwn: Int? = null,
+    /** Non-null when the last save attempt was blocked because the pattern
+     *  aligned 0 of the template's own queued messages. Value = that queue
+     *  size N; the screen renders a blocking "matches 0 of your N queued
+     *  messages" warning with an explicit "Save anyway". */
+    val zeroAlignmentWarning: Int? = null,
+    /** Name of the wallet this mapping session is scoped to (shown in the
+     *  toolbar so the user knows which wallet the reprocess targets). */
+    val walletScopeName: String? = null,
+) {
+    val failedTotal: Int
+        get() = (failedAlignment ?: 0) + (failedAmountParse ?: 0) +
+            (failedSenderNotLinked ?: 0) + (failedOther ?: 0)
+}
 
 @Immutable
 data class ReprocessProgress(
@@ -77,9 +96,15 @@ sealed interface TemplateMappingEvent {
     /**
      * User chose "Make this part literal again" inside the role picker. The
      * VM removes the slot and restores the original literal token in the
-     * pattern at that position.
+     * pattern at that position. Clearing a slot that holds a non-Unmapped
+     * role is destructive (it silently corrupted patterns in the field), so
+     * the VM refuses it unless [confirmed] is true — the modal sets it only
+     * after the user tapped the button a second time.
      */
-    data class WildcardClearedToLiteral(val id: WildcardId) : TemplateMappingEvent
+    data class WildcardClearedToLiteral(
+        val id: WildcardId,
+        val confirmed: Boolean = false,
+    ) : TemplateMappingEvent
     data object DismissBottomSheet : TemplateMappingEvent
     data class NameChanged(val value: String) : TemplateMappingEvent
     /**
@@ -89,7 +114,19 @@ sealed interface TemplateMappingEvent {
      * "Save lights up but clicking does nothing" because save() was
      * silently `return`'ing on `state.templateId ?: return`.
      */
-    data class Save(val explicitTemplateId: SmsTemplateId? = null) : TemplateMappingEvent
+    data class Save(
+        val explicitTemplateId: SmsTemplateId? = null,
+        /** True only from the zero-alignment warning's "Save anyway" button. */
+        val saveAnyway: Boolean = false,
+    ) : TemplateMappingEvent
+    /** "Keep editing" on the zero-alignment warning — clears the warning. */
+    data object DismissZeroAlignmentWarning : TemplateMappingEvent
+    /**
+     * Bulk action on the "Partially mapped" card: resolve (dismiss) every
+     * pending item still queued for this template. Dismiss only — does NOT
+     * blacklist the template, which keeps routing future messages.
+     */
+    data class DismissUnmatched(val explicitTemplateId: SmsTemplateId? = null) : TemplateMappingEvent
     /**
      * "Ignore this template forever" button — flips the template to
      * BLACKLISTED so future SMS that align to this pattern get suppressed

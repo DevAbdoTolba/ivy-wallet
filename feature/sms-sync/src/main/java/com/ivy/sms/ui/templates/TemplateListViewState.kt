@@ -56,7 +56,10 @@ const val MATCHING_MODAL_PAGE_SIZE = 10
 
 sealed interface TemplateListEvent {
     data class TemplateClicked(val id: SmsTemplateId) : TemplateListEvent
-    data object ScanFurtherBack : TemplateListEvent
+
+    /** Extend the scan window back to [lowerBoundEpochMillis] (0 = all time)
+     *  and rescan the gap. */
+    data class ScanFurtherBack(val lowerBoundEpochMillis: Long) : TemplateListEvent
     data object OpenPendingReview : TemplateListEvent
     data class ToggleBlacklist(val id: SmsTemplateId) : TemplateListEvent
     data class ToggleGroup(val group: TemplateGroupKey) : TemplateListEvent

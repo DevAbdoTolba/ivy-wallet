@@ -18,6 +18,11 @@ data class PendingItemRowViewState(
     val wildcardRolesByPosition: Map<Int, WildcardRole>,
     val timestamp: Long,
     val reason: String,
+    /** True when the item's template is already ACTIVE — the stored
+     *  quarantine reason is then stale ("Needs roles assigned" after the
+     *  user mapped the roles) and the row renders an honest
+     *  "Partially mapped — couldn't align" label instead. */
+    val templateActive: Boolean = false,
     val expanded: Boolean = false,
 )
 
@@ -37,6 +42,14 @@ data class PendingReviewViewState(
      *  Review button); false on the global "Review all" entry. Lets the
      *  screen tweak its toolbar title and hero copy to make scope explicit. */
     val scopedToWallet: Boolean = false,
+    /** Live progress while an inbox scan runs — surfaces the first sync
+     *  right where its results land. Null when idle. */
+    val scanProgress: com.ivy.sms.domain.model.ScanProgress? = null,
+    /** Template whose "Ignore" is buffered awaiting its undo window. Its
+     *  items are hidden from [items] but nothing is persisted yet. */
+    val pendingIgnoreTemplateId: SmsTemplateId? = null,
+    /** How many queued messages the buffered ignore is hiding. */
+    val pendingIgnoreHiddenCount: Int = 0,
     val error: String? = null,
 )
 
@@ -44,6 +57,9 @@ sealed interface PendingReviewEvent {
     data class ToggleExpand(val id: String) : PendingReviewEvent
     data class MapTemplate(val templateId: SmsTemplateId) : PendingReviewEvent
     data class Dismiss(val itemId: PendingReviewItemId) : PendingReviewEvent
-    /** Same effect as Blacklist — UI surface labels it "Ignore template forever". */
+    /** Same effect as Blacklist — UI surface labels it "Ignore template forever".
+     *  Buffered for [IGNORE_UNDO_WINDOW_MILLIS] before committing. */
     data class IgnoreForever(val templateId: SmsTemplateId) : PendingReviewEvent
+    /** Cancels a buffered [IgnoreForever] within its undo window. */
+    data object UndoIgnore : PendingReviewEvent
 }

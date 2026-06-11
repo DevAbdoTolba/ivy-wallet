@@ -46,6 +46,7 @@ import com.ivy.wallet.domain.data.IvyCurrency
 import com.ivy.wallet.domain.deprecated.logic.model.CreateAccountData
 import com.ivy.wallet.ui.theme.Gray
 import com.ivy.wallet.ui.theme.Ivy
+import com.ivy.wallet.ui.theme.Orange
 import com.ivy.wallet.ui.theme.components.IvyCheckboxWithText
 import com.ivy.wallet.ui.theme.modal.ChooseIconModal
 import com.ivy.wallet.ui.theme.modal.CurrencyModal
@@ -231,6 +232,21 @@ fun BoxWithConstraintsScope.AccountModal(
                     value = rows.firstOrNull { it.accountId == account.id.toString() }?.senderId
                 }
             }
+            // Pending-review badge (FR-027): live count of this sender's
+            // quarantined messages, same observe pattern as the link above.
+            val pendingReviewCount by produceState(
+                initialValue = 0,
+                key1 = linkedSenderId,
+            ) {
+                val sender = linkedSenderId
+                if (sender == null) {
+                    value = 0
+                } else {
+                    ep.readPendingReviewItemDao().observeAll().collect { rows ->
+                        value = rows.count { it.senderId == sender }
+                    }
+                }
+            }
 
             Spacer(Modifier.height(24.dp))
             Row(
@@ -260,6 +276,23 @@ fun BoxWithConstraintsScope.AccountModal(
                                 fontWeight = FontWeight.SemiBold,
                             ),
                         )
+                    }
+                    if (pendingReviewCount > 0) {
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .clip(UI.shapes.rFull)
+                                .background(Orange.copy(alpha = 0.18f))
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                        ) {
+                            Text(
+                                text = "$pendingReviewCount",
+                                style = UI.typo.c.style(
+                                    color = Orange,
+                                    fontWeight = FontWeight.Bold,
+                                ),
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
                     }
                     Text(
                         text = "Manage",

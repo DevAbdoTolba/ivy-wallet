@@ -65,12 +65,10 @@ import com.ivy.legacy.utils.springBounce
 import com.ivy.legacy.utils.statusBarInset
 import com.ivy.legacy.utils.toDensityPx
 import com.ivy.legacy.utils.verticalSwipeListener
-import com.ivy.sms.startup.SmsSyncAppStartup
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
-import android.widget.Toast
 import com.ivy.navigation.BudgetScreen
 import com.ivy.navigation.CategoriesScreen
 import com.ivy.navigation.IvyPreview
@@ -559,20 +557,6 @@ private fun QuickAccess(
 
             val ctx = LocalContext.current
             MoreMenuButton(
-                icon = R.drawable.home_more_menu_sync_sms,
-                label = "Sync SMS",
-            ) {
-                val ep = EntryPointAccessors.fromApplication(
-                    ctx.applicationContext,
-                    SmsSyncMenuEntryPoint::class.java,
-                )
-                ep.smsSyncAppStartup().triggerManualSync()
-                Toast.makeText(ctx, "Syncing SMS in background…", Toast.LENGTH_SHORT).show()
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            MoreMenuButton(
                 icon = R.drawable.home_more_menu_sms_templates,
                 label = "SMS templates",
             ) {
@@ -610,7 +594,6 @@ private fun QuickAccess(
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 private interface SmsSyncMenuEntryPoint {
-    fun smsSyncAppStartup(): SmsSyncAppStartup
     fun pendingReviewItemRepository(): com.ivy.sms.data.PendingReviewItemRepository
 }
 

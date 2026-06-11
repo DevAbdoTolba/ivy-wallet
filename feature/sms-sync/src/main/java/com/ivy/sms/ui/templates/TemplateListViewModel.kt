@@ -8,21 +8,27 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
+import com.ivy.data.model.AccountId
 import com.ivy.sms.data.PendingReviewItemRepository
 import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.data.SmsTemplateRepository
+import com.ivy.sms.data.SmsWatermarkPreferences
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.TemplateState
+import com.ivy.sms.domain.usecase.ApplySyncPeriodUseCase
 import com.ivy.sms.domain.usecase.BlacklistTemplateUseCase
 import com.ivy.sms.domain.usecase.FindMatchingMessagesUseCase
 import com.ivy.sms.domain.usecase.ScanInboxUseCase
+import com.ivy.sms.startup.SmsSyncAppStartup
 import com.ivy.ui.ComposeViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
+import java.util.UUID
 import javax.inject.Inject
 
 @Stable
@@ -34,10 +40,12 @@ class TemplateListViewModel @Inject constructor(
     private val scanInbox: ScanInboxUseCase,
     private val blacklist: BlacklistTemplateUseCase,
     private val findMatching: FindMatchingMessagesUseCase,
+    private val applySyncPeriod: ApplySyncPeriodUseCase,
+    private val watermarks: SmsWatermarkPreferences,
+    private val appStartup: SmsSyncAppStartup,
 ) : ComposeViewModel<TemplateListViewState, TemplateListEvent>() {
 
     private var onTemplateOpen: ((SmsTemplateId) -> Unit)? = null
-    private var onScanFurther: (() -> Unit)? = null
     private var onPending: (() -> Unit)? = null
 
     /**
@@ -53,7 +61,10 @@ class TemplateListViewModel @Inject constructor(
         if (activeWalletFilter != id) activeWalletFilter = id
     }
 
-    private var expandedGroup by mutableStateOf<TemplateGroupKey?>(TemplateGroupKey.Expense)
+    // "Needs mapping" opens by default — it's the only group that requires
+    // user action (the old Expense default hid unmapped templates one tap
+    // deeper than necessary).
+    private var expandedGroup by mutableStateOf<TemplateGroupKey?>(TemplateGroupKey.Unmapped)
     private var matchingByTemplate by mutableStateOf<Map<SmsTemplateId, List<String>>>(emptyMap())
     private var loadingTemplateIds by mutableStateOf<Set<SmsTemplateId>>(emptySet())
     private var displayCounts by mutableStateOf<Map<SmsTemplateId, Int>>(emptyMap())
@@ -83,11 +94,9 @@ class TemplateListViewModel @Inject constructor(
 
     fun setNavigators(
         onTemplate: (SmsTemplateId) -> Unit,
-        onScanFurther: () -> Unit,
         onPending: () -> Unit,
     ) {
         onTemplateOpen = onTemplate
-        this.onScanFurther = onScanFurther
         this.onPending = onPending
     }
 
@@ -135,7 +144,7 @@ class TemplateListViewModel @Inject constructor(
     override fun onEvent(event: TemplateListEvent) {
         when (event) {
             is TemplateListEvent.TemplateClicked -> onTemplateOpen?.invoke(event.id)
-            TemplateListEvent.ScanFurtherBack -> onScanFurther?.invoke()
+            is TemplateListEvent.ScanFurtherBack -> scanFurtherBack(event.lowerBoundEpochMillis)
             TemplateListEvent.OpenPendingReview -> onPending?.invoke()
             is TemplateListEvent.ToggleBlacklist -> toggleBlacklist(event.id)
             is TemplateListEvent.ToggleGroup -> {
@@ -198,6 +207,45 @@ class TemplateListViewModel @Inject constructor(
                 blacklist.disable(id)
             } else {
                 blacklist.enable(id)
+            }
+        }
+    }
+
+    /**
+     * "Scan further back" — moves the period lower bound back and rescans
+     * the gap. Wallet-scoped lists touch only that wallet's links; the
+     * global list (Home menu) extends every linked wallet plus the legacy
+     * global fallback bound. The sync itself runs on the application scope
+     * so navigating away can't cancel it; progress lands in [uiState] via
+     * the existing scanInbox.progress mirror.
+     */
+    private fun scanFurtherBack(lowerBoundEpochMillis: Long) {
+        viewModelScope.launch {
+            try {
+                val scopedWallet = activeWalletFilter?.let {
+                    runCatching { AccountId(UUID.fromString(it)) }.getOrNull()
+                }
+                if (scopedWallet != null) {
+                    applySyncPeriod(scopedWallet, lowerBoundEpochMillis)
+                        .onLeft { Timber.w("TemplateList scanFurtherBack failed: $it") }
+                } else {
+                    val wallets = senderRepo.findAll().getOrNull().orEmpty()
+                        .map { it.accountId }
+                        .distinct()
+                    for (wallet in wallets) {
+                        applySyncPeriod(wallet, lowerBoundEpochMillis)
+                            .onLeft { Timber.w("TemplateList scanFurtherBack failed: $it") }
+                    }
+                    // Fallback bound for links that predate per-link bounds —
+                    // only ever moves BACK, like the per-link semantics.
+                    val currentGlobal = watermarks.scanLowerBound().getOrNull()
+                    if (currentGlobal == null || lowerBoundEpochMillis < currentGlobal) {
+                        watermarks.writeLowerBound(lowerBoundEpochMillis)
+                    }
+                }
+                appStartup.triggerManualSync()
+            } catch (t: Throwable) {
+                Timber.e(t, "TemplateList scanFurtherBack crashed")
             }
         }
     }

@@ -16,12 +16,14 @@ import com.ivy.base.model.TransactionType
 import com.ivy.home.HomeTab
 import com.ivy.legacy.IvyWalletPreview
 import com.ivy.legacy.data.model.MainTab
+import com.ivy.legacy.datamodel.Account
 import com.ivy.legacy.ivyWalletCtx
 import com.ivy.legacy.utils.onScreenStart
 import com.ivy.navigation.EditPlannedScreen
 import com.ivy.navigation.EditTransactionScreen
 import com.ivy.navigation.MainScreen
 import com.ivy.navigation.navigation
+import com.ivy.sms.ui.wallet.SmsSetupSheet
 import com.ivy.wallet.domain.deprecated.logic.model.CreateAccountData
 import com.ivy.wallet.ui.theme.modal.edit.AccountModal
 import com.ivy.wallet.ui.theme.modal.edit.AccountModalData
@@ -66,6 +68,7 @@ private fun BoxWithConstraintsScope.UI(
     }
 
     var accountModalData: AccountModalData? by remember { mutableStateOf(null) }
+    var smsSetupAccount: Account? by remember { mutableStateOf(null) }
 
     val nav = navigation()
     BottomBar(
@@ -123,8 +126,15 @@ private fun BoxWithConstraintsScope.UI(
         },
         onLinkSmsChat = { account ->
             accountModalData = null
-            nav.navigateTo(com.ivy.navigation.WalletSmsConfigScreen(account.id.toString()))
+            smsSetupAccount = account
         },
+    )
+
+    SmsSetupSheet(
+        visible = smsSetupAccount != null,
+        walletId = smsSetupAccount?.id,
+        walletName = smsSetupAccount?.name.orEmpty(),
+        dismiss = { smsSetupAccount = null },
     )
 }
 

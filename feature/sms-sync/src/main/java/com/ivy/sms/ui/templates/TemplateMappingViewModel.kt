@@ -6,7 +6,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
+import com.ivy.data.repository.AccountRepository
+import com.ivy.sms.data.PendingReviewItemRepository
 import com.ivy.sms.data.SmsTemplateRepository
+import com.ivy.sms.data.SmsWatermarkPreferences
 import com.ivy.sms.data.WILDCARD_TOKEN
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
@@ -21,7 +24,9 @@ import com.ivy.ui.ComposeViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
 
@@ -31,6 +36,9 @@ class TemplateMappingViewModel @Inject constructor(
     private val templateRepo: SmsTemplateRepository,
     private val mapTemplate: MapTemplateUseCase,
     private val blacklist: BlacklistTemplateUseCase,
+    private val pendingRepo: PendingReviewItemRepository,
+    private val prefs: SmsWatermarkPreferences,
+    private val accountRepo: AccountRepository,
 ) : ComposeViewModel<TemplateMappingViewState, TemplateMappingEvent>() {
 
     private var state by mutableStateOf(TemplateMappingViewState())
@@ -55,6 +63,15 @@ class TemplateMappingViewModel @Inject constructor(
     private var lastLiteralTappedSlotId: WildcardId? = null
 
     /**
+     * Pattern positions the user EXPLICITLY reverted to literal this session
+     * ("Make this part literal again"). Passed to MapTemplateUseCase so its
+     * save-time digit auto-generalization respects the user's call on stable
+     * digit constants (card suffixes, hotlines). Re-tapping the literal back
+     * into a wildcard removes the position again.
+     */
+    private val confirmedLiteralPositions = mutableSetOf<Int>()
+
+    /**
      * Wallet the user opened this mapping screen from. When non-null, the
      * save reprocess filters pending items to those resolving (via
      * SenderAccountLink) to this wallet — prevents cross-wallet routing the
@@ -63,7 +80,20 @@ class TemplateMappingViewModel @Inject constructor(
     private var walletScope: com.ivy.data.model.AccountId? = null
 
     fun setWalletScope(id: com.ivy.data.model.AccountId?) {
+        val unchanged = walletScope == id &&
+            (id == null || state.walletScopeName != null)
+        if (unchanged) return
         walletScope = id
+        if (id == null) {
+            state = state.copy(walletScopeName = null)
+            return
+        }
+        // Resolve the wallet's display name for the toolbar so the user can
+        // see which wallet the mapping session is scoped to.
+        viewModelScope.launch {
+            val name = accountRepo.findById(id)?.name?.value
+            state = state.copy(walletScopeName = name)
+        }
     }
 
     init {
@@ -226,8 +256,28 @@ class TemplateMappingViewModel @Inject constructor(
             }
             is TemplateMappingEvent.LiteralTapped -> handleLiteralTapped(event)
             is TemplateMappingEvent.WildcardClearedToLiteral -> {
-                revertSlotToLiteral(event.id)
-                lastLiteralTappedSlotId = null
+                // Reverting a slot that carries a real role destroys the
+                // user's mapping AND bakes the example value into the pattern
+                // as a literal — this silently corrupted templates in the
+                // field (one slot lost per save, no logged cause). Require
+                // the modal's two-tap confirmation for role-bearing slots.
+                val slot = pendingSlots.firstOrNull { it.id == event.id }
+                val role = pendingRoles[event.id] ?: slot?.role ?: WildcardRole.Unmapped
+                if (role != WildcardRole.Unmapped && !event.confirmed) {
+                    timber.log.Timber.tag("SmsTrace").w(
+                        "REVERT_TO_LITERAL ✗ blocked: slot=%s holds role=%s, clear not confirmed",
+                        event.id.value.toString().take(8), role,
+                    )
+                } else {
+                    val reverted = revertSlotToLiteral(
+                        slotId = event.id,
+                        cause = if (event.confirmed) "user-confirmed" else "user-explicit",
+                    )
+                    if (reverted != null) {
+                        confirmedLiteralPositions.add(reverted.positionInPattern)
+                    }
+                    lastLiteralTappedSlotId = null
+                }
                 state = state.copy(activeWildcard = null)
             }
             TemplateMappingEvent.DismissBottomSheet -> {
@@ -238,7 +288,7 @@ class TemplateMappingViewModel @Inject constructor(
                 if (tapped != null) {
                     val role = pendingRoles[tapped]
                     if (role == null || role == WildcardRole.Unmapped) {
-                        revertSlotToLiteral(tapped)
+                        revertSlotToLiteral(tapped, cause = "dismiss-auto-undo")
                     }
                 }
                 lastLiteralTappedSlotId = null
@@ -247,7 +297,14 @@ class TemplateMappingViewModel @Inject constructor(
             is TemplateMappingEvent.NameChanged -> {
                 state = state.copy(name = event.value)
             }
-            is TemplateMappingEvent.Save -> save(explicit = event.explicitTemplateId)
+            is TemplateMappingEvent.Save -> save(
+                explicit = event.explicitTemplateId,
+                saveAnyway = event.saveAnyway,
+            )
+            TemplateMappingEvent.DismissZeroAlignmentWarning -> {
+                state = state.copy(zeroAlignmentWarning = null)
+            }
+            is TemplateMappingEvent.DismissUnmatched -> dismissUnmatched(event.explicitTemplateId)
             is TemplateMappingEvent.IgnoreForever -> ignoreForever(event.explicitTemplateId)
         }
     }
@@ -264,12 +321,58 @@ class TemplateMappingViewModel @Inject constructor(
             "IGNORE_FOREVER → tpl=%s", tplId.value,
         )
         viewModelScope.launch {
-            blacklist.enable(tplId).onLeft { err ->
-                timber.log.Timber.tag("SmsTrace").w(
-                    "IGNORE_FOREVER ✗ %s | UI → error banner: '%s'", err, err,
-                )
-                state = state.copy(error = err)
+            // NonCancellable: the screen calls nav.back() right after
+            // dispatching this event and the app's custom nav clears the
+            // ViewModelStore on every screen change — cancelling
+            // viewModelScope at blacklist.enable's first suspension point.
+            // The write intermittently never happened and the template kept
+            // resurfacing.
+            withContext(NonCancellable) {
+                blacklist.enable(tplId).onLeft { err ->
+                    timber.log.Timber.tag("SmsTrace").w(
+                        "IGNORE_FOREVER ✗ %s | UI → error banner: '%s'", err, err,
+                    )
+                    state = state.copy(error = err)
+                }
             }
+        }
+    }
+
+    private fun dismissUnmatched(explicit: SmsTemplateId?) {
+        val tplId = explicit ?: state.templateId ?: loadedTemplate?.id
+        if (tplId == null) {
+            timber.log.Timber.tag("SmsTrace").w(
+                "DISMISS_UNMATCHED → no templateId available; skipping",
+            )
+            return
+        }
+        viewModelScope.launch {
+            // NonCancellable for the same reason as ignoreForever: clearing
+            // the leftover counters below can trigger the screen's clean-save
+            // auto-nav, which clears the VM store mid-write.
+            val dismissed = withContext(NonCancellable) {
+                val items = pendingRepo.findByTemplateId(tplId).getOrNull().orEmpty()
+                var count = 0
+                for (item in items) {
+                    pendingRepo.dismiss(item.id).onRight {
+                        prefs.incrementReviewedTotal()
+                        count++
+                    }
+                }
+                count
+            }
+            timber.log.Timber.tag("SmsTrace").i(
+                "DISMISS_UNMATCHED → tpl=%s dismissed=%d", tplId.value, dismissed,
+            )
+            // Zero the per-reason leftovers so the partial card collapses;
+            // with failedTotal == 0 the screen's clean-save effect navigates
+            // back, matching the "queue is handled" expectation.
+            state = state.copy(
+                failedAlignment = 0,
+                failedAmountParse = 0,
+                failedSenderNotLinked = 0,
+                failedOther = 0,
+            )
         }
     }
 
@@ -282,6 +385,12 @@ class TemplateMappingViewModel @Inject constructor(
         if (pos !in pendingPatternTokens.indices) return
         // Don't double-convert if the position is somehow already a wildcard.
         if (pendingPatternTokens[pos] == WILDCARD_TOKEN) return
+        timber.log.Timber.tag("SmsTrace").d(
+            "LITERAL_TAP → pos=%d token='%s'", pos, event.token,
+        )
+        // The user is turning this position variable again — it's no longer
+        // a confirmed literal exempt from save-time digit generalization.
+        confirmedLiteralPositions.remove(pos)
         val newSlotId = WildcardId(UUID.randomUUID())
         val newSlot = WildcardSlot(
             id = newSlotId,
@@ -323,8 +432,34 @@ class TemplateMappingViewModel @Inject constructor(
         }
     }
 
-    private fun revertSlotToLiteral(slotId: WildcardId) {
-        val slot = pendingSlots.firstOrNull { it.id == slotId } ?: return
+    /**
+     * Removes a wildcard slot and restores its example value as the pattern
+     * literal at that position. Returns the reverted slot, or null when the
+     * revert was refused/impossible. Every call is SmsTrace-logged with its
+     * [cause] — slot loss in the field was previously unattributable because
+     * none of the revert paths logged anything.
+     */
+    private fun revertSlotToLiteral(slotId: WildcardId, cause: String): WildcardSlot? {
+        val slot = pendingSlots.firstOrNull { it.id == slotId } ?: return null
+        // A blank exampleValue would insert an empty pattern token that
+        // disappears on the next join+re-split, silently shifting every later
+        // slot's position — refuse instead (legacy persisted slots can carry
+        // blank example values).
+        if (slot.exampleValue.isBlank()) {
+            timber.log.Timber.tag("SmsTrace").w(
+                "REVERT_TO_LITERAL ✗ refused: slot=%s pos=%d has blank exampleValue (cause=%s)",
+                slotId.value.toString().take(8), slot.positionInPattern, cause,
+            )
+            return null
+        }
+        timber.log.Timber.tag("SmsTrace").i(
+            "REVERT_TO_LITERAL → slot=%s pos=%d role=%s token='%s' cause=%s",
+            slotId.value.toString().take(8),
+            slot.positionInPattern,
+            pendingRoles[slotId] ?: slot.role,
+            slot.exampleValue,
+            cause,
+        )
         pendingSlots = pendingSlots.filter { it.id != slotId }
         if (slot.positionInPattern in pendingPatternTokens.indices) {
             pendingPatternTokens = pendingPatternTokens.toMutableList().also {
@@ -337,6 +472,7 @@ class TemplateMappingViewModel @Inject constructor(
             wildcards = rebuildWildcards(),
             rolesByWildcardId = pendingRoles.toImmutableMap(),
         )
+        return slot
     }
 
     /**
@@ -386,7 +522,7 @@ class TemplateMappingViewModel @Inject constructor(
         else -> false
     }
 
-    private fun save(explicit: SmsTemplateId? = null) {
+    private fun save(explicit: SmsTemplateId? = null, saveAnyway: Boolean = false) {
         // Prefer the screen-supplied templateId so we proceed even when the
         // VM's own field is null (screen↔VM seed race). The user hit
         // "clicking Save does nothing" exactly because state.templateId was
@@ -450,7 +586,20 @@ class TemplateMappingViewModel @Inject constructor(
         }
 
         timber.log.Timber.tag("SmsTrace").i("UI → saving… (button shows 'Saving…')")
-        state = state.copy(saving = true, error = null)
+        // Clear ALL result counters up-front: a failed re-save used to keep
+        // the previous save's "Partially mapped" card on screen next to the
+        // new error banner, with numbers describing nothing current.
+        state = state.copy(
+            saving = true,
+            error = null,
+            convertedFromQueue = null,
+            failedAlignment = null,
+            failedAmountParse = null,
+            failedSenderNotLinked = null,
+            failedOther = null,
+            totalOwn = null,
+            zeroAlignmentWarning = null,
+        )
         val nameToSave = state.name.trim().ifBlank { null }
         viewModelScope.launch {
             try {
@@ -461,26 +610,41 @@ class TemplateMappingViewModel @Inject constructor(
                     patchedPattern = patchedPattern,
                     patchedSlots = patchedSlotsList,
                     walletScope = walletScope,
+                    confirmedLiteralPositions = confirmedLiteralPositions.toSet(),
+                    allowZeroAlignment = saveAnyway,
                 )
                 timber.log.Timber.d("TemplateMapping save(): mapTemplate -> $result")
                 result.fold(
                     { err ->
-                        timber.log.Timber.tag("SmsTrace").w(
-                            "UI → error banner: '%s'", err,
-                        )
-                        state = state.copy(saving = false, error = err)
+                        if (err.startsWith("ZERO_ALIGNMENT:")) {
+                            val queued = err.substringAfter(':').toIntOrNull() ?: 0
+                            timber.log.Timber.tag("SmsTrace").w(
+                                "UI → zero-alignment warning: pattern matches 0 of %d queued " +
+                                    "— blocking save until 'Save anyway'",
+                                queued,
+                            )
+                            state = state.copy(saving = false, zeroAlignmentWarning = queued)
+                        } else {
+                            timber.log.Timber.tag("SmsTrace").w(
+                                "UI → error banner: '%s'", err,
+                            )
+                            state = state.copy(saving = false, error = err)
+                        }
                     },
                     { res ->
                         // Log exactly what the user will see post-save: a
                         // clean success toast (auto-nav-back) or the
                         // "Partially mapped" card that keeps them on-screen.
-                        if (res.failedAlignment > 0) {
+                        if (res.failedTotal > 0) {
                             timber.log.Timber.tag("SmsTrace").w(
-                                "UI → 'Partially mapped' card: %d of %d routed, " +
-                                    "%d failed alignment — screen stays open",
+                                "UI → 'Partially mapped' card: %d of %d own routed " +
+                                    "(align=%d amount=%d unlinked=%d other=%d) — screen stays open",
                                 res.convertedFromQueue,
-                                res.totalPending,
+                                res.totalOwn,
                                 res.failedAlignment,
+                                res.failedAmountParse,
+                                res.failedSenderNotLinked,
+                                res.failedOther,
                             )
                         } else {
                             timber.log.Timber.tag("SmsTrace").i(
@@ -492,7 +656,10 @@ class TemplateMappingViewModel @Inject constructor(
                             saving = false,
                             convertedFromQueue = res.convertedFromQueue,
                             failedAlignment = res.failedAlignment,
-                            totalPending = res.totalPending,
+                            failedAmountParse = res.failedAmountParse,
+                            failedSenderNotLinked = res.failedSenderNotLinked,
+                            failedOther = res.failedOther,
+                            totalOwn = res.totalOwn,
                         )
                     },
                 )

@@ -99,7 +99,15 @@ fun PendingReviewScreen(
                 total = totalEverQueued,
                 templatesLeft = templatesLeft,
                 templatesMappedTotal = state.templatesMappedTotal,
+                scanProgress = state.scanProgress,
             )
+
+            if (state.pendingIgnoreTemplateId != null) {
+                UndoIgnoreRow(
+                    hiddenCount = state.pendingIgnoreHiddenCount,
+                    onUndo = { viewModel.onEvent(PendingReviewEvent.UndoIgnore) },
+                )
+            }
 
             if (state.items.isEmpty()) {
                 EmptyState()
@@ -140,10 +148,56 @@ fun PendingReviewScreen(
                         onIgnoreForever = {
                             viewModel.onEvent(PendingReviewEvent.IgnoreForever(row.templateId))
                         },
+                        onDismiss = {
+                            viewModel.onEvent(PendingReviewEvent.Dismiss(row.itemId))
+                        },
                     )
                 }
             }
         }
+    }
+}
+
+/**
+ * In-place undo affordance for a buffered "Ignore" — shown for
+ * [IGNORE_UNDO_WINDOW_MILLIS] while the template's items are soft-hidden
+ * and the destructive blacklist hasn't been persisted yet.
+ */
+@Composable
+private fun UndoIgnoreRow(
+    hiddenCount: Int,
+    onUndo: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(UI.shapes.r4)
+            .background(Orange.copy(alpha = 0.18f))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = if (hiddenCount > 0) {
+                "Template ignored — $hiddenCount message${if (hiddenCount == 1) "" else "s"} hidden"
+            } else {
+                "Template ignored"
+            },
+            style = UI.typo.c.style(
+                color = Orange,
+                fontWeight = FontWeight.Bold,
+            ),
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = "Undo",
+            style = UI.typo.b2.style(
+                color = UI.colors.pureInverse,
+                fontWeight = FontWeight.ExtraBold,
+            ),
+            modifier = Modifier.clickable(onClick = onUndo),
+        )
     }
 }
 
@@ -153,6 +207,7 @@ private fun ProgressHero(
     total: Int,
     templatesLeft: Int,
     templatesMappedTotal: Int,
+    scanProgress: com.ivy.sms.domain.model.ScanProgress? = null,
 ) {
     val resolved = (total - remaining).coerceAtLeast(0)
     val target = if (total == 0) 0f else resolved.toFloat() / total.toFloat()
@@ -228,6 +283,19 @@ private fun ProgressHero(
                     .background(Green),
             )
         }
+        // Live scan line — the first sync after "Save & Sync now" lands here,
+        // so the user watches messages arrive where they'll act on them.
+        scanProgress?.let { p ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Scanning inbox… ${p.processed} / ${p.total}" +
+                    if (p.itemsQuarantined > 0) " · ${p.itemsQuarantined} to review" else "",
+                style = UI.typo.c.style(
+                    color = Green,
+                    fontWeight = FontWeight.Bold,
+                ),
+            )
+        }
     }
 }
 
@@ -266,6 +334,7 @@ private fun PendingItemCard(
     onToggleExpand: () -> Unit,
     onMapTemplate: () -> Unit,
     onIgnoreForever: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -278,7 +347,7 @@ private fun PendingItemCard(
             SenderChip(text = row.senderId)
             Spacer(Modifier.width(8.dp))
             Text(
-                text = humanizeReason(row.reason),
+                text = humanizeReason(row.reason, row.templateActive),
                 style = UI.typo.c.style(
                     color = Orange,
                     fontWeight = FontWeight.Bold,
@@ -325,7 +394,7 @@ private fun PendingItemCard(
 
         // Two actions on the same row so the user's finger always lands on the
         // same horizontal positions: Map (primary, left) and Ignore (destructive,
-        // right). "Dismiss this single SMS" was removed — it just confused users.
+        // right).
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -344,6 +413,23 @@ private fun PendingItemCard(
                 onClick = onIgnoreForever,
             )
         }
+
+        Spacer(Modifier.height(10.dp))
+
+        // Per-message dismiss (FR-026(b)): clears just THIS message without
+        // blacklisting its whole template — the only way to drop one stray
+        // promo SMS that happens to share a shape with real messages.
+        Text(
+            text = "Dismiss just this message",
+            style = UI.typo.c.style(
+                color = UI.colors.gray,
+                fontWeight = FontWeight.Bold,
+            ),
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .clickable(onClick = onDismiss)
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+        )
     }
 }
 
@@ -369,14 +455,24 @@ private fun SenderChip(text: String) {
  * Maps the developer-facing quarantine reason to a sentence the user can act on.
  * Reasons are stored as enum names (e.g. "AMOUNT_NOT_PARSEABLE:specific:detail")
  * so we strip everything after the first colon before matching.
+ *
+ * [templateActive]: items stuck under an ACTIVE template keep their original
+ * quarantine reason (the dedup'd row is never updated), so "Needs roles
+ * assigned" lies after the user already mapped the roles — those rows render
+ * "Partially mapped — couldn't align" instead. Sender/currency reasons stay
+ * as-is: they're accurate regardless of template state.
  */
-private fun humanizeReason(reason: String): String {
+internal fun humanizeReason(reason: String, templateActive: Boolean = false): String {
     val key = reason.substringBefore(':').trim()
+    if (templateActive && (key == "TEMPLATE_NOT_MAPPED" || key == "AMOUNT_NOT_PARSEABLE")) {
+        return "Partially mapped — couldn't align"
+    }
     return when (key) {
         "TEMPLATE_NOT_MAPPED" -> "Needs roles assigned"
         "AMOUNT_NOT_PARSEABLE" -> "Amount unclear — please map"
         "SENDER_NOT_LINKED" -> "Sender not linked to a wallet"
         "CURRENCY_MISMATCH" -> "Currency doesn't match the wallet"
+        "AUTO_ROUTE_DISABLED" -> "Held for approval — auto-import is off"
         else -> "Needs your attention"
     }
 }

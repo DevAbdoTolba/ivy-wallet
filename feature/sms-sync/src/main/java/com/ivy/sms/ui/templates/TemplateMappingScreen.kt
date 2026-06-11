@@ -148,13 +148,12 @@ fun TemplateMappingScreen(
     }
 
     // Only auto-navigate away when the save was a CLEAN sweep — every
-    // pending item routed. If any failed alignment, stay on the screen and
-    // show a breakdown card so the user can edit the pattern or dismiss
-    // the leftovers instead of being bounced to a queue that still flags
-    // the template as needing attention.
+    // pending item routed (or the leftovers were bulk-dismissed). If any
+    // failed, stay on the screen and show a breakdown card so the user can
+    // edit the pattern or dismiss the leftovers instead of being bounced to
+    // a queue that still flags the template as needing attention.
     state.convertedFromQueue?.let { converted ->
-        val failed = state.failedAlignment ?: 0
-        if (failed == 0) {
+        if (state.failedTotal == 0) {
             LaunchedEffect(converted) { onSaved(converted) }
         }
     }
@@ -227,13 +226,26 @@ fun TemplateMappingScreen(
                 backButtonType = BackButtonType.BACK,
             ) {
                 Spacer(Modifier.width(16.dp))
-                Text(
-                    text = "Map template",
-                    style = UI.typo.h2.style(
-                        color = UI.colors.pureInverse,
-                        fontWeight = FontWeight.ExtraBold,
-                    ),
-                )
+                Column {
+                    Text(
+                        text = "Map template",
+                        style = UI.typo.h2.style(
+                            color = UI.colors.pureInverse,
+                            fontWeight = FontWeight.ExtraBold,
+                        ),
+                    )
+                    // Scoped-wallet indicator: the save reprocess only routes
+                    // into this wallet, so make the scope visible up-front.
+                    state.walletScopeName?.let { wallet ->
+                        Text(
+                            text = "for $wallet",
+                            style = UI.typo.c.style(
+                                color = UI.colors.gray,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                    }
+                }
             }
 
             Column(
@@ -370,17 +382,91 @@ fun TemplateMappingScreen(
                     ReprocessProgressCard(progress = p)
                 }
 
+                // Blocking zero-alignment warning: the save was rejected
+                // because the pattern aligned NONE of this template's queued
+                // messages. The user must either keep editing or explicitly
+                // accept a save that won't route anything.
+                state.zeroAlignmentWarning?.let { queued ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(UI.shapes.r4)
+                            .background(Red.copy(alpha = 0.12f))
+                            .border(1.dp, Red, UI.shapes.r4)
+                            .padding(14.dp),
+                    ) {
+                        Column {
+                            Text(
+                                text = "Pattern matches nothing",
+                                style = UI.typo.b1.style(
+                                    color = UI.colors.pureInverse,
+                                    fontWeight = FontWeight.ExtraBold,
+                                ),
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "This pattern matches 0 of your $queued queued " +
+                                    "message${if (queued == 1) "" else "s"}. Saving it " +
+                                    "won't convert anything — tweak the chips first.",
+                                style = UI.typo.b2.style(
+                                    color = UI.colors.gray,
+                                    fontWeight = FontWeight.Medium,
+                                ),
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                IvyOutlinedButton(
+                                    modifier = Modifier.weight(1f),
+                                    text = "Keep editing",
+                                    iconStart = null,
+                                    onClick = {
+                                        viewModel.onEvent(
+                                            TemplateMappingEvent.DismissZeroAlignmentWarning,
+                                        )
+                                    },
+                                )
+                                IvyOutlinedButton(
+                                    modifier = Modifier.weight(1f),
+                                    text = "Save anyway",
+                                    iconStart = null,
+                                    borderColor = Red,
+                                    textColor = Red,
+                                    onClick = {
+                                        viewModel.onEvent(
+                                            TemplateMappingEvent.Save(
+                                                explicitTemplateId = state.templateId
+                                                    ?: fetchedTemplate?.id ?: templateId,
+                                                saveAnyway = true,
+                                            ),
+                                        )
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Post-save partial-success card. Only renders when the
-                // reprocess routed SOME but not ALL pending items — the
-                // user reported "I mapped it, transactions came in, but
-                // the template still says Needs roles assigned". The card
-                // explains the split: routed N, M couldn't align. Editing
-                // the pattern (just tweak any chip and re-Save) re-runs the
-                // reprocess on the leftover items.
+                // reprocess routed SOME but not ALL of THIS template's own
+                // pending items — the user reported "I mapped it,
+                // transactions came in, but the template still says Needs
+                // roles assigned". The card explains the split per reason,
+                // and offers a bulk dismiss for the leftovers (dismiss only —
+                // never blacklist a template that just routed messages).
                 val converted = state.convertedFromQueue
-                val failed = state.failedAlignment
-                if (converted != null && failed != null && failed > 0) {
-                    val total = state.totalPending ?: (converted + failed)
+                val failedTotal = state.failedTotal
+                if (converted != null && failedTotal > 0) {
+                    val total = state.totalOwn ?: (converted + failedTotal)
+                    val reasons = listOfNotNull(
+                        state.failedAlignment?.takeIf { it > 0 }
+                            ?.let { "$it couldn't align" },
+                        state.failedAmountParse?.takeIf { it > 0 }
+                            ?.let { "$it amount unreadable" },
+                        state.failedSenderNotLinked?.takeIf { it > 0 }
+                            ?.let { "$it sender not linked" },
+                        state.failedOther?.takeIf { it > 0 }
+                            ?.let { "$it other" },
+                    ).joinToString(", ")
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -399,8 +485,8 @@ fun TemplateMappingScreen(
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text = "$converted of $total messages were routed. " +
-                                    "$failed couldn't be aligned to this pattern.",
+                                text = "$converted of $total for this pattern routed; " +
+                                    "$failedTotal skipped: $reasons.",
                                 style = UI.typo.b2.style(
                                     color = UI.colors.gray,
                                     fontWeight = FontWeight.Medium,
@@ -409,13 +495,25 @@ fun TemplateMappingScreen(
                             Spacer(Modifier.height(8.dp))
                             Text(
                                 text = "Tweak a chip or mark a literal as variable, " +
-                                    "then Save again to re-run on the leftovers. " +
-                                    "Or tap 'Ignore this template forever' if " +
-                                    "those messages aren't really transactions.",
+                                    "then Save again to re-run on the leftovers.",
                                 style = UI.typo.c.style(
                                     color = UI.colors.gray,
                                     fontWeight = FontWeight.Medium,
                                 ),
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            IvyOutlinedButton(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = "Dismiss these $failedTotal unmatched",
+                                iconStart = null,
+                                onClick = {
+                                    viewModel.onEvent(
+                                        TemplateMappingEvent.DismissUnmatched(
+                                            explicitTemplateId = state.templateId
+                                                ?: fetchedTemplate?.id ?: templateId,
+                                        ),
+                                    )
+                                },
                             )
                         }
                     }
@@ -480,8 +578,8 @@ fun TemplateMappingScreen(
             onChoose = { id, role ->
                 viewModel.onEvent(TemplateMappingEvent.WildcardRoleChosen(id, role))
             },
-            onClearToLiteral = { id ->
-                viewModel.onEvent(TemplateMappingEvent.WildcardClearedToLiteral(id))
+            onClearToLiteral = { id, confirmed ->
+                viewModel.onEvent(TemplateMappingEvent.WildcardClearedToLiteral(id, confirmed))
             },
             dismiss = { viewModel.onEvent(TemplateMappingEvent.DismissBottomSheet) },
         )
@@ -857,7 +955,7 @@ private fun BoxScope.RoleMappingModal(
     wildcardId: WildcardId?,
     currentRoles: Map<WildcardId, WildcardRole>,
     onChoose: (WildcardId, WildcardRole) -> Unit,
-    onClearToLiteral: (WildcardId) -> Unit,
+    onClearToLiteral: (WildcardId, Boolean) -> Unit,
     dismiss: () -> Unit,
 ) {
     val lastWildcardId = remember(wildcardId) {
@@ -916,17 +1014,31 @@ private fun BoxScope.RoleMappingModal(
             // Escape hatch: "I tapped a literal by mistake" or "this isn't
             // really variable, ignore my pick". Removes the slot and puts
             // the literal token back in the pattern at that position.
+            // Clearing a slot that already carries a role is destructive
+            // (the role is lost and the example value gets baked into the
+            // pattern as a literal — this silently bricked templates in the
+            // field), so it takes a second confirming tap.
+            var confirmClear by remember(effectiveId) { mutableStateOf(false) }
+            val holdsRole = currentRole != WildcardRole.Unmapped
             IvyOutlinedButton(
-                text = "Make this part literal again",
+                text = if (holdsRole && confirmClear) {
+                    "Tap again to remove the ${labelFor(currentRole) ?: "mapped"} role"
+                } else {
+                    "Make this part literal again"
+                },
                 iconStart = null,
-                borderColor = UI.colors.gray,
-                textColor = UI.colors.pureInverse,
+                borderColor = if (holdsRole && confirmClear) Red else UI.colors.gray,
+                textColor = if (holdsRole && confirmClear) Red else UI.colors.pureInverse,
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
-                    if (effectiveId != null) {
-                        onClearToLiteral(effectiveId)
+                    when {
+                        effectiveId == null -> dismiss()
+                        holdsRole && !confirmClear -> confirmClear = true
+                        else -> {
+                            onClearToLiteral(effectiveId, holdsRole)
+                            dismiss()
+                        }
                     }
-                    dismiss()
                 },
             )
         }

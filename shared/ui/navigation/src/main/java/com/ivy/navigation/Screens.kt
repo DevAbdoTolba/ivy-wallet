@@ -199,28 +199,8 @@ data class TemplateMappingScreen(
     override val isLegacy: Boolean = false
 }
 
-data class LinkSenderToWalletScreen(
-    val senderId: String,
-) : Screen {
-    override val isLegacy: Boolean = false
-}
-
 data class SmsSourceLookupScreen(
     val transactionId: String,
-) : Screen {
-    override val isLegacy: Boolean = false
-}
-
-/** Per-wallet "Link SMS chat" picker — shows top-10 senders + free-text input. */
-data class WalletSmsLinkScreen(
-    val walletId: String,
-) : Screen {
-    override val isLegacy: Boolean = false
-}
-
-/** Per-wallet config surface — last-sync status, Sync now, templates, pending review. */
-data class WalletSmsConfigScreen(
-    val walletId: String,
 ) : Screen {
     override val isLegacy: Boolean = false
 }

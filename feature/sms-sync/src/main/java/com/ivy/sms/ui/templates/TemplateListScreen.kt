@@ -1,7 +1,6 @@
 package com.ivy.sms.ui.templates
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,27 +10,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -60,25 +49,30 @@ import com.ivy.sms.domain.model.TemplateState
 import com.ivy.sms.domain.model.WildcardRole
 import com.ivy.sms.ui.directionFor
 import com.ivy.sms.ui.theme.colorForRole
+import com.ivy.ui.R
 import com.ivy.wallet.ui.theme.Blue
 import com.ivy.wallet.ui.theme.Gray
+import com.ivy.wallet.ui.theme.GradientRed
 import com.ivy.wallet.ui.theme.Green
 import com.ivy.wallet.ui.theme.Orange
 import com.ivy.wallet.ui.theme.Red
 import com.ivy.wallet.ui.theme.components.BackButtonType
 import com.ivy.wallet.ui.theme.components.IvyButton
+import com.ivy.wallet.ui.theme.components.IvyIcon
 import com.ivy.wallet.ui.theme.components.IvyOutlinedButton
 import com.ivy.wallet.ui.theme.components.IvyToolbar
 import com.ivy.wallet.ui.theme.modal.IvyModal
+import com.ivy.wallet.ui.theme.modal.ModalSkip
 import com.ivy.wallet.ui.theme.modal.ModalTitle
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 @Composable
 fun TemplateListScreen(
     onOpenTemplate: (SmsTemplateId) -> Unit,
-    onScanFurtherBack: () -> Unit,
     onOpenPendingReview: () -> Unit,
     walletId: String? = null,
     viewModel: TemplateListViewModel = viewModel(),
@@ -86,13 +80,15 @@ fun TemplateListScreen(
     val state = viewModel.uiState()
     viewModel.setNavigators(
         onTemplate = onOpenTemplate,
-        onScanFurther = onScanFurtherBack,
         onPending = onOpenPendingReview,
     )
     // Scope the list to this wallet's linked senders. Null = global list.
     androidx.compose.runtime.LaunchedEffect(walletId, viewModel) {
         viewModel.setWalletFilter(walletId)
     }
+
+    var showScanBackModal by remember { mutableStateOf(false) }
+    var confirmIgnoreId by remember { mutableStateOf<SmsTemplateId?>(null) }
 
     Box(
         modifier = Modifier
@@ -103,7 +99,7 @@ fun TemplateListScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             ScreenToolbar(
                 pendingCount = state.pendingReviewCount,
-                onScanFurther = { viewModel.onEvent(TemplateListEvent.ScanFurtherBack) },
+                onScanFurther = { showScanBackModal = true },
                 onOpenPending = { viewModel.onEvent(TemplateListEvent.OpenPendingReview) },
             )
 
@@ -175,7 +171,14 @@ fun TemplateListScreen(
                                         viewModel.onEvent(TemplateListEvent.TemplateClicked(row.id))
                                     },
                                     onIgnoreForever = {
-                                        viewModel.onEvent(TemplateListEvent.ToggleBlacklist(row.id))
+                                        // ACTIVE templates get a one-tap IvyModal
+                                        // confirm; everything else toggles
+                                        // directly (un-ignore is reversible).
+                                        if (row.state == TemplateState.ACTIVE) {
+                                            confirmIgnoreId = row.id
+                                        } else {
+                                            viewModel.onEvent(TemplateListEvent.ToggleBlacklist(row.id))
+                                        }
                                     },
                                 )
                             }
@@ -208,6 +211,24 @@ fun TemplateListScreen(
                 },
             )
         }
+
+        ScanFurtherBackModal(
+            visible = showScanBackModal,
+            dismiss = { showScanBackModal = false },
+            onPick = { lowerBound ->
+                showScanBackModal = false
+                viewModel.onEvent(TemplateListEvent.ScanFurtherBack(lowerBound))
+            },
+        )
+
+        IgnoreConfirmModal(
+            visible = confirmIgnoreId != null,
+            dismiss = { confirmIgnoreId = null },
+            onConfirm = {
+                confirmIgnoreId?.let { viewModel.onEvent(TemplateListEvent.ToggleBlacklist(it)) }
+                confirmIgnoreId = null
+            },
+        )
     }
 }
 
@@ -232,60 +253,13 @@ private fun ScreenToolbar(
                 ),
             )
             Spacer(Modifier.weight(1f))
-            var menuOpen by remember { mutableStateOf(false) }
-            Box {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(UI.shapes.rFull)
-                        .background(UI.colors.medium)
-                        .clickable { menuOpen = true },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "More",
-                        tint = UI.colors.pureInverse,
-                    )
-                }
-                if (menuOpen) {
-                    AlertDialog(
-                        onDismissRequest = { menuOpen = false },
-                        title = {
-                            Text(
-                                text = "Scan further back",
-                                style = UI.typo.h2.style(
-                                    color = UI.colors.pureInverse,
-                                    fontWeight = FontWeight.ExtraBold,
-                                ),
-                            )
-                        },
-                        text = {
-                            Text(
-                                text = "Pull older messages from the inbox to discover more templates.",
-                                style = UI.typo.b2.style(
-                                    color = UI.colors.gray,
-                                    fontWeight = FontWeight.Medium,
-                                ),
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                menuOpen = false
-                                onScanFurther()
-                            }) {
-                                Text("Scan", color = Green)
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { menuOpen = false }) {
-                                Text("Cancel", color = Gray)
-                            }
-                        },
-                        containerColor = UI.colors.pure,
-                    )
-                }
-            }
+            // Visible action instead of the old MoreVert -> dialog detour —
+            // it was the overflow menu's ONLY item.
+            IvyOutlinedButton(
+                text = "Scan further back",
+                iconStart = null,
+                onClick = onScanFurther,
+            )
             Spacer(Modifier.width(20.dp))
         }
         if (pendingCount > 0) {
@@ -349,8 +323,6 @@ private fun TemplateRow(
     onClick: () -> Unit,
     onIgnoreForever: () -> Unit,
 ) {
-    var confirmIgnore by remember { mutableStateOf(false) }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -416,50 +388,106 @@ private fun TemplateRow(
                 text = if (row.state == TemplateState.BLACKLISTED) "Un-ignore" else "Ignore",
                 borderColor = if (row.state == TemplateState.BLACKLISTED) Gray else Red,
                 textColor = if (row.state == TemplateState.BLACKLISTED) Gray else Red,
-                onClick = {
-                    if (row.state == TemplateState.ACTIVE) confirmIgnore = true
-                    else onIgnoreForever()
-                },
+                onClick = onIgnoreForever,
             )
         }
     }
+}
 
-    if (confirmIgnore) {
-        AlertDialog(
-            onDismissRequest = { confirmIgnore = false },
-            title = {
-                Text(
-                    text = "Ignore this template forever?",
-                    style = UI.typo.h2.style(
-                        color = UI.colors.pureInverse,
-                        fontWeight = FontWeight.ExtraBold,
-                    ),
-                )
-            },
-            text = {
-                Text(
-                    text = "Future matching messages will be silently dropped. Existing transactions are not deleted.",
-                    style = UI.typo.b2.style(
-                        color = UI.colors.gray,
-                        fontWeight = FontWeight.Medium,
-                    ),
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmIgnore = false
-                    onIgnoreForever()
-                }) {
-                    Text("Ignore forever", color = Red)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmIgnore = false }) {
-                    Text("Cancel", color = Gray)
-                }
-            },
-            containerColor = UI.colors.pure,
+/** One-tap destructive confirm in the standard Ivy modal idiom — replaces
+ *  the Material AlertDialog that appeared nowhere else in the app. */
+@Composable
+private fun BoxScope.IgnoreConfirmModal(
+    visible: Boolean,
+    dismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val modalId = remember { UUID.randomUUID() }
+    IvyModal(
+        id = modalId,
+        visible = visible,
+        dismiss = dismiss,
+        PrimaryAction = {
+            IvyButton(
+                text = "Ignore forever",
+                backgroundGradient = GradientRed,
+                onClick = onConfirm,
+            )
+        },
+    ) {
+        Spacer(Modifier.height(32.dp))
+        ModalTitle(text = "Ignore this template forever?")
+        Spacer(Modifier.height(16.dp))
+        Text(
+            modifier = Modifier.padding(horizontal = 32.dp),
+            text = "Future matching messages will be silently dropped. Existing transactions are not deleted.",
+            style = UI.typo.b2.style(
+                color = UI.colors.gray,
+                fontWeight = FontWeight.Medium,
+            ),
         )
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** Single-tap period rows — picking one extends the scan window and starts
+ *  the rescan immediately. */
+@Composable
+private fun BoxScope.ScanFurtherBackModal(
+    visible: Boolean,
+    dismiss: () -> Unit,
+    onPick: (Long) -> Unit,
+) {
+    val modalId = remember { UUID.randomUUID() }
+    val now = Instant.now()
+    val options = listOf(
+        "Last week" to now.minus(7, ChronoUnit.DAYS).toEpochMilli(),
+        "Last month" to now.minus(30, ChronoUnit.DAYS).toEpochMilli(),
+        "Last 3 months" to now.minus(90, ChronoUnit.DAYS).toEpochMilli(),
+        "Last year" to now.minus(365, ChronoUnit.DAYS).toEpochMilli(),
+        "All time" to 0L,
+    )
+    IvyModal(
+        id = modalId,
+        visible = visible,
+        dismiss = dismiss,
+        PrimaryAction = {
+            ModalSkip(text = "Cancel") { dismiss() }
+        },
+    ) {
+        Spacer(Modifier.height(32.dp))
+        ModalTitle(text = "Scan how far back?")
+        Spacer(Modifier.height(8.dp))
+        Text(
+            modifier = Modifier.padding(horizontal = 32.dp),
+            text = "Pull older messages from the inbox to discover more templates.",
+            style = UI.typo.b2.style(
+                color = UI.colors.gray,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
+        Spacer(Modifier.height(24.dp))
+        options.forEach { (label, lowerBound) ->
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .fillMaxWidth()
+                    .clip(UI.shapes.r4)
+                    .background(UI.colors.medium)
+                    .clickable { onPick(lowerBound) }
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+            ) {
+                Text(
+                    text = label,
+                    style = UI.typo.b2.style(
+                        color = UI.colors.pureInverse,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -563,9 +591,8 @@ private fun GroupHeader(
             ),
         )
         Spacer(Modifier.width(8.dp))
-        Icon(
-            imageVector = Icons.Default.ExpandMore,
-            contentDescription = null,
+        IvyIcon(
+            icon = R.drawable.ic_expand_more,
             tint = if (expanded) Color.White else v.accent,
             modifier = Modifier.rotate(rotation),
         )
@@ -574,15 +601,12 @@ private fun GroupHeader(
 
 /**
  * Bottom-sheet popup that lists matching messages for a template, paginated
- * 10 at a time. Built as a custom `Box(BottomCenter)` instead of `IvyModal`
- * because IvyModal places its actions row at absolute screenHeight and was
- * cropping the close button below the system nav bar on the user's device.
- * This version uses [navigationBarsPadding] inside the column so the close
- * button always sits cleanly above the gesture/system bar, and caps the
- * sheet at 88% of the screen so the title stays visible at the top.
+ * 10 at a time — built on the project's standard [IvyModal] so it inherits
+ * the same scrim, slide animation, back-button dismiss, and nav-bar-safe
+ * actions row as every other sheet in the app.
  *
- * Hairline separators (same alpha 0.06 the sender-picker batch markers use)
- * sit between rows so the wall of SMS text stays parsable.
+ * Hairline separators (same alpha 0.06 used elsewhere) sit between rows so
+ * the wall of SMS text stays parsable.
  */
 @Composable
 private fun BoxScope.MatchingMessagesModal(
@@ -595,117 +619,71 @@ private fun BoxScope.MatchingMessagesModal(
     onLoadMore: () -> Unit,
     dismiss: () -> Unit,
 ) {
-    if (!visible) return
-
-    val scrollState = rememberScrollState()
-
-    Box(
-        modifier = Modifier
-            .matchParentSize()
-            .background(Color.Black.copy(alpha = 0.55f))
-            .clickable(onClick = dismiss),
-    ) {
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .fillMaxHeight(0.88f)
-                .clip(UI.shapes.r2Top)
-                .background(UI.colors.pure)
-                .clickable(enabled = false) { },
-        ) {
-            // Drag-handle indicator like a standard sheet.
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(top = 12.dp)
-                    .width(40.dp)
-                    .height(4.dp)
-                    .clip(UI.shapes.rFull)
-                    .background(UI.colors.medium),
+    val modalId = remember { UUID.randomUUID() }
+    IvyModal(
+        id = modalId,
+        visible = visible,
+        dismiss = dismiss,
+        PrimaryAction = {
+            IvyButton(
+                text = "Close",
+                onClick = dismiss,
             )
+        },
+    ) {
+        Spacer(Modifier.height(32.dp))
+        ModalTitle(text = templateName?.takeIf { it.isNotBlank() } ?: "Matching messages")
+        Spacer(Modifier.height(6.dp))
+        Text(
+            modifier = Modifier.padding(horizontal = 32.dp),
+            text = "${bodies.size} of $totalCount shown",
+            style = UI.typo.c.style(
+                color = UI.colors.gray,
+                fontWeight = FontWeight.Bold,
+            ),
+        )
+        Spacer(Modifier.height(16.dp))
 
-            Column(
-                modifier = Modifier
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-            ) {
-                Text(
-                    text = templateName?.takeIf { it.isNotBlank() } ?: "Matching messages",
-                    style = UI.typo.h2.style(
-                        color = UI.colors.pureInverse,
-                        fontWeight = FontWeight.ExtraBold,
-                    ),
+        when {
+            loading && bodies.isEmpty() -> {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    color = Blue,
+                    trackColor = UI.colors.medium,
                 )
-                Spacer(Modifier.height(6.dp))
+            }
+            bodies.isEmpty() -> {
                 Text(
-                    text = "${bodies.size} of $totalCount shown",
-                    style = UI.typo.c.style(
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    text = "No matching messages found in the device inbox.",
+                    style = UI.typo.b2.style(
                         color = UI.colors.gray,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Medium,
                     ),
                 )
             }
-
-            // Scrollable list section, weight=1 so the action row at the
-            // bottom always stays put even when the list grows long.
-            Column(
-                modifier = Modifier
-                    .weight(1f, fill = true)
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 24.dp),
-            ) {
-                when {
-                    loading && bodies.isEmpty() -> {
-                        LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = Blue,
-                            trackColor = UI.colors.medium,
-                        )
-                    }
-                    bodies.isEmpty() -> {
-                        Text(
-                            text = "No matching messages found in the device inbox.",
-                            style = UI.typo.b2.style(
-                                color = UI.colors.gray,
-                                fontWeight = FontWeight.Medium,
-                            ),
-                        )
-                    }
-                    else -> {
-                        bodies.forEachIndexed { idx, body ->
-                            if (idx > 0) HrDivider()
-                            MatchingMessageRow(body = body)
-                        }
-                    }
+            else -> {
+                bodies.forEachIndexed { idx, body ->
+                    if (idx > 0) HrDivider()
+                    MatchingMessageRow(body = body)
                 }
-                Spacer(Modifier.height(8.dp))
-            }
-
-            // Action row — buttons live above the system nav bar via
-            // navigationBarsPadding so they're always tappable.
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(UI.colors.pure)
-                    .padding(horizontal = 24.dp, vertical = 12.dp)
-                    .navigationBarsPadding(),
-            ) {
-                if (canLoadMore) {
-                    IvyOutlinedButton(
-                        text = "Load 10 more",
-                        iconStart = null,
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = onLoadMore,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
-                IvyButton(
-                    text = "Close",
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = dismiss,
-                )
             }
         }
+
+        if (canLoadMore) {
+            Spacer(Modifier.height(12.dp))
+            IvyOutlinedButton(
+                text = "Load 10 more",
+                iconStart = null,
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .fillMaxWidth(),
+                onClick = onLoadMore,
+            )
+        }
+        Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -715,7 +693,7 @@ private fun MatchingMessageRow(body: String) {
         Text(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
+                .padding(horizontal = 24.dp, vertical = 12.dp),
             text = body,
             style = UI.typo.b2.style(
                 color = UI.colors.pureInverse,
@@ -725,11 +703,12 @@ private fun MatchingMessageRow(body: String) {
     }
 }
 
-/** Hairline separator — matches the batch dividers in the sender picker. */
+/** Hairline separator between matching-message rows. */
 @Composable
 private fun HrDivider() {
     Box(
         modifier = Modifier
+            .padding(horizontal = 24.dp)
             .fillMaxWidth()
             .height(1.dp)
             .background(UI.colors.pureInverse.copy(alpha = 0.06f)),
@@ -757,60 +736,3 @@ private fun annotatePreview(row: TemplateRowViewState, defaultColor: Color): Ann
         }
     }
 }
-
-private fun annotateBody(
-    body: String,
-    pattern: String,
-    rolesByPosition: Map<Int, WildcardRole>,
-    defaultColor: Color,
-): AnnotatedString {
-    val patternTokens = pattern.split(Regex("\\s+")).filter { it.isNotBlank() }
-    val bodyTokens = body.split(Regex("\\s+")).filter { it.isNotBlank() }
-    return buildAnnotatedString {
-        var bodyIdx = 0
-        for ((patternIdx, ptok) in patternTokens.withIndex()) {
-            if (ptok != com.ivy.sms.data.WILDCARD_TOKEN) {
-                val match = (bodyIdx until bodyTokens.size).firstOrNull {
-                    bodyTokens[it].equals(ptok, ignoreCase = true)
-                }
-                if (match == null) {
-                    if (length > 0) append(' ')
-                    withStyle(SpanStyle(color = defaultColor)) { append(ptok) }
-                    continue
-                }
-                while (bodyIdx <= match) {
-                    if (length > 0) append(' ')
-                    withStyle(SpanStyle(color = defaultColor)) { append(bodyTokens[bodyIdx]) }
-                    bodyIdx++
-                }
-            } else {
-                val nextLiteralPattern = (patternIdx + 1 until patternTokens.size).firstOrNull {
-                    patternTokens[it] != com.ivy.sms.data.WILDCARD_TOKEN
-                }
-                val stopAt = if (nextLiteralPattern == null) bodyTokens.size else {
-                    val literal = patternTokens[nextLiteralPattern]
-                    (bodyIdx until bodyTokens.size).firstOrNull {
-                        bodyTokens[it].equals(literal, ignoreCase = true)
-                    } ?: bodyTokens.size
-                }
-                val role = rolesByPosition[patternIdx] ?: WildcardRole.Unmapped
-                while (bodyIdx < stopAt) {
-                    if (length > 0) append(' ')
-                    withStyle(
-                        SpanStyle(
-                            color = colorForRole(role),
-                            fontWeight = FontWeight.Bold,
-                        ),
-                    ) { append(bodyTokens[bodyIdx]) }
-                    bodyIdx++
-                }
-            }
-        }
-        while (bodyIdx < bodyTokens.size) {
-            if (length > 0) append(' ')
-            withStyle(SpanStyle(color = defaultColor)) { append(bodyTokens[bodyIdx]) }
-            bodyIdx++
-        }
-    }
-}
-

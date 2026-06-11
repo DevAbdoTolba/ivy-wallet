@@ -69,6 +69,7 @@ import com.ivy.navigation.PieChartStatisticScreen
 import com.ivy.navigation.TransactionsScreen
 import com.ivy.navigation.navigation
 import com.ivy.navigation.screenScopedViewModel
+import com.ivy.sms.ui.wallet.SmsSetupSheet
 import com.ivy.ui.R
 import com.ivy.ui.rememberScrollPositionListState
 import com.ivy.wallet.domain.pure.data.IncomeExpensePair
@@ -457,7 +458,7 @@ private fun BoxWithConstraintsScope.UI(
         }
     )
 
-    val nav = com.ivy.navigation.navigation()
+    var smsSetupAccount: Account? by remember { mutableStateOf(null) }
     AccountModal(
         modal = accountModalData,
         onCreateAccount = { },
@@ -465,10 +466,17 @@ private fun BoxWithConstraintsScope.UI(
         dismiss = {
             accountModalData = null
         },
-        onLinkSmsChat = { account ->
+        onLinkSmsChat = { acc ->
             accountModalData = null
-            nav.navigateTo(com.ivy.navigation.WalletSmsConfigScreen(account.id.toString()))
+            smsSetupAccount = acc
         },
+    )
+
+    SmsSetupSheet(
+        visible = smsSetupAccount != null,
+        walletId = smsSetupAccount?.id,
+        walletName = smsSetupAccount?.name.orEmpty(),
+        dismiss = { smsSetupAccount = null },
     )
 
     ChoosePeriodModal(

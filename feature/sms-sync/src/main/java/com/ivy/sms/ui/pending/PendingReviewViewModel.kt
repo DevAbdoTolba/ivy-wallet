@@ -7,25 +7,37 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
+import com.ivy.base.threading.DispatchersProvider
 import com.ivy.sms.data.PendingReviewItemRepository
 import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.data.SmsTemplateRepository
 import com.ivy.sms.data.SmsWatermarkPreferences
 import com.ivy.sms.domain.model.PendingReviewItemId
+import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.TemplateState
 import com.ivy.sms.domain.usecase.BlacklistTemplateUseCase
 import com.ivy.sms.domain.usecase.ResolvePendingItemUseCase
 import com.ivy.sms.domain.usecase.RouteOutcome
 import com.ivy.sms.domain.usecase.RouteSmsUseCase
+import com.ivy.sms.domain.usecase.ScanInboxUseCase
 import com.ivy.ui.ComposeViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
+
+/** How long the in-place Undo affordance stays before the blacklist commits. */
+internal const val IGNORE_UNDO_WINDOW_MILLIS = 5_000L
 
 @Stable
 @HiltViewModel
@@ -37,9 +49,22 @@ class PendingReviewViewModel @Inject constructor(
     private val route: RouteSmsUseCase,
     private val blacklist: BlacklistTemplateUseCase,
     private val prefs: SmsWatermarkPreferences,
+    private val scanInbox: ScanInboxUseCase,
+    private val dispatchers: DispatchersProvider,
 ) : ComposeViewModel<PendingReviewViewState, PendingReviewEvent>() {
 
     private val expanded = mutableStateOf<Set<String>>(emptySet())
+
+    /**
+     * Buffered "Ignore" awaiting its undo window. While set, the template's
+     * items are hidden from [uiState] but nothing is persisted yet — Undo
+     * just clears this and they reappear. The blacklist (which DELETES the
+     * queued items via clearByTemplate) commits only after
+     * [IGNORE_UNDO_WINDOW_MILLIS], or immediately if the VM dies first
+     * (the custom nav clears the ViewModelStore on every screen change).
+     */
+    private var pendingIgnoreTemplate by mutableStateOf<SmsTemplateId?>(null)
+    private var ignoreCommitJob: Job? = null
 
     /**
      * Optional wallet filter. When non-null, [uiState] only emits items
@@ -110,6 +135,9 @@ class PendingReviewViewModel @Inject constructor(
         val reviewed = prefs.observeReviewedTotal().collectAsState(initial = 0)
         val mapped = prefs.observeTemplatesMappedTotal().collectAsState(initial = 0)
         val discovered = prefs.observeDiscoveredTotal().collectAsState(initial = 0)
+        // Live scan progress so the first sync after "Save & Sync now" is
+        // visible right where the user will act on its results.
+        val progress = scanInbox.progress.collectAsState(initial = null)
         // Reactive sender filter: subscribing to senderRepo.observeAll() avoids
         // the previous launch-then-set-state race where the screen rendered
         // unfiltered global items briefly and never recovered if viewModelScope
@@ -121,8 +149,15 @@ class PendingReviewViewModel @Inject constructor(
             allLinks.value.filter { it.accountId == wid }.map { it.senderId }.toSet()
         }
         val templateById = templates.value.associateBy { it.id.value.toString() }
+        val bufferedIgnoreId = pendingIgnoreTemplate?.value?.toString()
+        var hiddenByIgnore = 0
         val rows = items.value.mapNotNull { e ->
             if (sendersForWallet != null && e.senderId !in sendersForWallet) return@mapNotNull null
+            if (bufferedIgnoreId != null && e.templateId == bufferedIgnoreId) {
+                // Soft-hidden while the ignore's undo window is open.
+                hiddenByIgnore++
+                return@mapNotNull null
+            }
             val tpl = templateById[e.templateId] ?: return@mapNotNull null
             val rolesByPosition = tpl.wildcardSlots.associate { it.positionInPattern to it.role }
             PendingItemRowViewState(
@@ -135,6 +170,7 @@ class PendingReviewViewModel @Inject constructor(
                 wildcardRolesByPosition = rolesByPosition,
                 timestamp = e.messageEpochMillis,
                 reason = e.quarantineReason,
+                templateActive = tpl.state == TemplateState.ACTIVE,
                 expanded = e.id in expanded.value,
             )
         }.toImmutableList()
@@ -144,6 +180,9 @@ class PendingReviewViewModel @Inject constructor(
             templatesMappedTotal = mapped.value,
             discoveredTotal = discovered.value,
             scopedToWallet = activeWalletFilter != null,
+            scanProgress = progress.value,
+            pendingIgnoreTemplateId = pendingIgnoreTemplate,
+            pendingIgnoreHiddenCount = hiddenByIgnore,
         )
     }
 
@@ -156,9 +195,8 @@ class PendingReviewViewModel @Inject constructor(
                 }
             }
             is PendingReviewEvent.MapTemplate -> { /* nav handled by Screen */ }
-            is PendingReviewEvent.IgnoreForever -> {
-                viewModelScope.launch { blacklist.enable(event.templateId) }
-            }
+            is PendingReviewEvent.IgnoreForever -> bufferIgnore(event.templateId)
+            PendingReviewEvent.UndoIgnore -> undoIgnore()
             is PendingReviewEvent.ToggleExpand -> {
                 expanded.value = if (event.id in expanded.value) {
                     expanded.value - event.id
@@ -167,5 +205,66 @@ class PendingReviewViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Ignore with an undo window: hide the template's items immediately,
+     * commit the (destructive — clearByTemplate deletes the queue rows)
+     * blacklist only after [IGNORE_UNDO_WINDOW_MILLIS]. A second ignore
+     * while one is buffered commits the first one right away.
+     */
+    private fun bufferIgnore(templateId: SmsTemplateId) {
+        Timber.tag("SmsTrace").i("IGNORE_FOREVER (review, buffered) → tpl=%s", templateId.value)
+        commitBufferedIgnoreNow()
+        pendingIgnoreTemplate = templateId
+        ignoreCommitJob = viewModelScope.launch {
+            delay(IGNORE_UNDO_WINDOW_MILLIS)
+            if (pendingIgnoreTemplate == templateId) pendingIgnoreTemplate = null
+            commitIgnore(templateId)
+        }
+    }
+
+    private fun undoIgnore() {
+        Timber.tag("SmsTrace").i(
+            "IGNORE_FOREVER (review) ↩ undone tpl=%s", pendingIgnoreTemplate?.value,
+        )
+        ignoreCommitJob?.cancel()
+        ignoreCommitJob = null
+        pendingIgnoreTemplate = null
+    }
+
+    private fun commitBufferedIgnoreNow() {
+        val previous = pendingIgnoreTemplate ?: return
+        ignoreCommitJob?.cancel()
+        ignoreCommitJob = null
+        pendingIgnoreTemplate = null
+        viewModelScope.launch { commitIgnore(previous) }
+    }
+
+    private suspend fun commitIgnore(templateId: SmsTemplateId) {
+        // NonCancellable: blacklist writes from this screen used to ride a
+        // plain viewModelScope, which the custom nav's ViewModelStore clear
+        // cancels mid-write — same silent no-op class as the mapping
+        // screen's ignore button.
+        withContext(NonCancellable) {
+            blacklist.enable(templateId).onLeft { err ->
+                Timber.tag("SmsTrace").w("IGNORE_FOREVER (review) ✗ %s", err)
+            }
+        }
+    }
+
+    override fun onCleared() {
+        // The nav clears this VM on every screen change — a still-open undo
+        // window must not silently drop the user's ignore. Commit on a scope
+        // that survives the VM; blacklist.enable is idempotent so a race
+        // with the delayed job is harmless.
+        val buffered = pendingIgnoreTemplate
+        if (buffered != null) {
+            pendingIgnoreTemplate = null
+            CoroutineScope(SupervisorJob() + dispatchers.io).launch {
+                commitIgnore(buffered)
+            }
+        }
+        super.onCleared()
     }
 }

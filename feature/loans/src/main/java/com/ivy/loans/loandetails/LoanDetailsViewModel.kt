@@ -53,6 +53,7 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
@@ -121,6 +122,7 @@ class LoanDetailsViewModel @Inject constructor(
         }
 
     private fun resetStateForNewLoan() {
+        Timber.tag("LoanTrace").d("resetStateForNewLoan: clearing items (was ${displayLoanItems.value.size}) for loanId=${_screen?.loanId}")
         itemsJob?.cancel()
         itemsJob = null
         loan.value = null
@@ -324,6 +326,7 @@ class LoanDetailsViewModel @Inject constructor(
     }
 
     private fun load(loanId: UUID) {
+        Timber.tag("LoanTrace").d("load() called for loanId=$loanId (will cancel+restart itemsJob)")
         viewModelScope.launch {
             TestIdlingResource.increment()
 
@@ -361,6 +364,7 @@ class LoanDetailsViewModel @Inject constructor(
             itemsJob?.cancel()
             itemsJob = viewModelScope.launch {
                 loanRepository.getLoanItems(LoanId(loanId)).collect { items ->
+                    Timber.tag("LoanTrace").d("itemsFlow emit: loanId=$loanId count=${items.size} ids=${items.map { it.id.value }}")
                     displayLoanItems.value = items.map { DisplayLoanItem(it) }.toImmutableList()
 
                     if (items.isEmpty()) {
@@ -443,12 +447,17 @@ class LoanDetailsViewModel @Inject constructor(
     private fun saveLoanItem(title: String, amount: Double) {
         val loanId = loan.value?.id ?: return
         viewModelScope.launch {
-            val item = selectedLoanItem.value?.copy(title = title, amount = amount)
+            val editing = selectedLoanItem.value
+            val item = editing?.copy(title = title, amount = amount)
                 ?: LoanItem(
                     contactId = LoanId(loanId),
                     title = title,
                     amount = amount
                 )
+            Timber.tag("LoanTrace").d(
+                "saveLoanItem: loanId=$loanId editingExisting=${editing != null} " +
+                    "itemId=${item.id.value} contactId=${item.contactId.value}"
+            )
             loanRepository.saveLoanItem(item)
         }
     }

@@ -110,6 +110,15 @@ class LoanDetailsViewModel @Inject constructor(
     private var settledItemsAmount = 0.0
     private var recordsPaidAmount = 0.0
 
+    // The "No items" empty state is gated on !isLoading, but the screen is
+    // fed by TWO independent async pipelines: the loan-items flow and the
+    // records load. Clearing isLoading on just one would let the empty state
+    // flash for loans where only the other side has data (e.g. record-only
+    // loans). Each pipeline reports completion via these flags and isLoading
+    // is cleared in maybeFinishLoading() only once both have published.
+    private var itemsLoaded = false
+    private var recordsLoaded = false
+
     // Job for the current loan-items flow collection. The VM is scoped to the
     // Activity (custom router — not NavHost), so it's reused across loans.
     // We cancel the prior collector before starting a new one to avoid two
@@ -159,6 +168,8 @@ class LoanDetailsViewModel @Inject constructor(
         waitModalVisible.value = false
         isDeleteModalVisible.value = false
         associatedTransaction = null
+        itemsLoaded = false
+        recordsLoaded = false
         isLoading.value = true
     }
 
@@ -385,6 +396,8 @@ class LoanDetailsViewModel @Inject constructor(
 
     private suspend fun loadInternal(loanId: UUID) {
         isLoading.value = true
+        itemsLoaded = false
+        recordsLoaded = false
         dateTime.value = timeProvider.utcNow()
 
         val currency = ioThread {
@@ -401,11 +414,11 @@ class LoanDetailsViewModel @Inject constructor(
         val loadedLoan = loanByIdAct(loanId)
         if (isStale(loanId)) return
         loan.value = loadedLoan
-        // Note: isLoading stays true until the loan-items flow emits once —
-        // the header already renders the moment `loan.value` is non-null,
-        // and keeping isLoading true in the meantime suppresses the
-        // "No items" empty state from briefly flashing before the first
-        // items emission arrives.
+        // Note: isLoading stays true until BOTH the first loan-items flow
+        // emission AND the records load have published — the header already
+        // renders the moment `loan.value` is non-null, and keeping isLoading
+        // true in the meantime suppresses the "No items" empty state from
+        // briefly flashing while either pipeline is still in flight.
 
         loadedLoan?.let { loan ->
             selectedLoanAccount.value = accounts.value.find {
@@ -435,10 +448,11 @@ class LoanDetailsViewModel @Inject constructor(
                 }
                 amountPaid.doubleValue = settledItemsAmount + recordsPaidAmount
 
-                // First emission after (re)loading — screen is now fully
-                // populated, so it's safe to let the empty state show if
-                // the list really is empty.
-                if (isLoading.value) isLoading.value = false
+                // First emission after (re)loading — the items side is now
+                // populated; the empty state may show only once the records
+                // load has published too.
+                itemsLoaded = true
+                maybeFinishLoading()
             }
         }
 
@@ -467,6 +481,8 @@ class LoanDetailsViewModel @Inject constructor(
         }
         if (isStale(loanId)) return
         displayLoanRecords.value = records
+        recordsLoaded = true
+        maybeFinishLoading()
 
         // amountPaid and loanInterestAmountPaid calculation logic for header
         val (recordsPaid, interestPaid) = computationThread {
@@ -500,6 +516,18 @@ class LoanDetailsViewModel @Inject constructor(
             createLoanTransaction.value = true
         } ?: run {
             createLoanTransaction.value = false
+        }
+    }
+
+    /**
+     * Clears [isLoading] once both async pipelines feeding the empty-state
+     * gate have published: the first loan-items flow emission and the records
+     * load. Both run on the main dispatcher, so the flags need no
+     * synchronization.
+     */
+    private fun maybeFinishLoading() {
+        if (itemsLoaded && recordsLoaded && isLoading.value) {
+            isLoading.value = false
         }
     }
 

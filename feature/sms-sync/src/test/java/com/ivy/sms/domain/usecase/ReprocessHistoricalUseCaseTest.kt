@@ -55,6 +55,11 @@ class ReprocessHistoricalUseCaseTest {
         dispatchers = TestDispatchersProvider,
     )
 
+    init {
+        // Default: no link row — the legacy global lower bound applies.
+        coEvery { senderRepo.findBySenderId(any()) } returns (null as SenderAccountLink?).right()
+    }
+
     @Test
     fun confirm_rejectsInvalidToken() = runTest {
         val tplId = SmsTemplateId(UUID.randomUUID())
@@ -130,6 +135,30 @@ class ReprocessHistoricalUseCaseTest {
         // auto-route gate via userInitiated = true.
         coVerify(exactly = 1) { route(any(), any(), any(), userInitiated = true) }
         coVerify { route(match { it.body == "paid 100 EGP" }, any(), any(), any()) }
+    }
+
+    @Test
+    fun previewAndConfirm_readWithThePerLinkLowerBound_notTheGlobalKey() = runTest {
+        // The setup sheet persists the period ONLY on the link; the global
+        // key stays null (→ 0L) on fresh installs. Preview/confirm must scan
+        // the same window the sync scanned, not the sender's whole history.
+        val tplId = SmsTemplateId(UUID.randomUUID())
+        coEvery { templateRepo.findById(tplId) } returns activeTemplate(tplId).right()
+        coEvery { watermarks.scanLowerBound() } returns (null as Long?).right()
+        coEvery { senderRepo.findBySenderId("TestBank") } returns SenderAccountLink(
+            senderId = "TestBank",
+            accountId = AccountId(UUID.randomUUID()),
+            linkedAt = Instant.ofEpochMilli(1L),
+            historicalLowerBound = Instant.ofEpochMilli(7_000L),
+            watermark = null,
+        ).right()
+        coEvery { inbox.read(7_000L, 0L, "TestBank") } returns listOf(aligningRow).right()
+        coEvery { transactionRepo.findAll() } returns emptyList()
+
+        val result = useCase.preview(tplId).getOrNull()!!
+
+        result.matchingMessages shouldBe 1
+        coVerify { inbox.read(7_000L, 0L, "TestBank") }
     }
 
     @Test

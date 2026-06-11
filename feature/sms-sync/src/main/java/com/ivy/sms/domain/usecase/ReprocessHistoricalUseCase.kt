@@ -95,7 +95,17 @@ class ReprocessHistoricalUseCase @Inject constructor(
      */
     private suspend fun alignedMessages(template: SmsTemplate): List<SmsMessage> {
         val sender = template.senderIdHint.ifBlank { return emptyList() }
-        val lower = watermarks.scanLowerBound().getOrNull() ?: 0L
+        // Same effective lower bound the scan reads this sender with: the
+        // per-link period pick wins, the legacy global key is only the
+        // fallback for links that predate per-link bounds. Without this,
+        // preview/confirm on an install configured through the setup sheet
+        // (which writes ONLY link.historicalLowerBound) would read the
+        // sender's ENTIRE inbox history while the sync honours the picked
+        // window — and confirm would import transactions from outside it.
+        val link = senderRepo.findBySenderId(sender).getOrNull()
+        val lower = link?.historicalLowerBound?.toEpochMilli()
+            ?: watermarks.scanLowerBound().getOrNull()
+            ?: 0L
         val rows = inbox.read(lower, 0L, senderFilter = sender).getOrNull().orEmpty()
         return rows
             .map { with(smsMessageMapper) { it.toDomain() } }

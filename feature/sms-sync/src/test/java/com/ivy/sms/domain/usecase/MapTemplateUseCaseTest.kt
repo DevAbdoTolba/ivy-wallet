@@ -238,6 +238,53 @@ class MapTemplateUseCaseTest {
     }
 
     @Test
+    fun blocksSave_whenQueueEmpty_andPatternCantAlignItsOwnExample() = runTest {
+        // All pending items already drained/dismissed: the exampleBody dry-run
+        // is the only remaining signal. A pattern that can't align its OWN
+        // sample would match nothing forever — block it behind "Save anyway".
+        val broken = seedTemplate.copy(
+            pattern = "Charged <*> fee",
+            exampleBody = "Order 12.34 at Cafe",
+        )
+        coEvery { templateRepo.findById(templateId) } returns broken.right()
+        coEvery { pendingRepo.findByTemplateId(templateId) } returns
+            emptyList<PendingReviewItem>().right()
+        coEvery { senderRepo.findAll() } returns
+            emptyList<SenderAccountLink>().right()
+
+        val result = mapTemplate(
+            templateId = templateId,
+            wildcardRoles = mapOf(wildcardId to WildcardRole.Expense),
+        )
+
+        result.leftOrNull()!! shouldBe "ZERO_ALIGNMENT:0"
+        coVerify(exactly = 0) { templateRepo.upsert(any()) }
+    }
+
+    @Test
+    fun savesAnyway_overExampleMisalignment_whenExplicitlyAllowed() = runTest {
+        val broken = seedTemplate.copy(
+            pattern = "Charged <*> fee",
+            exampleBody = "Order 12.34 at Cafe",
+        )
+        coEvery { templateRepo.findById(templateId) } returns broken.right()
+        coEvery { templateRepo.upsert(any()) } returns Unit.right()
+        coEvery { pendingRepo.findByTemplateId(templateId) } returns
+            emptyList<PendingReviewItem>().right()
+        coEvery { senderRepo.findAll() } returns
+            emptyList<SenderAccountLink>().right()
+
+        val result = mapTemplate(
+            templateId = templateId,
+            wildcardRoles = mapOf(wildcardId to WildcardRole.Expense),
+            allowZeroAlignment = true,
+        )
+
+        result.isRight() shouldBe true
+        coVerify { templateRepo.upsert(any()) }
+    }
+
+    @Test
     fun savesAnyway_whenZeroAlignmentExplicitlyAllowed() = runTest {
         coEvery { templateRepo.findById(templateId) } returns seedTemplate.right()
         coEvery { templateRepo.upsert(any()) } returns Unit.right()

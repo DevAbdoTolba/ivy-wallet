@@ -84,9 +84,21 @@ class ScanInboxUseCase @Inject constructor(
             inbox.read(
                 lowerBoundEpochMillis = link.historicalLowerBound?.toEpochMilli()
                     ?: globalLowerBound,
+                // A null watermark on a link WITH an explicit per-link period
+                // is the gap-rescan signal (ApplySyncPeriodUseCase persists
+                // historicalLowerBound + watermark=null): such links re-read
+                // from their lower bound and must NOT inherit the legacy
+                // global watermark — it advances on every scan, so falling
+                // back to it would silently skip the whole
+                // [lowerBound, globalWatermark] gap and "Scan further back"
+                // would import nothing. The legacy fallback below exists only
+                // for links that predate per-link bounds entirely.
                 watermarkEpochMillis = link.watermark?.toEpochMilli()
-                    ?: globalWatermark.takeIf { link.linkedAt.toEpochMilli() <= it }
-                    ?: 0L,
+                    ?: if (link.historicalLowerBound != null) {
+                        0L
+                    } else {
+                        globalWatermark.takeIf { link.linkedAt.toEpochMilli() <= it } ?: 0L
+                    },
                 senderFilter = link.senderId,
             ).getOrNull().orEmpty()
         }.sortedBy { it.dateEpochMillis }
@@ -183,8 +195,27 @@ class ScanInboxUseCase @Inject constructor(
             val perSenderMax = rowsBySender[link.senderId]
                 ?.maxOfOrNull { it.dateEpochMillis } ?: continue
             val instant = java.time.Instant.ofEpochMilli(perSenderMax)
-            if (link.watermark == null || link.watermark.isBefore(instant)) {
-                senderRepo.upsert(link.copy(watermark = instant))
+            // Re-read the row before stamping: ApplySyncPeriodUseCase (period
+            // picks) and unlink write link rows OUTSIDE the sync mutex while
+            // this scan is mid-loop. Upserting the snapshot taken at scan
+            // start would resurrect a deleted link or silently revert a fresh
+            // period pick (re-stamping the very watermark its gap-rescan just
+            // cleared). Stamp only when the link still exists and its read
+            // bounds are unchanged since this scan read them — a skipped
+            // stamp just means the next scan re-reads and re-dedups.
+            val current = senderRepo.findBySenderId(link.senderId).getOrNull()
+            if (current == null ||
+                current.historicalLowerBound != link.historicalLowerBound ||
+                current.watermark != link.watermark
+            ) {
+                timber.log.Timber.tag("SmsTrace").i(
+                    "SCAN   skip watermark stamp — link changed mid-scan sender=%s",
+                    link.senderId,
+                )
+                continue
+            }
+            if (current.watermark == null || current.watermark.isBefore(instant)) {
+                senderRepo.upsert(current.copy(watermark = instant))
             }
         }
         // Clear progress so the next subscriber doesn't see a stale "100% done"

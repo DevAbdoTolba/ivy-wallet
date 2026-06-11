@@ -12,6 +12,7 @@ import com.ivy.sms.data.PendingReviewItemRepository
 import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.data.SmsInboxDataSource
 import com.ivy.sms.data.SmsWatermarkPreferences
+import com.ivy.sms.domain.model.SyncResult
 import com.ivy.sms.domain.usecase.ApplySyncPeriodUseCase
 import com.ivy.sms.domain.usecase.LinkSenderToWalletUseCase
 import com.ivy.sms.domain.usecase.ScanInboxUseCase
@@ -65,6 +66,32 @@ class SmsSetupViewModel @Inject constructor(
                 state = state.copy(scanProgress = p, syncing = p != null && state.syncing)
             }
         }
+        // Terminal sync outcomes. The progress mirror above can NEVER clear
+        // `syncing` for a sync that short-circuits before the scan starts
+        // (permission missing, renormalization Left, thrown scan) — no
+        // progress is emitted on those paths, so the primary button froze on
+        // a disabled "Syncing…" forever. syncFinished fires once per finished
+        // attempt, including those short-circuits, and also carries failures
+        // so they surface instead of dying in logcat.
+        viewModelScope.launch {
+            appStartup.syncFinished.collect { result ->
+                val wasSyncing = state.syncing
+                val failure = when (result) {
+                    is SyncResult.Failed -> "Sync failed — ${result.reason}"
+                    is SyncResult.PermissionMissing ->
+                        "Ivy needs SMS permission to sync. Allow it and try again."
+                    else -> null
+                }
+                state = state.copy(
+                    syncing = false,
+                    error = when {
+                        !wasSyncing -> state.error
+                        failure != null -> failure
+                        else -> null
+                    },
+                )
+            }
+        }
     }
 
     @Composable
@@ -75,6 +102,12 @@ class SmsSetupViewModel @Inject constructor(
             // Fresh wallet — drop any selection carried over from a previous
             // sheet session on another wallet.
             state = SmsSetupViewState()
+        } else {
+            // Same wallet, fresh sheet session: this VM survives across sheet
+            // openings (the legacy hosts' ViewModelStore is never cleared),
+            // so one-shot UI flags from the LAST session — an error banner or
+            // a stuck "Syncing…" — must not replay on reopen.
+            state = state.copy(error = null, syncing = false)
         }
         this.walletId = walletId
         Thread {

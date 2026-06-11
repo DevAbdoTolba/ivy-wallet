@@ -28,6 +28,7 @@ import javax.inject.Inject
  */
 class ApplySyncPeriodUseCase @Inject constructor(
     private val senderRepo: SenderAccountLinkRepository,
+    private val findMatching: FindMatchingMessagesUseCase,
 ) {
     suspend operator fun invoke(
         walletId: AccountId,
@@ -35,12 +36,19 @@ class ApplySyncPeriodUseCase @Inject constructor(
     ): Either<String, Unit> {
         val links = senderRepo.findByAccountId(walletId).getOrNull().orEmpty()
         val newLower = Instant.ofEpochMilli(lowerBoundEpochMillis)
+        var boundsChanged = false
         for (link in links) {
             val current = link.historicalLowerBound
             val movesBack = current == null || newLower.isBefore(current)
             if (!movesBack) continue
             senderRepo.upsert(link.copy(historicalLowerBound = newLower, watermark = null))
                 .onLeft { return it.left() }
+            boundsChanged = true
+        }
+        if (boundsChanged) {
+            // FindMatching's row counts honour the per-link bound — results
+            // cached against the OLD bound are stale the moment it moves.
+            findMatching.invalidate()
         }
         return Unit.right()
     }

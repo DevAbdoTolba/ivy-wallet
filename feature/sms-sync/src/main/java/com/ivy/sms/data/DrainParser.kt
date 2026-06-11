@@ -2,6 +2,7 @@ package com.ivy.sms.data
 
 import com.ivy.sms.domain.model.SmsMessage
 import com.ivy.sms.domain.model.SmsTemplate
+import com.ivy.sms.domain.model.TemplateState
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -60,9 +61,16 @@ class DrainParser @Inject constructor() {
             // when this sample's literal genuinely disagrees with the
             // cluster's pattern — that's the structurally-required signal
             // of variability, no guessing.
-            val merged = mergeTemplates(best.templatePattern, rawTokens)
-            best.templatePattern = merged.pattern
-            best.exampleValues = merged.exampleValues
+            //
+            // FROZEN clusters (template left UNMAPPED) are count-only: their
+            // persisted pattern never changes, so mutating the in-memory copy
+            // would only make scoring drift away from what routing actually
+            // aligns against within the current scan batch.
+            if (!best.frozen) {
+                val merged = mergeTemplates(best.templatePattern, rawTokens)
+                best.templatePattern = merged.pattern
+                best.exampleValues = merged.exampleValues
+            }
             best.messageCount += 1
             return best
         }
@@ -101,6 +109,10 @@ class DrainParser @Inject constructor() {
                     messageCount = t.matchCount,
                     exampleBody = t.exampleBody,
                     exampleValues = examples,
+                    // Mirror DiscoverTemplatesUseCase's persistence freeze:
+                    // only UNMAPPED templates may have their pattern rewritten
+                    // by clustering.
+                    frozen = t.state != TemplateState.UNMAPPED,
                 )
             )
         }

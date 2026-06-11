@@ -1,5 +1,8 @@
 package com.ivy.sms.ui.wallet
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -125,9 +129,20 @@ fun BoxScope.SmsSetupSheet(
                     onClick = { viewModel.onEvent(SmsSetupEvent.SyncNow) },
                 )
             } else {
+                // Gated on state.loaded: until the async link check returns,
+                // a wallet linked in a PREVIOUS session still renders setup
+                // mode — tapping Save then would re-link with a fresh row,
+                // wiping the per-sender watermark and forcing a full-period
+                // rescan.
                 IvyButton(
-                    text = if (state.saving) "Saving…" else "Save & Sync now",
-                    enabled = !state.saving &&
+                    text = when {
+                        !state.loaded && permission.state == PermissionState.Granted ->
+                            "Loading…"
+                        state.saving -> "Saving…"
+                        else -> "Save & Sync now"
+                    },
+                    enabled = state.loaded &&
+                        !state.saving &&
                         state.selectedSender != null &&
                         permission.state == PermissionState.Granted,
                     onClick = { viewModel.onEvent(SmsSetupEvent.SaveAndSync) },
@@ -151,7 +166,10 @@ fun BoxScope.SmsSetupSheet(
         Spacer(Modifier.height(24.dp))
 
         if (permission.state != PermissionState.Granted) {
-            PermissionInlineCard(onGrant = permission.request)
+            PermissionInlineCard(
+                permanentlyDenied = permission.state == PermissionState.PermanentlyDenied,
+                onGrant = permission.request,
+            )
             Spacer(Modifier.height(16.dp))
         }
 
@@ -207,7 +225,11 @@ fun BoxScope.SmsSetupSheet(
 }
 
 @Composable
-private fun PermissionInlineCard(onGrant: () -> Unit) {
+private fun PermissionInlineCard(
+    permanentlyDenied: Boolean,
+    onGrant: () -> Unit,
+) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .padding(horizontal = 24.dp)
@@ -217,18 +239,43 @@ private fun PermissionInlineCard(onGrant: () -> Unit) {
             .padding(16.dp),
     ) {
         Text(
-            text = "Ivy needs SMS access to read this sender's messages.",
+            text = if (permanentlyDenied) {
+                "SMS access was denied. Android won't show the dialog again — " +
+                    "enable the SMS permission for Ivy in system settings."
+            } else {
+                "Ivy needs SMS access to read this sender's messages."
+            },
             style = UI.typo.b2.style(
                 color = UI.colors.pureInverse,
                 fontWeight = FontWeight.Medium,
             ),
         )
         Spacer(Modifier.height(12.dp))
-        IvyButton(
-            text = "Allow SMS access",
-            modifier = Modifier.fillMaxWidth(),
-            onClick = onGrant,
-        )
+        if (permanentlyDenied) {
+            // "Don't ask again": the system launcher returns denied instantly
+            // with NO dialog, so the request button silently does nothing.
+            // Mirror PermissionGate's settings escape — rememberSmsPermission
+            // refreshes on ON_RESUME, so a grant made in settings is picked up
+            // the moment the user comes back.
+            IvyButton(
+                text = "Open System Settings",
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    val intent = Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", context.packageName, null),
+                    )
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    context.startActivity(intent)
+                },
+            )
+        } else {
+            IvyButton(
+                text = "Allow SMS access",
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onGrant,
+            )
+        }
     }
 }
 

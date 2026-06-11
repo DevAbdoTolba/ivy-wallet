@@ -202,6 +202,35 @@ class DrainParserTest {
     }
 
     @Test
+    fun frozenTemplate_consumeCounts_butNeverMutatesTheInMemoryPattern() {
+        // ACTIVE/BLACKLISTED/PENDING_REVIEW templates are frozen on disk
+        // (DiscoverTemplatesUseCase) — the in-memory cluster must not drift
+        // either: a drifted pattern absorbs near-format messages that then
+        // fail alignment against the UNCHANGED persisted pattern and stick
+        // as "Partially mapped" under the wrong template.
+        // Disagreement ("tonight" vs "today") sits PAST the first 5 stable
+        // tokens [paid, fees, to, cafe, centro], so descent reaches the same
+        // leaf (see PREFIX_DEPTH note above).
+        val parser = DrainParser()
+        val id = UUID.randomUUID()
+        parser.rebuildFromTemplates(
+            listOf(
+                template(id, "Paid <*> fees to Cafe Centro today")
+                    .copy(state = TemplateState.ACTIVE),
+            ),
+        )
+        // An unfrozen merge would rewrite position 6 to <*> ("tonight"
+        // disagrees with the literal "today"). Score 6/7 ≈ 0.857 >= 0.6, so
+        // the message still matches and counts.
+        val cluster = parser.consume(msg("Paid 25 fees to Cafe Centro tonight", 1))
+        cluster.templateId shouldBe id
+        cluster.templatePattern shouldBe
+            listOf("Paid", WILDCARD_TOKEN, "fees", "to", "Cafe", "Centro", "today")
+        cluster.messageCount shouldBe 2
+        cluster.exampleValues shouldBe emptyMap<Int, String>()
+    }
+
+    @Test
     fun senderPartitioning_identicalBodies_differentSenders_distinctClusters() {
         val parser = DrainParser()
         val a = parser.consume(msg("Spent 50 EGP at Cafe", 0, sender = "BankA"))

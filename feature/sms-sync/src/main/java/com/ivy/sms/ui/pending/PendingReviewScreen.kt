@@ -100,6 +100,7 @@ fun PendingReviewScreen(
                 templatesLeft = templatesLeft,
                 templatesMappedTotal = state.templatesMappedTotal,
                 scanProgress = state.scanProgress,
+                scopedToWallet = state.scopedToWallet,
             )
 
             if (state.pendingIgnoreTemplateId != null) {
@@ -208,6 +209,7 @@ private fun ProgressHero(
     templatesLeft: Int,
     templatesMappedTotal: Int,
     scanProgress: com.ivy.sms.domain.model.ScanProgress? = null,
+    scopedToWallet: Boolean = false,
 ) {
     val resolved = (total - remaining).coerceAtLeast(0)
     val target = if (total == 0) 0f else resolved.toFloat() / total.toFloat()
@@ -255,33 +257,40 @@ private fun ProgressHero(
                 )
             }
         }
-        if (total > 0) {
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = "$resolved of $total reviewed" +
-                    if (templatesMappedTotal > 0) " · $templatesMappedTotal templates mapped" else "",
-                style = UI.typo.c.style(
-                    color = UI.colors.gray,
-                    fontWeight = FontWeight.SemiBold,
-                ),
-            )
-        }
-        Spacer(Modifier.height(10.dp))
-        // Slim animated progress bar.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(UI.shapes.rFull)
-                .background(UI.colors.medium),
-        ) {
+        // The "X of Y reviewed" line and the bar are derived from the GLOBAL
+        // lifetime DataStore counters, while `remaining` is wallet-filtered
+        // in a scoped queue — mixing them showed "0 messages left" next to a
+        // non-full "240 of 250 reviewed" bar describing OTHER wallets. In
+        // wallet scope keep only the scoped remaining count + live scan line.
+        if (!scopedToWallet) {
+            if (total > 0) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "$resolved of $total reviewed" +
+                        if (templatesMappedTotal > 0) " · $templatesMappedTotal templates mapped" else "",
+                    style = UI.typo.c.style(
+                        color = UI.colors.gray,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            // Slim animated progress bar.
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(progress.coerceIn(0f, 1f))
+                    .fillMaxWidth()
                     .height(6.dp)
                     .clip(UI.shapes.rFull)
-                    .background(Green),
-            )
+                    .background(UI.colors.medium),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress.coerceIn(0f, 1f))
+                        .height(6.dp)
+                        .clip(UI.shapes.rFull)
+                        .background(Green),
+                )
+            }
         }
         // Live scan line — the first sync after "Save & Sync now" lands here,
         // so the user watches messages arrive where they'll act on them.

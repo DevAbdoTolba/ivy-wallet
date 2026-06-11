@@ -52,6 +52,9 @@ import com.ivy.sms.data.WILDCARD_TOKEN
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.WildcardId
 import com.ivy.sms.domain.model.WildcardRole
+import com.ivy.sms.domain.model.WildcardSlot
+import com.ivy.sms.domain.usecase.AlignedDisplayToken
+import com.ivy.sms.domain.usecase.alignForDisplay
 import com.ivy.sms.ui.directionFor
 import com.ivy.sms.ui.theme.colorForRole
 import com.ivy.sms.ui.theme.iconForRole
@@ -405,9 +408,15 @@ fun TemplateMappingScreen(
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text = "This pattern matches 0 of your $queued queued " +
-                                    "message${if (queued == 1) "" else "s"}. Saving it " +
-                                    "won't convert anything — tweak the chips first.",
+                                text = if (queued == 0) {
+                                    "This pattern can't even align the template's own " +
+                                        "example message. Saving it won't convert " +
+                                        "anything — tweak the chips first."
+                                } else {
+                                    "This pattern matches 0 of your $queued queued " +
+                                        "message${if (queued == 1) "" else "s"}. Saving it " +
+                                        "won't convert anything — tweak the chips first."
+                                },
                                 style = UI.typo.b2.style(
                                     color = UI.colors.gray,
                                     fontWeight = FontWeight.Medium,
@@ -722,22 +731,22 @@ private sealed interface Token {
 }
 
 /**
- * Pattern-and-body alignment via 2-pointer walk that mirrors what
- * `extractWildcardValues` does at runtime. The two MUST agree on which body
- * token belongs to which slot — otherwise the user taps a "DateOnly" chip
- * and gets the picker for the "TimeOnly" slot (or both chips share an id
- * because the screen lumped them together).
+ * Pattern-and-body alignment for the chip canvas. The canvas MUST agree with
+ * what `extractWildcardValues` does at runtime on which body token belongs to
+ * which slot — otherwise the user taps a "DateOnly" chip and gets the picker
+ * for the "TimeOnly" slot (or both chips share an id because the screen
+ * lumped them together).
  *
- * For each pattern position:
- *   - Literal: pair with the body token at the cursor. Tag with the pattern
- *     position so a tap can dispatch LiteralTapped.
- *   - Wildcard run (consecutive `<*>` tokens in the pattern): collect the
- *     run, find where the next literal lands in the body, then distribute
- *     body tokens **one-per-slot** by run position. The LAST slot absorbs
- *     leftover tokens (matches the absorb-trailing rule in
- *     extractWildcardValues for Merchant/Ignored/Unmapped roles, and is the
- *     least-surprising fallback for other roles too — extra tokens become
- *     extra chips on the same last slot rather than dropped on the floor).
+ * Primary path: [alignForDisplay] — the runtime aligner ITSELF (strict
+ * adjacency + bounded backtracking), exposed in display shape. When it
+ * aligns, every chip carries exactly the token routing would capture for
+ * that slot, so canvas and routing can never disagree.
+ *
+ * Fallback (alignForDisplay returned null — the pattern can't align its own
+ * example body, e.g. a broken/legacy template or mid-edit state where
+ * routing matches nothing anyway): the old loose first-occurrence 2-pointer
+ * walk, kept so the canvas still renders something tappable and the user can
+ * repair the pattern.
  *
  * Body tokens beyond the pattern's end render as non-tappable literals
  * (positionInPattern = null) — that prevents creating a slot at an
@@ -755,6 +764,44 @@ private fun buildTokenList(
         return bodyTokens.map { Token.Literal(it, null) }
     }
     val slotByPosition = wildcards.associateBy { it.positionInPattern }
+
+    val aligned = alignForDisplay(
+        pattern = pattern,
+        body = exampleBody,
+        slots = wildcards.map {
+            WildcardSlot(
+                id = it.id,
+                positionInPattern = it.positionInPattern,
+                contextSnippet = "",
+                exampleValue = it.exampleValue,
+                role = it.role,
+            )
+        },
+    )
+    if (aligned != null) {
+        val out = mutableListOf<Token>()
+        for (tok in aligned) {
+            out += when (tok) {
+                is AlignedDisplayToken.Literal -> Token.Literal(tok.text, tok.positionInPattern)
+                is AlignedDisplayToken.Wildcard -> {
+                    val slot = slotByPosition[tok.positionInPattern]
+                    if (slot != null) {
+                        Token.Wild(tok.text, slot.role, slot.id)
+                    } else {
+                        // `<*>` position without a slot (degenerate pattern) —
+                        // render read-only so a tap can't mint a bogus slot.
+                        Token.Literal(tok.text, null)
+                    }
+                }
+            }
+        }
+        // Trailing body tokens beyond the aligned prefix: non-tappable.
+        for (i in aligned.size until bodyTokens.size) {
+            out += Token.Literal(bodyTokens[i], null)
+        }
+        return out
+    }
+
     val out = mutableListOf<Token>()
     var bodyIdx = 0
     var pIdx = 0

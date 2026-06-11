@@ -46,7 +46,11 @@ import com.ivy.design.l0_system.style
 import com.ivy.legacy.utils.springBounce
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.TemplateState
+import com.ivy.sms.domain.model.WildcardId
 import com.ivy.sms.domain.model.WildcardRole
+import com.ivy.sms.domain.model.WildcardSlot
+import com.ivy.sms.domain.usecase.AlignedDisplayToken
+import com.ivy.sms.domain.usecase.alignForDisplay
 import com.ivy.sms.ui.directionFor
 import com.ivy.sms.ui.theme.colorForRole
 import com.ivy.ui.R
@@ -342,8 +346,14 @@ private fun TemplateRow(
         }
 
         CompositionLocalProvider(LocalLayoutDirection provides directionFor(row.exampleBody)) {
+            // remember: the strict aligner backtracks — don't re-run it on
+            // every recomposition of the list.
+            val previewColor = UI.colors.pureInverse
+            val preview = remember(row, previewColor) {
+                annotatePreview(row, defaultColor = previewColor)
+            }
             Text(
-                text = annotatePreview(row, defaultColor = UI.colors.pureInverse),
+                text = preview,
                 style = UI.typo.b2.style(
                     color = UI.colors.pureInverse,
                     fontWeight = FontWeight.Medium,
@@ -715,23 +725,71 @@ private fun HrDivider() {
     )
 }
 
+/**
+ * Colors the example body's wildcard captures by role. Primary path is
+ * [alignForDisplay] — the SAME strict aligner routing and the match counts
+ * use — so the highlighted segments are exactly the values routing would
+ * capture. When the pattern can't align its own example (broken/legacy row;
+ * routing matches nothing there anyway), falls back to the old positional
+ * index walk so the row still renders.
+ */
 private fun annotatePreview(row: TemplateRowViewState, defaultColor: Color): AnnotatedString {
     val patternTokens = row.pattern.split(Regex("\\s+")).filter { it.isNotBlank() }
     val bodyTokens = row.exampleBody.split(Regex("\\s+")).filter { it.isNotBlank() }
+    val aligned = alignForDisplay(
+        pattern = row.pattern,
+        body = row.exampleBody,
+        // Display-only throwaway slots: the aligner needs positions + roles
+        // (absorb/required-capture semantics); ids are never read back.
+        slots = row.wildcardRolesByPosition.map { (position, role) ->
+            WildcardSlot(
+                id = WildcardId(UUID.randomUUID()),
+                positionInPattern = position,
+                contextSnippet = "",
+                exampleValue = "",
+                role = role,
+            )
+        },
+    )
     return buildAnnotatedString {
-        for ((idx, bodyTok) in bodyTokens.withIndex()) {
-            if (idx > 0) append(' ')
-            val isWildcard = patternTokens.getOrNull(idx) == com.ivy.sms.data.WILDCARD_TOKEN
-            val role = row.wildcardRolesByPosition[idx] ?: WildcardRole.Unmapped
-            if (isWildcard) {
-                withStyle(
-                    SpanStyle(
-                        color = colorForRole(role),
-                        fontWeight = FontWeight.Bold,
-                    ),
-                ) { append(bodyTok) }
-            } else {
-                withStyle(SpanStyle(color = defaultColor)) { append(bodyTok) }
+        if (aligned != null) {
+            for (tok in aligned) {
+                if (length > 0) append(' ')
+                when (tok) {
+                    is AlignedDisplayToken.Wildcard -> {
+                        val role = row.wildcardRolesByPosition[tok.positionInPattern]
+                            ?: WildcardRole.Unmapped
+                        withStyle(
+                            SpanStyle(
+                                color = colorForRole(role),
+                                fontWeight = FontWeight.Bold,
+                            ),
+                        ) { append(tok.text) }
+                    }
+                    is AlignedDisplayToken.Literal ->
+                        withStyle(SpanStyle(color = defaultColor)) { append(tok.text) }
+                }
+            }
+            // Body tokens beyond the aligned prefix render unhighlighted.
+            for (idx in aligned.size until bodyTokens.size) {
+                if (length > 0) append(' ')
+                withStyle(SpanStyle(color = defaultColor)) { append(bodyTokens[idx]) }
+            }
+        } else {
+            for ((idx, bodyTok) in bodyTokens.withIndex()) {
+                if (idx > 0) append(' ')
+                val isWildcard = patternTokens.getOrNull(idx) == com.ivy.sms.data.WILDCARD_TOKEN
+                val role = row.wildcardRolesByPosition[idx] ?: WildcardRole.Unmapped
+                if (isWildcard) {
+                    withStyle(
+                        SpanStyle(
+                            color = colorForRole(role),
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    ) { append(bodyTok) }
+                } else {
+                    withStyle(SpanStyle(color = defaultColor)) { append(bodyTok) }
+                }
             }
         }
     }

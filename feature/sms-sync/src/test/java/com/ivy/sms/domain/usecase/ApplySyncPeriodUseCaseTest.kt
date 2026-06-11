@@ -8,6 +8,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.time.Instant
@@ -16,7 +17,8 @@ import java.util.UUID
 class ApplySyncPeriodUseCaseTest {
 
     private val senderRepo = mockk<SenderAccountLinkRepository>()
-    private val useCase = ApplySyncPeriodUseCase(senderRepo)
+    private val findMatching = mockk<FindMatchingMessagesUseCase>(relaxed = true)
+    private val useCase = ApplySyncPeriodUseCase(senderRepo, findMatching)
 
     private val walletId = AccountId(UUID.randomUUID())
 
@@ -46,6 +48,8 @@ class ApplySyncPeriodUseCaseTest {
                 },
             )
         }
+        // A moved bound changes which inbox rows count as "matching".
+        verify { findMatching.invalidate() }
     }
 
     @Test
@@ -80,6 +84,8 @@ class ApplySyncPeriodUseCaseTest {
         useCase(walletId, 5_000L).isRight() shouldBe true
 
         coVerify(exactly = 0) { senderRepo.upsert(any()) }
+        // Nothing moved → cached match counts stay valid.
+        verify(exactly = 0) { findMatching.invalidate() }
     }
 
     @Test

@@ -43,6 +43,16 @@ data class DrainCluster(
     var exampleBody: String,
     /** Latest example value per wildcard position (used for in-place rendering). */
     var exampleValues: ExampleValues,
+    /**
+     * True for clusters seeded from templates that left UNMAPPED (ACTIVE /
+     * BLACKLISTED / PENDING_REVIEW). Their persisted pattern/slots are frozen
+     * (see DiscoverTemplatesUseCase), so the IN-MEMORY pattern must not drift
+     * either: a drifted cluster absorbs near-format messages that then fail
+     * alignment against the unchanged persisted pattern and quarantine under
+     * the wrong template. Frozen clusters still match and count — they just
+     * never merge.
+     */
+    val frozen: Boolean = false,
 )
 
 data class DrainNode(

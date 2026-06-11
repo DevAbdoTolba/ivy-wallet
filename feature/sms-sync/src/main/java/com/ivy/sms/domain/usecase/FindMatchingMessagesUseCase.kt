@@ -2,6 +2,7 @@ package com.ivy.sms.domain.usecase
 
 import arrow.core.Either
 import arrow.core.right
+import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.data.SmsInboxDataSource
 import com.ivy.sms.data.SmsMessageMapper
 import com.ivy.sms.data.SmsWatermarkPreferences
@@ -32,6 +33,7 @@ class FindMatchingMessagesUseCase @Inject constructor(
     private val inbox: SmsInboxDataSource,
     private val mapper: SmsMessageMapper,
     private val watermarks: SmsWatermarkPreferences,
+    private val senderRepo: SenderAccountLinkRepository,
 ) {
     /**
      * Process-lifetime cache so re-entering the templates screen doesn't
@@ -72,10 +74,16 @@ class FindMatchingMessagesUseCase @Inject constructor(
         // and the modal's listed bodies must be the same set the sync scanned,
         // otherwise the user sees "5 messages" but only 1 transaction because
         // the other 4 were older than their picked period and never routed.
-        // SyncSmsUseCase invalidates this cache after each scan, so updating
-        // the period via the wallet's "Sync now" sheet is reflected here on
-        // the next view.
-        val lowerBound = watermarks.scanLowerBound().getOrNull() ?: 0L
+        // The period lives PER SENDER on the link (ApplySyncPeriodUseCase /
+        // the setup sheet); the legacy global key is only the fallback for
+        // links that predate per-link bounds — the SAME resolution
+        // ScanInboxUseCase reads with. SyncSmsUseCase invalidates this cache
+        // after each scan and ApplySyncPeriodUseCase invalidates it whenever
+        // a bound moves, so period edits are reflected on the next view.
+        val link = senderRepo.findBySenderId(sender).getOrNull()
+        val lowerBound = link?.historicalLowerBound?.toEpochMilli()
+            ?: watermarks.scanLowerBound().getOrNull()
+            ?: 0L
         val rows = inbox.read(
             lowerBoundEpochMillis = lowerBound,
             watermarkEpochMillis = 0L,

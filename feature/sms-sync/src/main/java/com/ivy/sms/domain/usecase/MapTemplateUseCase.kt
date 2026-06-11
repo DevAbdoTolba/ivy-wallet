@@ -193,9 +193,11 @@ class MapTemplateUseCase @Inject constructor(
         }
 
         // Save-time dry-run: the final pattern must actually align something
-        // before we persist it as ACTIVE. Checked against the template's own
-        // exampleBody (a pattern that can't align its OWN sample is broken)
-        // and every queued pending item belonging to this template.
+        // before we persist it as ACTIVE. Checked against every queued
+        // pending item belonging to this template, and — when the queue is
+        // empty — against the template's own exampleBody (a pattern that
+        // can't align its OWN sample is broken and would match nothing
+        // forever). Both checks share the same "Save anyway" escape.
         val ownPending = pendingRepo.findByTemplateId(templateId).getOrNull().orEmpty()
         val alignedByItem = ownPending.associate { item ->
             item.id to (extractWildcardValues(updated, item.sms) != null)
@@ -212,10 +214,23 @@ class MapTemplateUseCase @Inject constructor(
             "MAP_SAVE dry-run tpl=%s exampleAligned=%b aligned=%d/%d allowZeroAlignment=%b",
             templateId.value, exampleAligned, alignedCount, ownPending.size, allowZeroAlignment,
         )
-        if (!allowZeroAlignment && ownPending.isNotEmpty() && alignedCount == 0) {
+        // Queue non-empty: the pattern must align at least one queued item.
+        // Queue EMPTY (all drained/dismissed): the exampleBody check is the
+        // only signal left — without it a hand-patched pattern that can't
+        // align its own sample would save ACTIVE silently (0/0 counters,
+        // auto-nav-back) and quarantine every future message of the format.
+        // Legacy rows without a stored example (blank body can never align)
+        // are exempt — there's nothing to check them against.
+        val alignsNothing = if (ownPending.isEmpty()) {
+            updated.exampleBody.isNotBlank() && !exampleAligned
+        } else {
+            alignedCount == 0
+        }
+        if (!allowZeroAlignment && alignsNothing) {
             // The UI turns this into a blocking "matches 0 of your N queued
-            // messages" warning with an explicit "Save anyway" — no more
-            // silent useless saves that route nothing.
+            // messages" warning (N == 0 → "can't align its own example")
+            // with an explicit "Save anyway" — no more silent useless saves
+            // that route nothing.
             return "ZERO_ALIGNMENT:${ownPending.size}".left()
         }
 
@@ -270,36 +285,45 @@ class MapTemplateUseCase @Inject constructor(
         var failedAmountParse = 0
         var failedSenderNotLinked = 0
         var failedOther = 0
-        for ((idx, item) in pending.withIndex()) {
-            // Every item here belongs to the just-saved template — route via
-            // `updated` directly (it's already ACTIVE with the final pattern).
-            // userInitiated: the save IS the user's approval, so the
-            // per-sender auto-route gate doesn't apply here.
-            val outcome = route(item.sms, updated, senderToAccount, userInitiated = true).getOrNull()
-            when {
-                outcome is RouteOutcome.Created -> {
-                    pendingRepo.dismiss(item.id)
-                    prefs.incrementReviewedTotal()
-                    converted++
+        try {
+            for ((idx, item) in pending.withIndex()) {
+                // Every item here belongs to the just-saved template — route via
+                // `updated` directly (it's already ACTIVE with the final pattern).
+                // userInitiated: the save IS the user's approval, so the
+                // per-sender auto-route gate doesn't apply here.
+                val outcome = route(item.sms, updated, senderToAccount, userInitiated = true).getOrNull()
+                when {
+                    outcome is RouteOutcome.Created -> {
+                        pendingRepo.dismiss(item.id)
+                        prefs.incrementReviewedTotal()
+                        converted++
+                    }
+                    outcome is RouteOutcome.Quarantined &&
+                        outcome.reason == QuarantineReason.SENDER_NOT_LINKED -> failedSenderNotLinked++
+                    outcome is RouteOutcome.Quarantined &&
+                        outcome.reason == QuarantineReason.AMOUNT_NOT_PARSEABLE ->
+                        // Routing lumps alignment failures and unparseable amounts
+                        // under one quarantine reason; the dry-run already told us
+                        // which items align, so split them honestly here.
+                        if (alignedByItem[item.id] == true) failedAmountParse++ else failedAlignment++
+                    else -> failedOther++
                 }
-                outcome is RouteOutcome.Quarantined &&
-                    outcome.reason == QuarantineReason.SENDER_NOT_LINKED -> failedSenderNotLinked++
-                outcome is RouteOutcome.Quarantined &&
-                    outcome.reason == QuarantineReason.AMOUNT_NOT_PARSEABLE ->
-                    // Routing lumps alignment failures and unparseable amounts
-                    // under one quarantine reason; the dry-run already told us
-                    // which items align, so split them honestly here.
-                    if (alignedByItem[item.id] == true) failedAmountParse++ else failedAlignment++
-                else -> failedOther++
+                _progress.value = MapTemplateProgress(
+                    processed = idx + 1,
+                    total = pending.size,
+                    converted = converted,
+                )
             }
-            _progress.value = MapTemplateProgress(
-                processed = idx + 1,
-                total = pending.size,
-                converted = converted,
-            )
+        } finally {
+            // ALWAYS clear — including when the caller's scope is cancelled
+            // mid-loop (this app's custom nav clears the ViewModelStore on
+            // every screen change, cancelling save()'s viewModelScope at the
+            // next suspension). This use case is a @Singleton: a progress
+            // value left non-null here rendered a frozen "Reprocessing
+            // pending… X / Y" card on EVERY future mapping screen until some
+            // later save happened to complete a full loop.
+            _progress.value = null
         }
-        // Clear so the next subscriber doesn't see a stale "100% done" snapshot.
-        _progress.value = null
         return MapTemplateResult(
             convertedFromQueue = converted,
             failedAlignment = failedAlignment,

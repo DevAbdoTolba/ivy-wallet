@@ -206,6 +206,14 @@ class LoanViewModel @Inject constructor(
     }
 
     private fun saveItemizedLoan(loanId: UUID, items: List<ItemizeEntry>) {
+        // Dismiss the sheet synchronously BEFORE launching the save — the
+        // entries are already captured in [items], and a second Save tap
+        // while the per-item inserts suspend would re-run them with fresh
+        // LoanItem ids, duplicating every entry. The null check makes
+        // itemizeSheetData double as the in-flight guard for taps that land
+        // before recomposition removes the sheet.
+        if (itemizeSheetData == null) return
+        itemizeSheetData = null
         viewModelScope.launch {
             // Strictly increasing createdAt per item — batch saves within the
             // same millisecond would otherwise have an unstable DB order.
@@ -222,7 +230,6 @@ class LoanViewModel @Inject constructor(
                         )
                     )
                 }
-            itemizeSheetData = null
             start()
         }
     }

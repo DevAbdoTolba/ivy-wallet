@@ -59,10 +59,10 @@ class DiscoverTemplatesUseCaseTest {
             val saved = slot<SmsTemplate>()
             coEvery { templateRepo.upsert(capture(saved)) } returns Unit.right()
 
-            // In-memory the cluster DOES re-merge: "uptown" disagrees with the
-            // pattern literal "downtown" at index 6, so the cluster pattern
-            // gains a wildcard there. The persisted template must not pick
-            // that up — only the counters move.
+            // The frozen cluster matches "uptown" (6/7 positional agreement)
+            // but is count-only: neither the in-memory pattern (DrainParser
+            // skips the merge for frozen clusters) nor the persisted template
+            // may change — only the counters move.
             val result = discover(message("Paid 99 fees to Cafe branch uptown"))
 
             result.getOrNull()!!.created shouldBe false

@@ -145,6 +145,30 @@ class ScanInboxUseCaseTest {
     }
 
     @Test
+    fun scan_clearedWatermarkWithOwnLowerBound_rescansGap_ignoresGlobalWatermark() = runTest {
+        // ApplySyncPeriod's gap-rescan signal: explicit per-link lower bound +
+        // watermark cleared to null. Even though the link predates the global
+        // watermark (linkedAt <= it), the legacy fallback must NOT apply —
+        // it has advanced past the gap, so inheriting it would read
+        // [newLowerBound, globalWatermark] never and "Scan further back"
+        // would import nothing.
+        val rescan = link(
+            "Bank-A",
+            watermark = null,
+            linkedAt = Instant.ofEpochMilli(1_000L),
+            historicalLowerBound = Instant.ofEpochMilli(800L),
+        )
+        coEvery { senderRepo.findAll() } returns listOf(rescan).right()
+        coEvery { watermarks.scanLowerBound() } returns 500L.right()
+        coEvery { watermarks.read() } returns 5_000L.right()
+        coEvery { inbox.read(any(), any(), any()) } returns emptyList<SmsRow>().right()
+
+        useCase()
+
+        coVerify { inbox.read(800L, 0L, "Bank-A") }
+    }
+
+    @Test
     fun scan_stampsOnlySendersThatProducedRows() = runTest {
         val linkA = link("Bank-A")
         val linkB = link("Bank-B")
@@ -158,6 +182,8 @@ class ScanInboxUseCaseTest {
         coEvery { route(any(), any(), any(), any()) } returns
             RouteOutcome.Quarantined(QuarantineReason.TEMPLATE_NOT_MAPPED).right()
         coEvery { watermarks.write(42_000L) } returns Unit.right()
+        // Stamp-time re-read: the row is unchanged since scan start.
+        coEvery { senderRepo.findBySenderId("Bank-A") } returns linkA.right()
         coEvery { senderRepo.upsert(any()) } returns Unit.right()
 
         useCase()
@@ -192,11 +218,45 @@ class ScanInboxUseCaseTest {
         coEvery { route(any(), any(), any(), any()) } returns
             RouteOutcome.Quarantined(QuarantineReason.TEMPLATE_NOT_MAPPED).right()
         coEvery { watermarks.write(3_000L) } returns Unit.right()
+        coEvery { senderRepo.findBySenderId("Bank-A") } returns linked.right()
         coEvery { senderRepo.upsert(any()) } returns Unit.right()
 
         val summary = useCase().getOrNull()!!
 
         summary.newMessagesProcessed shouldBe 3
         summary.newTemplatesDiscovered shouldBe 1
+    }
+
+    @Test
+    fun scanEndStamp_skipsLinksChangedOrDeletedMidScan() = runTest {
+        // ApplySyncPeriod and unlink write link rows OUTSIDE the sync mutex.
+        // The end-of-scan stamp must re-read each row and refuse to upsert a
+        // stale snapshot: Bank-A was unlinked mid-scan (stamping would
+        // resurrect the deleted row) and Bank-B got a period pick mid-scan
+        // (stamping would revert the new lower bound AND re-set the watermark
+        // its gap-rescan just cleared).
+        val linkA = link("Bank-A")
+        val linkB = link("Bank-B", watermark = Instant.ofEpochMilli(10L))
+        coEvery { senderRepo.findAll() } returns listOf(linkA, linkB).right()
+        coEvery { watermarks.scanLowerBound() } returns 0L.right()
+        coEvery { watermarks.read() } returns 0L.right()
+        coEvery { inbox.read(any(), any(), "Bank-A") } returns listOf(row("Bank-A", 42_000L)).right()
+        coEvery { inbox.read(any(), any(), "Bank-B") } returns listOf(row("Bank-B", 43_000L)).right()
+        coEvery { discover(any()) } returns
+            DiscoverResult(template("Bank-A"), created = false).right()
+        coEvery { route(any(), any(), any(), any()) } returns
+            RouteOutcome.Quarantined(QuarantineReason.TEMPLATE_NOT_MAPPED).right()
+        coEvery { watermarks.write(any()) } returns Unit.right()
+        coEvery { senderRepo.findBySenderId("Bank-A") } returns
+            (null as SenderAccountLink?).right()
+        coEvery { senderRepo.findBySenderId("Bank-B") } returns
+            linkB.copy(
+                historicalLowerBound = Instant.ofEpochMilli(5L),
+                watermark = null,
+            ).right()
+
+        useCase()
+
+        coVerify(exactly = 0) { senderRepo.upsert(any()) }
     }
 }

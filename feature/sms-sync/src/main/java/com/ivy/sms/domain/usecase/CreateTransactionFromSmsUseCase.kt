@@ -30,20 +30,36 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
+import javax.inject.Singleton
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 
 private const val TRACE = "SmsTrace"
 
+@Singleton
 class CreateTransactionFromSmsUseCase @Inject constructor(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val pendingRepository: PendingReviewItemRepository,
 ) {
+    /**
+     * Serializes the dedup-check → save window. The guard below is
+     * read-then-write with NO unique index on transactions.smsSourceDedupKey
+     * (the index is deferred to the next Room migration), so two concurrent
+     * routing paths — e.g. an application-scoped rescan racing a
+     * template-save reprocess — could both see "not imported yet" and
+     * double-create the same SMS. Every routing path converges on this use
+     * case (kept @Singleton for exactly that reason), so one process-wide
+     * mutex closes the race.
+     */
+    private val dedupMutex = Mutex()
+
     suspend operator fun invoke(
         message: SmsMessage,
         template: SmsTemplate,
         account: AccountId,
-    ): Either<String, TransactionId> {
+    ): Either<String, TransactionId> = dedupMutex.withLock {
         val tag = "tpl=${template.id.value} body='${message.body.take(60)}…'"
         Timber.tag(TRACE).d("CREATE → enter %s pattern='%s'", tag, template.pattern)
 
@@ -377,7 +393,55 @@ internal fun extractWildcardValues(
             template.id.value,
         )
     }
-    return out
+    return out?.values
+}
+
+/**
+ * One body token tagged with the pattern position it aligned to — the
+ * display-shaped output of the SAME strict aligner [extractWildcardValues]
+ * runs for routing. The preview canvases (mapping screen chip canvas,
+ * templates-list example preview) render from this so what the user sees can
+ * never disagree with what routing does.
+ */
+internal sealed interface AlignedDisplayToken {
+    val text: String
+    val positionInPattern: Int
+
+    /** Body token that matched the pattern literal at [positionInPattern]. */
+    data class Literal(
+        override val text: String,
+        override val positionInPattern: Int,
+    ) : AlignedDisplayToken
+
+    /** Body token captured by the wildcard run position [positionInPattern].
+     *  Several consecutive tokens may share one position when the run's last
+     *  slot absorbs leftover tokens. */
+    data class Wildcard(
+        override val text: String,
+        override val positionInPattern: Int,
+    ) : AlignedDisplayToken
+}
+
+/**
+ * Strict display alignment for the preview canvases. Runs the IDENTICAL
+ * backtracking aligner routing uses and tags every CONSUMED body token, in
+ * body order, with its pattern position. Returns null exactly when routing
+ * would fail to align this body — callers fall back to their own loose
+ * rendering for broken/legacy patterns (which routing matches nothing with
+ * anyway). Body tokens beyond the aligned prefix are not included; callers
+ * render them as plain trailing text.
+ */
+internal fun alignForDisplay(
+    pattern: String,
+    body: String,
+    slots: List<WildcardSlot>,
+): List<AlignedDisplayToken>? {
+    val patternTokens = pattern.split(Regex("\\s+")).filter { it.isNotBlank() }
+    val bodyTokens = body.split(Regex("\\s+")).filter { it.isNotBlank() }
+    if (patternTokens.isEmpty()) return null
+    val slotByPosition = slots.associateBy { it.positionInPattern }
+    return alignFrom(patternTokens, bodyTokens, slotByPosition, 0, 0, AlignFailure())
+        ?.displayTokens
 }
 
 /** Upper bound on terminator occurrences tried per wildcard run, so a
@@ -400,6 +464,19 @@ private class AlignFailure {
     }
 }
 
+/** Working result of [alignFrom]: captured slot values for extraction plus
+ *  the per-body-token assignment the display canvases render from. The two
+ *  are built by the same walk, so they can't drift apart. */
+private class Alignment {
+    val values = mutableMapOf<WildcardId, String>()
+    val displayTokens = mutableListOf<AlignedDisplayToken>()
+
+    fun absorb(other: Alignment) {
+        values.putAll(other.values)
+        displayTokens.addAll(other.displayTokens)
+    }
+}
+
 private fun alignFrom(
     patternTokens: List<String>,
     bodyTokens: List<String>,
@@ -407,8 +484,8 @@ private fun alignFrom(
     startPatternIdx: Int,
     startBodyIdx: Int,
     failure: AlignFailure,
-): MutableMap<WildcardId, String>? {
-    val out = mutableMapOf<WildcardId, String>()
+): Alignment? {
+    val out = Alignment()
     var patternIdx = startPatternIdx
     var bodyIdx = startBodyIdx
 
@@ -426,6 +503,7 @@ private fun alignFrom(
                 )
                 return null
             }
+            out.displayTokens.add(AlignedDisplayToken.Literal(bodyTok, patternIdx))
             bodyIdx++
             patternIdx++
             continue
@@ -463,7 +541,7 @@ private fun alignFrom(
                 bodyTokens[it].equals(terminator, ignoreCase = true)
             } ?: break
             attempts++
-            val trial = mutableMapOf<WildcardId, String>()
+            val trial = Alignment()
             if (captureRun(bodyTokens, slotByPosition, runStart, runEnd, bodyIdx, stopAt, trial, failure)) {
                 val rest = alignFrom(
                     patternTokens = patternTokens,
@@ -474,8 +552,8 @@ private fun alignFrom(
                     failure = failure,
                 )
                 if (rest != null) {
-                    out.putAll(trial)
-                    out.putAll(rest)
+                    out.absorb(trial)
+                    out.absorb(rest)
                     return out
                 }
             }
@@ -512,19 +590,19 @@ private fun captureRun(
     runEnd: Int,
     regionStart: Int,
     regionEnd: Int,
-    out: MutableMap<WildcardId, String>,
+    out: Alignment,
     failure: AlignFailure,
 ): Boolean {
     val runLength = runEnd - runStart + 1
     val available = bodyTokens.subList(regionStart, regionEnd)
     for (i in 0 until runLength) {
-        val slot = slotByPosition[runStart + i] ?: continue
-        val role = slot.role
+        val position = runStart + i
+        val slot = slotByPosition[position]
         if (i >= available.size) {
-            if (role.isAmountBearing()) {
+            if (slot != null && slot.role.isAmountBearing()) {
                 failure.record(
-                    runStart + i,
-                    "required $role slot at pattern[${runStart + i}] got an empty region",
+                    position,
+                    "required ${slot.role} slot at pattern[$position] got an empty region",
                 )
                 return false
             }
@@ -532,6 +610,15 @@ private fun captureRun(
         }
         val isLast = i == runLength - 1
         val region = if (isLast) available.subList(i, available.size) else listOf(available[i])
+        // Display view: every body token in this region belongs to this run
+        // position — the canvases render one chip per token, all keyed to the
+        // same slot. Recorded even for slot-less `<*>` positions (degenerate
+        // patterns) because the body token is consumed positionally anyway.
+        for (tok in region) {
+            out.displayTokens.add(AlignedDisplayToken.Wildcard(tok, position))
+        }
+        if (slot == null) continue
+        val role = slot.role
         val absorbsLeftover = isLast && (
             role == WildcardRole.Merchant ||
                 role == WildcardRole.Ignored ||
@@ -543,7 +630,7 @@ private fun captureRun(
                 region.firstOrNull { AmountParser.parseAmount(it).isRight() } ?: region.first()
             else -> region.first()
         }
-        if (tokenForSlot.isNotBlank()) out[slot.id] = tokenForSlot
+        if (tokenForSlot.isNotBlank()) out.values[slot.id] = tokenForSlot
     }
     return true
 }

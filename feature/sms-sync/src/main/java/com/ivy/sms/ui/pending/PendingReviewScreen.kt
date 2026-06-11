@@ -120,7 +120,22 @@ fun PendingReviewScreen(
                             viewModel.onEvent(PendingReviewEvent.ToggleExpand(row.id))
                         },
                         onMapTemplate = {
-                            nav.navigateTo(TemplateMappingScreen(row.templateId.value.toString()))
+                            // Pass the tapped pending item's id so the
+                            // mapping screen renders THIS message's body,
+                            // not the cluster's first-ever sample (which
+                            // the user reported as confusing — tapping
+                            // "+40 EGP" was opening a "+89 EGP" sibling).
+                            // Also pass the wallet scope when this queue
+                            // is wallet-scoped, so the save reprocess
+                            // doesn't silently route pending items from a
+                            // different wallet.
+                            nav.navigateTo(
+                                TemplateMappingScreen(
+                                    templateId = row.templateId.value.toString(),
+                                    pendingItemId = row.id,
+                                    walletId = walletId?.value?.toString(),
+                                )
+                            )
                         },
                         onIgnoreForever = {
                             viewModel.onEvent(PendingReviewEvent.IgnoreForever(row.templateId))

@@ -576,7 +576,10 @@ private fun QuickAccess(
                 icon = R.drawable.home_more_menu_sms_templates,
                 label = "SMS templates",
             ) {
-                nav.navigateTo(com.ivy.navigation.SmsExtractionScreen)
+                // Global list — no wallet scope; Home menu is the all-wallets
+                // entry point. Per-wallet access goes through the wallet's
+                // own SMS config "Templates" button.
+                nav.navigateTo(com.ivy.navigation.SmsExtractionScreen())
             }
 
             Spacer(Modifier.weight(1f))

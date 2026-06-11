@@ -80,6 +80,7 @@ fun TemplateListScreen(
     onOpenTemplate: (SmsTemplateId) -> Unit,
     onScanFurtherBack: () -> Unit,
     onOpenPendingReview: () -> Unit,
+    walletId: String? = null,
     viewModel: TemplateListViewModel = viewModel(),
 ) {
     val state = viewModel.uiState()
@@ -88,6 +89,10 @@ fun TemplateListScreen(
         onScanFurther = onScanFurtherBack,
         onPending = onOpenPendingReview,
     )
+    // Scope the list to this wallet's linked senders. Null = global list.
+    androidx.compose.runtime.LaunchedEffect(walletId, viewModel) {
+        viewModel.setWalletFilter(walletId)
+    }
 
     Box(
         modifier = Modifier

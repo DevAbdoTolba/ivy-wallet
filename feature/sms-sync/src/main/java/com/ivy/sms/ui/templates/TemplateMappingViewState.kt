@@ -42,6 +42,12 @@ data class TemplateMappingViewState(
     val reprocess: ReprocessProgress? = null,
     val error: String? = null,
     val convertedFromQueue: Int? = null,
+    /** Pending items the reprocess COULDN'T route — they stay in the queue.
+     *  When > 0, the screen shows "Partially mapped" feedback so the user
+     *  doesn't see a misleading "Needs roles assigned" badge later. */
+    val failedAlignment: Int? = null,
+    /** Total pending items the reprocess considered for this template. */
+    val totalPending: Int? = null,
 )
 
 @Immutable
@@ -57,6 +63,23 @@ sealed interface TemplateMappingEvent {
         val id: WildcardId,
         val role: WildcardRole,
     ) : TemplateMappingEvent
+    /**
+     * User tapped a literal token in the rendered example. The VM speculatively
+     * inserts a new wildcard slot at [positionInPattern] (with [token] as the
+     * exampleValue and role = Unmapped) and opens the role picker. If the
+     * user picks a role, the slot is committed; if they dismiss without
+     * picking, [DismissBottomSheet] reverts the speculative insert.
+     */
+    data class LiteralTapped(
+        val positionInPattern: Int,
+        val token: String,
+    ) : TemplateMappingEvent
+    /**
+     * User chose "Make this part literal again" inside the role picker. The
+     * VM removes the slot and restores the original literal token in the
+     * pattern at that position.
+     */
+    data class WildcardClearedToLiteral(val id: WildcardId) : TemplateMappingEvent
     data object DismissBottomSheet : TemplateMappingEvent
     data class NameChanged(val value: String) : TemplateMappingEvent
     /**
@@ -67,4 +90,12 @@ sealed interface TemplateMappingEvent {
      * silently `return`'ing on `state.templateId ?: return`.
      */
     data class Save(val explicitTemplateId: SmsTemplateId? = null) : TemplateMappingEvent
+    /**
+     * "Ignore this template forever" button — flips the template to
+     * BLACKLISTED so future SMS that align to this pattern get suppressed
+     * instead of routing to pending review. The screen also fires its own
+     * onIgnoreForever lambda for nav.back so the user immediately leaves
+     * the screen; the VM does the DB work asynchronously.
+     */
+    data class IgnoreForever(val explicitTemplateId: SmsTemplateId? = null) : TemplateMappingEvent
 }

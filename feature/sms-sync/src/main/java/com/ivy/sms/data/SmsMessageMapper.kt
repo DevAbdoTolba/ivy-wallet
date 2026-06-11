@@ -7,12 +7,16 @@ import javax.inject.Inject
 
 class SmsMessageMapper @Inject constructor() {
     fun SmsRow.toDomain(): SmsMessage {
-        val raw = "$address:$dateEpochMillis:$body"
-        val bodyHash = sha256Hex(body)
+        // Single normalize chokepoint — every downstream stage (Drain
+        // tokenize, alignment, dedup hash) sees the canonical body, so
+        // invisible bidi marks and Arabic-Indic digits don't fragment
+        // clusters or produce false wildcards.
+        val normalizedBody = SmsBodyNormalizer.normalize(body)
+        val bodyHash = sha256Hex(normalizedBody)
         return SmsMessage(
             dedupKey = dedupKey(address, dateEpochMillis, bodyHash),
             senderId = address,
-            body = body,
+            body = normalizedBody,
             timestamp = Instant.ofEpochMilli(dateEpochMillis),
         )
     }

@@ -30,8 +30,8 @@ import java.util.UUID
 fun smsSyncDestination(screen: Screen?): Boolean {
     val nav = navigation()
     return when (screen) {
-        SmsExtractionScreen -> {
-            SmsExtractionScreenImpl()
+        is SmsExtractionScreen -> {
+            SmsExtractionScreenImpl(walletId = screen.walletId)
             true
         }
         PendingReviewScreen -> {
@@ -47,10 +47,16 @@ fun smsSyncDestination(screen: Screen?): Boolean {
         }
         is TemplateMappingScreen -> {
             val id = runCatching { SmsTemplateId(UUID.fromString(screen.templateId)) }.getOrNull()
+            val walletScope = screen.walletId?.let {
+                runCatching { AccountId(UUID.fromString(it)) }.getOrNull()
+            }
             if (id != null) {
                 TemplateMappingScreenImpl(
                     templateId = id,
+                    pendingItemId = screen.pendingItemId,
+                    walletScope = walletScope,
                     onSaved = { nav.back() },
+                    onIgnoreForever = { nav.back() },
                 )
             }
             true

@@ -146,7 +146,17 @@ data object DisclaimerScreen : Screen
 
 data object PollScreen : Screen
 
-data object SmsExtractionScreen : Screen {
+/**
+ * The SMS templates list. [walletId] scopes the list to templates whose
+ * sender is linked to that wallet — opened from a wallet's SMS config the
+ * user must only see THAT wallet's templates. Null = the global list
+ * (reached from the Home overflow menu). The user reported wallet-X's
+ * templates showing up while working inside wallet-Y precisely because the
+ * per-wallet "Templates" button navigated here with no scope.
+ */
+data class SmsExtractionScreen(
+    val walletId: String? = null,
+) : Screen {
     override val isLegacy: Boolean = false
 }
 
@@ -165,6 +175,26 @@ data class WalletPendingReviewScreen(val walletId: String) : Screen {
 
 data class TemplateMappingScreen(
     val templateId: String,
+    /**
+     * Optional pending-item id the user tapped to reach this screen. When
+     * set, the mapping screen shows THAT message's body in the chip canvas
+     * instead of `template.exampleBody` (which is the first-ever sample of
+     * the cluster). The user reported that tapping an SMS saying "+40 EGP"
+     * could open the mapper rendered around a sibling SMS like "+89 EGP",
+     * making it impossible to act on the specific message they cared about.
+     * Roles and pattern still come from the template — only the visible
+     * body changes.
+     */
+    val pendingItemId: String? = null,
+    /**
+     * Wallet the user opened this template from. When set, the mapping
+     * screen and its save reprocess scope to pending items linked to THIS
+     * wallet — even if the sender is/was linked to a different wallet.
+     * Without this, mapping a template in wallet-2 could silently route
+     * wallet-1's stale pending items into wallet-2 (the user's cross-wallet
+     * leak report).
+     */
+    val walletId: String? = null,
 ) : Screen {
     override val isLegacy: Boolean = false
 }

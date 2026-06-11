@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.ivy.navigation.PendingReviewScreen
 import com.ivy.navigation.TemplateMappingScreen
+import com.ivy.navigation.WalletPendingReviewScreen
 import com.ivy.navigation.navigation
 import com.ivy.sms.data.SmsWatermarkPreferences
 import com.ivy.sms.domain.model.SmsTemplateId
@@ -29,7 +30,7 @@ internal interface SmsExtractionEntryPoint {
 }
 
 @Composable
-fun SmsExtractionScreen() {
+fun SmsExtractionScreen(walletId: String? = null) {
     val context = LocalContext.current
     val watermarks = remember(context) {
         EntryPointAccessors.fromApplication(
@@ -53,14 +54,30 @@ fun SmsExtractionScreen() {
             null -> { /* loading */ }
             false -> PeriodPickerScreen(onConfirmed = refreshHasPicked)
             true -> TemplateListScreen(
+                walletId = walletId,
                 onOpenTemplate = { id: SmsTemplateId ->
-                    nav.navigateTo(TemplateMappingScreen(id.value.toString()))
+                    // Carry the wallet scope into the mapper so its save
+                    // reprocess only touches THIS wallet's pending items.
+                    nav.navigateTo(
+                        TemplateMappingScreen(
+                            templateId = id.value.toString(),
+                            walletId = walletId,
+                        )
+                    )
                 },
                 onScanFurtherBack = {
                     hasPicked = false
                 },
                 onOpenPendingReview = {
-                    nav.navigateTo(PendingReviewScreen)
+                    // Wallet-scoped review when we have a wallet, global
+                    // review otherwise.
+                    nav.navigateTo(
+                        if (walletId != null) {
+                            WalletPendingReviewScreen(walletId)
+                        } else {
+                            PendingReviewScreen
+                        }
+                    )
                 },
             )
         }

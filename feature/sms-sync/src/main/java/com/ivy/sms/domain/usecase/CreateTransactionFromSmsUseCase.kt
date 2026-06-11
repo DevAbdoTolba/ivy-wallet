@@ -300,7 +300,20 @@ internal fun extractWildcardValues(
         if (ptok != com.ivy.sms.data.WILDCARD_TOKEN) {
             val matchIdx = (bodyIdx until bodyTokens.size).firstOrNull {
                 bodyTokens[it].equals(ptok, ignoreCase = true)
-            } ?: return null
+            } ?: run {
+                Timber.tag(TRACE).w(
+                    "ALIGN ✗ literal '%s' at pattern[%d] not found in body[%d..%d] | " +
+                        "patternLen=%d bodyLen=%d tpl=%s",
+                    ptok,
+                    patternIdx,
+                    bodyIdx,
+                    bodyTokens.size - 1,
+                    patternTokens.size,
+                    bodyTokens.size,
+                    template.id.value,
+                )
+                return null
+            }
             bodyIdx = matchIdx + 1
             patternIdx++
             continue
@@ -325,7 +338,21 @@ internal fun extractWildcardValues(
             val nextLiteral = patternTokens[nextLiteralPatternIdx]
             (bodyIdx until bodyTokens.size).firstOrNull {
                 bodyTokens[it].equals(nextLiteral, ignoreCase = true)
-            } ?: return null
+            } ?: run {
+                Timber.tag(TRACE).w(
+                    "ALIGN ✗ wildcard-run terminator '%s' at pattern[%d] not found " +
+                        "in body[%d..%d] (run start=%d) | patternLen=%d bodyLen=%d tpl=%s",
+                    nextLiteral,
+                    nextLiteralPatternIdx,
+                    bodyIdx,
+                    bodyTokens.size - 1,
+                    runStart,
+                    patternTokens.size,
+                    bodyTokens.size,
+                    template.id.value,
+                )
+                return null
+            }
         }
         val available = bodyTokens.subList(bodyIdx, stopAt)
         // 1-to-1 distribution. The LAST slot absorbs leftover body tokens

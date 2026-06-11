@@ -27,9 +27,18 @@ import javax.inject.Singleton
  *   - Merge collapses any non-shared tokens to a single `<*>` placeholder, preserving
  *     the order of the first message's stable tokens.
  *
- * Pre-normalization rule (2026-04-28, unchanged):
- *   Any whitespace-bounded token containing a digit (Latin or Arabic-Indic) is replaced
- *   with `<*>`. Catches `70egp`, `190EGP`, `٦٠ج`, `$15`, dates, refcodes.
+ * Digit-collapse rule (2026-05-07, descent only):
+ *   We still treat digit-bearing tokens as `<*>` *for tree descent and Jaccard
+ *   matching* — that way a "Spent 100 EGP at Cafe" and "Spent 250 EGP at Cafe"
+ *   land in the same cluster. But the SAVED pattern is now the raw tokens of
+ *   the first sample. Wildcards only appear in the saved pattern when a
+ *   later sample actually disagrees at a position (mergeTemplates).
+ *
+ *   Why the change: the old rule pre-marked every digit token as a wildcard
+ *   in the saved pattern, so a stable "2024" in a greeting got auto-classified
+ *   as variable. With a single sample we can't tell variable from constant —
+ *   so we don't guess. The user marks unknown wildcards manually on the
+ *   mapping screen; the tap-to-toggle UI handles the rest.
  */
 @Singleton
 class DrainParser @Inject constructor() {
@@ -41,18 +50,19 @@ class DrainParser @Inject constructor() {
     @Synchronized
     fun consume(message: SmsMessage): DrainCluster {
         val rawTokens = tokenize(message.body)
-        val tokens = preNormalize(rawTokens)
-        val leaf = descend(tokens, createIfMissing = true)
-        val best = bestMatch(leaf, tokens)
+        // Digit-collapsed view used ONLY for cluster descent + Jaccard scoring.
+        // Saved templatePattern stays as rawTokens (or earlier merged result)
+        // so we don't lie about which positions actually vary.
+        val descentTokens = preNormalize(rawTokens)
+        val leaf = descend(descentTokens, createIfMissing = true)
+        val best = bestMatch(leaf, descentTokens)
         if (best != null) {
-            // Reverted to the collapsing merge (and matching example refresh)
-            // because the digit-wildcard split was breaking routing: it
-            // produced patterns with consecutive `<*>` runs whose slot count
-            // exceeded the body-token count, leaving the amount slot empty
-            // and quarantining the message. The "416.44 not chip" symptom
-            // it was meant to fix is far less important than not creating
-            // transactions at all.
-            val merged = mergeTemplates(best.templatePattern, tokens)
+            // Merge the cluster's existing pattern against the new sample's
+            // RAW tokens (not preNormalized). A position becomes `<*>` only
+            // when this sample's literal genuinely disagrees with the
+            // cluster's stable literals — that's the structurally-required
+            // signal of variability, no guessing.
+            val merged = mergeTemplates(best.templatePattern, rawTokens)
             val updatedExamples = best.exampleValues.toMutableMap()
             for (i in merged.indices) {
                 if (merged[i] == WILDCARD_TOKEN && i !in updatedExamples) {
@@ -65,13 +75,15 @@ class DrainParser @Inject constructor() {
             best.messageCount += 1
             return best
         }
-        val examples = buildExampleValues(tokens, rawTokens)
+        // First sample for this leaf — save the body verbatim. No wildcards
+        // until a second sample arrives; until then the user can opt in by
+        // tapping any token on the mapping screen.
         val newCluster = DrainCluster(
             templateId = UUID.randomUUID(),
-            templatePattern = tokens,
+            templatePattern = rawTokens,
             messageCount = 1,
             exampleBody = message.body,
-            exampleValues = examples,
+            exampleValues = emptyMap(),
         )
         leaf.clusters.add(newCluster)
         return newCluster
@@ -109,20 +121,6 @@ class DrainParser @Inject constructor() {
     private fun preNormalize(tokens: List<String>): List<String> = tokens.map { tok ->
         val cleaned = tok.trimEnd('.', ',', ':', ';', '!', '?')
         if (digitChar.containsMatchIn(cleaned)) WILDCARD_TOKEN else tok
-    }
-
-    private fun buildExampleValues(
-        normalizedTokens: List<String>,
-        rawTokens: List<String>,
-    ): ExampleValues {
-        val out = mutableMapOf<Int, String>()
-        for (i in normalizedTokens.indices) {
-            if (normalizedTokens[i] == WILDCARD_TOKEN) {
-                val raw = rawTokens.getOrNull(i) ?: continue
-                out[i] = raw
-            }
-        }
-        return out
     }
 
     /**

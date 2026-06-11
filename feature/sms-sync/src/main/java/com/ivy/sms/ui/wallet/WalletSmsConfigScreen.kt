@@ -242,7 +242,14 @@ private fun WalletSmsConfigContent(
                             text = "Templates",
                             iconStart = null,
                             modifier = Modifier.weight(1f),
-                            onClick = { nav.navigateTo(SmsExtractionScreen) },
+                            onClick = {
+                                // Scope the templates list to THIS wallet —
+                                // a global list here showed other wallets'
+                                // templates (the cross-wallet leak report).
+                                nav.navigateTo(
+                                    SmsExtractionScreen(walletId.value.toString()),
+                                )
+                            },
                         )
                         IvyOutlinedButton(
                             text = if (displayPendingCount > 0) {

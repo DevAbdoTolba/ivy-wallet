@@ -3,6 +3,7 @@ package com.ivy.sms.domain.usecase
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
+import com.ivy.data.model.AccountId
 import com.ivy.sms.data.PendingReviewItemRepository
 import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.data.SmsTemplateRepository
@@ -23,6 +24,15 @@ import javax.inject.Singleton
 
 data class MapTemplateResult(
     val convertedFromQueue: Int,
+    /** Pending items that couldn't be aligned to this template's pattern.
+     *  Surfaces "Partially mapped" UX after save — without this the user
+     *  sees the template still flagged as needing roles even though one
+     *  message routed cleanly. */
+    val failedAlignment: Int = 0,
+    /** Total pending items considered. `convertedFromQueue + failedAlignment
+     *  ≤ totalPending` (the gap is items skipped for non-alignment reasons,
+     *  e.g. their own template wasn't ACTIVE yet). */
+    val totalPending: Int = 0,
 )
 
 /**
@@ -52,11 +62,29 @@ class MapTemplateUseCase @Inject constructor(
         templateId: SmsTemplateId,
         wildcardRoles: Map<WildcardId, WildcardRole>,
         name: String? = null,
+        patchedPattern: String? = null,
+        patchedSlots: List<WildcardSlot>? = null,
+        /** Wallet to scope reprocess to. When non-null, only pending items
+         *  whose senderId resolves (via [SenderAccountLinkRepository]) to
+         *  this account are routed. Prevents wallet-2's mapping action from
+         *  silently creating transactions for wallet-1's queued items —
+         *  the user reported this as a cross-wallet leak. */
+        walletScope: AccountId? = null,
     ): Either<String, MapTemplateResult> {
         val original = templateRepo.findById(templateId).getOrNull()
             ?: return "TEMPLATE_NOT_FOUND".left()
 
-        val updatedSlots: List<WildcardSlot> = original.wildcardSlots.map { slot ->
+        // Two save paths converge here:
+        //   - Roles-only (legacy): keep the original pattern + slots, overlay
+        //     wildcardRoles onto the existing slot roles.
+        //   - Tap-to-toggle (new): the UI patched the pattern + slot list,
+        //     usually because the user converted a literal to a wildcard or
+        //     vice versa. We persist the patch wholesale, still overlaying
+        //     wildcardRoles so any role pick the modal applied after the slot
+        //     was materialised wins.
+        val workingPattern: String = patchedPattern ?: original.pattern
+        val workingSlots: List<WildcardSlot> = patchedSlots ?: original.wildcardSlots
+        val updatedSlots: List<WildcardSlot> = workingSlots.map { slot ->
             slot.copy(role = wildcardRoles[slot.id] ?: slot.role)
         }
 
@@ -80,6 +108,7 @@ class MapTemplateUseCase @Inject constructor(
         }
 
         val updated = original.copy(
+            pattern = workingPattern,
             wildcardSlots = updatedSlots,
             state = TemplateState.ACTIVE,
             name = name?.trim()?.ifBlank { null } ?: original.name,
@@ -102,25 +131,44 @@ class MapTemplateUseCase @Inject constructor(
         // can't possibly route a transfer message via that pattern, so the
         // transfer items stayed pending and the user said "the transfer
         // message wasn't even read".
-        val pending = pendingRepo.findAll().getOrNull().orEmpty()
+        val links = senderRepo.findAll().getOrNull().orEmpty()
+        val senderToAccount = links.associate { it.senderId to it.accountId }
+
+        val pendingForSender = pendingRepo.findAll().getOrNull().orEmpty()
             .filter { it.sms.senderId == updated.senderIdHint }
+        val pending = if (walletScope != null) {
+            // Drop items whose sender currently links to a different wallet
+            // than the one the user opened the mapper from. With 1:1
+            // sender→wallet links this is usually a no-op, but it protects
+            // against a sender being relinked between syncs — old pending
+            // items shouldn't suddenly route into the new wallet.
+            pendingForSender.filter {
+                senderToAccount[it.sms.senderId] == walletScope
+            }
+        } else {
+            pendingForSender
+        }
         timber.log.Timber.tag("SmsTrace").i(
-            "MAP → reprocess tpl=%s sender=%s pendingForSender=%d",
-            updated.id.value, updated.senderIdHint, pending.size,
+            "MAP → reprocess tpl=%s sender=%s walletScope=%s pendingForSender=%d pendingForWallet=%d",
+            updated.id.value, updated.senderIdHint,
+            walletScope?.value?.toString() ?: "any",
+            pendingForSender.size, pending.size,
         )
         if (pending.isEmpty()) {
             _progress.value = null
-            return MapTemplateResult(0).right()
+            return MapTemplateResult(
+                convertedFromQueue = 0,
+                failedAlignment = 0,
+                totalPending = 0,
+            ).right()
         }
-
-        val links = senderRepo.findAll().getOrNull().orEmpty()
-        val senderToAccount = links.associate { it.senderId to it.accountId }
 
         // Seed an initial 0/total before the loop so the screen can size its
         // progress bar immediately rather than waiting for the first row.
         _progress.value = MapTemplateProgress(processed = 0, total = pending.size, converted = 0)
 
         var converted = 0
+        var failed = 0
         for ((idx, item) in pending.withIndex()) {
             val itemTemplate = if (item.template.id == updated.id) {
                 updated
@@ -129,10 +177,20 @@ class MapTemplateUseCase @Inject constructor(
             }
             if (itemTemplate != null) {
                 val outcome = route(item.sms, itemTemplate, senderToAccount).getOrNull()
-                if (outcome is RouteOutcome.Created) {
-                    pendingRepo.dismiss(item.id)
-                    prefs.incrementReviewedTotal()
-                    converted++
+                when {
+                    outcome is RouteOutcome.Created -> {
+                        pendingRepo.dismiss(item.id)
+                        prefs.incrementReviewedTotal()
+                        converted++
+                    }
+                    // Any non-Created outcome means the message stays
+                    // pending under the same template — could be alignment
+                    // failure, quarantine, or amount-not-parseable. We
+                    // surface it as "failed alignment" because that's the
+                    // dominant cause given the user's current cluster
+                    // shapes; the UI nudges them to edit the pattern.
+                    itemTemplate.id == updated.id -> failed++
+                    else -> Unit // sibling template; not our concern here
                 }
             }
             _progress.value = MapTemplateProgress(
@@ -143,6 +201,10 @@ class MapTemplateUseCase @Inject constructor(
         }
         // Clear so the next subscriber doesn't see a stale "100% done" snapshot.
         _progress.value = null
-        return MapTemplateResult(converted).right()
+        return MapTemplateResult(
+            convertedFromQueue = converted,
+            failedAlignment = failed,
+            totalPending = pending.size,
+        ).right()
     }
 }

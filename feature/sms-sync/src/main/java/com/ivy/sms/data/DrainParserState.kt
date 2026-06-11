@@ -3,7 +3,15 @@ package com.ivy.sms.data
 import java.util.UUID
 
 internal const val WILDCARD_TOKEN: String = "<*>"
-internal const val PREFIX_DEPTH: Int = 3
+// Bumped 3 → 5 (2026-05-14) to make sibling SMS structures with the same
+// total token count but different mid-body shape land in DIFFERENT clusters.
+// The user hit this as a Frankenstein bank-alahly cluster where new-format
+// ("…المتاح X جم للمزيد…") and old-format ("…المتاح X للمزيد…") debit
+// messages collapsed into one template because they shared the first 3
+// stable tokens. Depth 5 forces the descent past that shared prefix; the
+// existing DrainParserTest cases (5-stable-token bodies) still merge at
+// this depth via the take(N) cap.
+internal const val PREFIX_DEPTH: Int = 5
 internal const val SIMILARITY_THRESHOLD: Double = 0.4
 internal const val MAX_CHILDREN: Int = 100
 // Legacy aliases — kept for binary compat with any tests still importing them.

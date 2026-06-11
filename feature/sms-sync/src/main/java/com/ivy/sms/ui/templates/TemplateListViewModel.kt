@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.ivy.sms.data.PendingReviewItemRepository
+import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.data.SmsTemplateRepository
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
@@ -29,6 +30,7 @@ import javax.inject.Inject
 class TemplateListViewModel @Inject constructor(
     private val templateRepo: SmsTemplateRepository,
     private val pendingRepo: PendingReviewItemRepository,
+    private val senderRepo: SenderAccountLinkRepository,
     private val scanInbox: ScanInboxUseCase,
     private val blacklist: BlacklistTemplateUseCase,
     private val findMatching: FindMatchingMessagesUseCase,
@@ -37,6 +39,19 @@ class TemplateListViewModel @Inject constructor(
     private var onTemplateOpen: ((SmsTemplateId) -> Unit)? = null
     private var onScanFurther: (() -> Unit)? = null
     private var onPending: (() -> Unit)? = null
+
+    /**
+     * When non-null, the list only shows templates whose `senderIdHint`
+     * resolves (via [SenderAccountLinkRepository]) to this wallet. Opened
+     * from a wallet's SMS config the user must only see THAT wallet's
+     * templates — a global list here was the cross-wallet leak they
+     * reported ("while in wallet Y, I saw wallet X's messages").
+     */
+    private var activeWalletFilter by mutableStateOf<String?>(null)
+
+    fun setWalletFilter(id: String?) {
+        if (activeWalletFilter != id) activeWalletFilter = id
+    }
 
     private var expandedGroup by mutableStateOf<TemplateGroupKey?>(TemplateGroupKey.Expense)
     private var matchingByTemplate by mutableStateOf<Map<SmsTemplateId, List<String>>>(emptyMap())
@@ -83,8 +98,23 @@ class TemplateListViewModel @Inject constructor(
         val pendingCount = remember(pendingRepo) { pendingRepo.observeCount() }
             .collectAsState(initial = 0)
         val progress = scanInbox.progress.collectAsState(initial = null)
+        val links = remember(senderRepo) { senderRepo.observeAll() }
+            .collectAsState(initial = emptyList())
 
-        val rows = templates.value.map { tpl ->
+        // Wallet scoping: when activeWalletFilter is set, keep only templates whose
+        // senderIdHint links to that wallet. Reactive on senderRepo so a
+        // freshly-linked sender shows up without a screen reload.
+        val scopedSenders: Set<String>? = activeWalletFilter?.let { wid ->
+            links.value
+                .filter { it.accountId.value.toString() == wid }
+                .map { it.senderId }
+                .toSet()
+        }
+        val visibleTemplates = templates.value.filter { tpl ->
+            scopedSenders == null || tpl.senderIdHint in scopedSenders
+        }
+
+        val rows = visibleTemplates.map { tpl ->
             tpl.toRow(
                 matching = matchingByTemplate[tpl.id].orEmpty(),
                 loading = tpl.id in loadingTemplateIds,

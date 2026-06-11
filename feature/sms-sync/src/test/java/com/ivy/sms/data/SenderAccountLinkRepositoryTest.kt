@@ -50,6 +50,8 @@ class SenderAccountLinkRepositoryTest {
             senderId = "ChaseAlerts",
             accountId = existingAccountUuid.toString(),
             linkedAtEpochMillis = 1_000_000L,
+            historicalLowerBoundEpochMillis = null,
+            watermarkEpochMillis = null,
         )
         coEvery { accountRepo.findById(AccountId(existingAccountUuid)) } returns Account(
             id = AccountId(existingAccountUuid),

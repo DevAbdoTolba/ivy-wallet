@@ -296,6 +296,10 @@ class FakeTransactionDao : TransactionDao, WriteTransactionDao {
             .sortedByDescending { it.dateTime }
     }
 
+    override suspend fun findBySmsSourceDedupKey(dedupKey: String): TransactionEntity? {
+        return items.firstOrNull { it.smsSourceDedupKey == dedupKey && !it.isDeleted }
+    }
+
     override suspend fun save(value: TransactionEntity) {
         val existingItemIndex = items.indexOfFirst { it.id == value.id }
         if (existingItemIndex > -1) {

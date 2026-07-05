@@ -110,6 +110,13 @@ class MapTemplateUseCase @Inject constructor(
          *  warning. Otherwise a pattern that aligns 0 of its own queued
          *  messages is rejected with ZERO_ALIGNMENT:<n> before persisting. */
         allowZeroAlignment: Boolean = false,
+        /** Default destination wallet for Transfer-role templates, from the
+         *  mapping screen's optional "Transfer to" row. Applied only when
+         *  [applyTransferDestination] is true so legacy callers can't
+         *  accidentally wipe a stored default. Null WITH the flag = the user
+         *  explicitly cleared it (back to ask-per-message). */
+        transferToAccountId: AccountId? = null,
+        applyTransferDestination: Boolean = false,
     ): Either<String, MapTemplateResult> {
         val original = templateRepo.findById(templateId).getOrNull()
             ?: return "TEMPLATE_NOT_FOUND".left()
@@ -165,6 +172,11 @@ class MapTemplateUseCase @Inject constructor(
             wildcardSlots = generalized.slots,
             state = TemplateState.ACTIVE,
             name = name?.trim()?.ifBlank { null } ?: original.name,
+            transferToAccountId = if (applyTransferDestination) {
+                transferToAccountId
+            } else {
+                original.transferToAccountId
+            },
         )
 
         val links = senderRepo.findAll().getOrNull().orEmpty()

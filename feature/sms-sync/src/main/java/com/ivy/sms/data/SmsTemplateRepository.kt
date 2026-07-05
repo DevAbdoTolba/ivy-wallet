@@ -6,6 +6,7 @@ import arrow.core.right
 import com.ivy.base.threading.DispatchersProvider
 import com.ivy.data.db.dao.read.ReadSmsTemplateDao
 import com.ivy.data.db.dao.write.WriteSmsTemplateDao
+import com.ivy.data.model.AccountId
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +23,18 @@ interface SmsTemplateRepository {
     suspend fun findActive(): Either<String, List<SmsTemplate>>
     suspend fun upsert(template: SmsTemplate): Either<String, Unit>
     suspend fun delete(id: SmsTemplateId): Either<String, Unit>
+
+    /**
+     * Sets or clears the template's default transfer destination wallet.
+     * Routing config only — pattern/slots/state stay byte-identical, so this
+     * never violates the ACTIVE/BLACKLISTED template freeze. Null clears the
+     * default (matching transfers go back to the review path).
+     */
+    suspend fun updateTransferDestination(
+        id: SmsTemplateId,
+        destination: AccountId?,
+    ): Either<String, Unit>
+
     fun observeAll(): Flow<List<SmsTemplate>>
 }
 
@@ -94,6 +107,23 @@ class SmsTemplateRepositoryImpl @Inject constructor(
     override suspend fun delete(id: SmsTemplateId): Either<String, Unit> = withContext(dispatchers.io) {
         runCatching {
             writeDao.delete(id.value.toString())
+        }.fold(
+            onSuccess = { Unit.right() },
+            onFailure = { "STORAGE_ERROR:${it.message}".left() },
+        )
+    }
+
+    override suspend fun updateTransferDestination(
+        id: SmsTemplateId,
+        destination: AccountId?,
+    ): Either<String, Unit> = withContext(dispatchers.io) {
+        runCatching {
+            // Entity-level copy: only the destination column changes, the
+            // wildcardSlotsJson blob is carried through untouched (no
+            // decode/encode round-trip that could normalize-away anything).
+            val entity = readDao.findById(id.value.toString())
+                ?: error("template ${id.value} not found")
+            writeDao.upsert(entity.copy(transferToAccountId = destination?.value?.toString()))
         }.fold(
             onSuccess = { Unit.right() },
             onFailure = { "STORAGE_ERROR:${it.message}".left() },

@@ -21,4 +21,8 @@ data class SmsTemplateEntity(
     /** User-supplied label, used as the resulting transaction's title (FR-024,
      *  added 2026-05-02). Null until the user names this template. */
     val name: String? = null,
+    /** Default destination wallet (UUID string) for Transfer-role templates
+     *  (added 2026-07-05, migration 135→136). NULL = ask per message: matching
+     *  transfers quarantine as TRANSFER_NEEDS_DESTINATION instead of routing. */
+    val transferToAccountId: String? = null,
 )

@@ -1,5 +1,6 @@
 package com.ivy.sms.domain.model
 
+import com.ivy.data.model.AccountId
 import java.time.Instant
 
 data class SmsTemplate(
@@ -15,6 +16,11 @@ data class SmsTemplate(
     /** User-supplied label used as the resulting transaction's title.
      *  Null until the user enters one in the mapping screen. */
     val name: String? = null,
+    /** Default destination wallet for Transfer-role templates. NULL = ask per
+     *  message (matching transfers quarantine as TRANSFER_NEEDS_DESTINATION).
+     *  Routing config only — NOT part of the frozen pattern/slot data, so
+     *  updating it never violates the ACTIVE/BLACKLISTED freeze invariant. */
+    val transferToAccountId: AccountId? = null,
 )
 
 data class WildcardSlot(

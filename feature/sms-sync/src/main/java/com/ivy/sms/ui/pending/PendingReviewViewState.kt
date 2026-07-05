@@ -1,9 +1,11 @@
 package com.ivy.sms.ui.pending
 
 import androidx.compose.runtime.Immutable
+import com.ivy.data.model.AccountId
 import com.ivy.sms.domain.model.PendingReviewItemId
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.WildcardRole
+import com.ivy.sms.ui.templates.WalletOption
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
@@ -24,6 +26,19 @@ data class PendingItemRowViewState(
      *  "Partially mapped — couldn't align" label instead. */
     val templateActive: Boolean = false,
     val expanded: Boolean = false,
+    /** TRANSFER_NEEDS_DESTINATION row: renders the destination picker block
+     *  (From / To / remember / Create transfer) instead of relying on Map. */
+    val needsDestination: Boolean = false,
+    /** Source wallet resolved from the sender link (the fixed "From"). */
+    val fromAccountId: AccountId? = null,
+    val fromWalletName: String? = null,
+    /** The user's in-progress destination pick for this row (not persisted). */
+    val chosenDestinationId: AccountId? = null,
+    val chosenDestinationName: String? = null,
+    /** "Remember for this template" checkbox state. */
+    val rememberDestination: Boolean = false,
+    /** True while this row's Create-transfer resolve is in flight. */
+    val resolving: Boolean = false,
 )
 
 @Immutable
@@ -50,6 +65,8 @@ data class PendingReviewViewState(
     val pendingIgnoreTemplateId: SmsTemplateId? = null,
     /** How many queued messages the buffered ignore is hiding. */
     val pendingIgnoreHiddenCount: Int = 0,
+    /** All wallets, for the needs-destination rows' "To" picker. */
+    val walletOptions: ImmutableList<WalletOption> = persistentListOf(),
     val error: String? = null,
 )
 
@@ -62,4 +79,14 @@ sealed interface PendingReviewEvent {
     data class IgnoreForever(val templateId: SmsTemplateId) : PendingReviewEvent
     /** Cancels a buffered [IgnoreForever] within its undo window. */
     data object UndoIgnore : PendingReviewEvent
+
+    /** Destination pick on a needs-destination row (null clears the pick). */
+    data class ChooseDestination(val id: String, val destinationId: AccountId?) : PendingReviewEvent
+
+    /** Toggles "Remember for this template" on a needs-destination row. */
+    data class ToggleRememberDestination(val id: String) : PendingReviewEvent
+
+    /** Commits a needs-destination row: creates the transfer with the picked
+     *  destination (and persists it on the template when remember is on). */
+    data class CreateTransfer(val id: String, val itemId: PendingReviewItemId) : PendingReviewEvent
 }

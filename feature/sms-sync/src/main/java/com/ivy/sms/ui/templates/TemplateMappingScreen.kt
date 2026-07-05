@@ -339,6 +339,22 @@ fun TemplateMappingScreen(
                     }
                 }
 
+                // Optional default destination — only meaningful (and only
+                // shown) while some wildcard carries the Transfer role.
+                // Empty = ask per message via the review queue (FR-005/FR-007).
+                val hasTransferRole = state.rolesByWildcardId.values
+                    .any { it == WildcardRole.Transfer }
+                if (hasTransferRole) {
+                    Spacer(Modifier.height(4.dp))
+                    TransferDestinationSection(
+                        selectedName = state.transferDestinationName,
+                        options = state.walletOptions,
+                        onChosen = { id ->
+                            viewModel.onEvent(TemplateMappingEvent.TransferDestinationChosen(id))
+                        },
+                    )
+                }
+
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = "TRANSACTION TITLE",
@@ -865,6 +881,109 @@ private fun buildTokenList(
         bodyIdx += 1
     }
     return out
+}
+
+/**
+ * Optional "Transfer to" default destination for Transfer-role templates.
+ * Collapsed: label + current pick ("Ask each time" when none). Expanded:
+ * "Ask each time" + one row per wallet. Leaving it empty is a first-class
+ * choice — matching messages then wait in Review with a destination picker.
+ */
+@Composable
+private fun TransferDestinationSection(
+    selectedName: String?,
+    options: kotlinx.collections.immutable.ImmutableList<WalletOption>,
+    onChosen: (com.ivy.data.model.AccountId?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(UI.shapes.r4)
+            .background(UI.colors.medium),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = "TRANSFER TO (OPTIONAL)",
+                    style = UI.typo.c.style(
+                        color = UI.colors.gray,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = selectedName ?: "Ask each time",
+                    style = UI.typo.b2.style(
+                        color = UI.colors.pureInverse,
+                        fontWeight = FontWeight.ExtraBold,
+                    ),
+                )
+            }
+            Text(
+                text = if (expanded) "▲" else "▼",
+                style = UI.typo.c.style(color = UI.colors.gray, fontWeight = FontWeight.Bold),
+            )
+        }
+        if (expanded) {
+            TransferDestinationOption(
+                label = "Ask each time",
+                selected = selectedName == null,
+            ) {
+                expanded = false
+                onChosen(null)
+            }
+            for (option in options) {
+                TransferDestinationOption(
+                    label = option.name,
+                    selected = option.name == selectedName,
+                ) {
+                    expanded = false
+                    onChosen(option.id)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun TransferDestinationOption(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = UI.typo.b2.style(
+                color = UI.colors.pureInverse,
+                fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Medium,
+            ),
+        )
+        if (selected) {
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = "✓",
+                style = UI.typo.b2.style(
+                    color = com.ivy.wallet.ui.theme.Green,
+                    fontWeight = FontWeight.ExtraBold,
+                ),
+            )
+        }
+    }
 }
 
 /**

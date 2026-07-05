@@ -72,6 +72,32 @@ class SmsWatermarkPreferences @Inject constructor(
      */
     private val normalizerAppliedVersionKey = intPreferencesKey("sms.normalizer.appliedVersion")
 
+    /**
+     * Highest [com.ivy.sms.domain.usecase.GHOST_TRANSFER_REPAIR_VERSION] whose
+     * one-shot ghost self-transfer repair has completed. Null on installs that
+     * have never run it. Written only AFTER the pass finishes — an interrupted
+     * pass re-runs safely (already-deleted ghosts simply aren't found again).
+     */
+    private val ghostRepairAppliedVersionKey = intPreferencesKey("sms.ghostRepair.appliedVersion")
+
+    suspend fun ghostRepairAppliedVersion(): Either<String, Int?> = withContext(dispatchers.io) {
+        runCatching {
+            dataStore.data.first()[ghostRepairAppliedVersionKey]
+        }.fold(
+            onSuccess = { it.right() },
+            onFailure = { "STORAGE_ERROR:${it.message}".left() },
+        )
+    }
+
+    suspend fun writeGhostRepairAppliedVersion(version: Int): Either<String, Unit> = withContext(dispatchers.io) {
+        runCatching {
+            dataStore.edit { it[ghostRepairAppliedVersionKey] = version }
+        }.fold(
+            onSuccess = { Unit.right() },
+            onFailure = { "STORAGE_ERROR:${it.message}".left() },
+        )
+    }
+
     fun observeReviewedTotal(): Flow<Int> =
         dataStore.data.map { it[reviewedTotalKey] ?: 0 }
 

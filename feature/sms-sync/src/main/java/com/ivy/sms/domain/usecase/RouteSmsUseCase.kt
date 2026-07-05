@@ -45,6 +45,11 @@ class RouteSmsUseCase @Inject constructor(
         template: SmsTemplate,
         senderLinks: Map<String, AccountId>,
         userInitiated: Boolean = false,
+        /** Destination wallet for Transfer-role templates, from the review
+         *  card's picker. Passed through to transaction creation; without it
+         *  (and without a template default) transfers quarantine as
+         *  TRANSFER_NEEDS_DESTINATION instead of being created. */
+        transferDestinationOverride: AccountId? = null,
     ): Either<String, RouteOutcome> {
         val tag = "tpl=${template.id.value} sender=${message.senderId} body='${message.body.take(60)}…'"
         Timber.tag(TRACE).d("ROUTE → enter %s state=%s", tag, template.state)
@@ -64,13 +69,15 @@ class RouteSmsUseCase @Inject constructor(
                     return quarantine(message, template, QuarantineReason.AUTO_ROUTE_DISABLED)
                 }
             }
-            return when (val r = createTransaction(message, template, account)) {
+            return when (val r = createTransaction(message, template, account, transferDestinationOverride)) {
                 is Either.Right -> {
                     Timber.tag(TRACE).d("ROUTE ✓ CREATED txn=%s %s", r.value.value, tag)
                     RouteOutcome.Created(r.value).right()
                 }
                 is Either.Left -> {
                     val reason = when {
+                        r.value.startsWith("TRANSFER_NEEDS_DESTINATION") ->
+                            QuarantineReason.TRANSFER_NEEDS_DESTINATION
                         r.value.startsWith("AMOUNT_NOT_PARSEABLE") -> QuarantineReason.AMOUNT_NOT_PARSEABLE
                         r.value.startsWith("CURRENCY_MISMATCH") -> QuarantineReason.CURRENCY_MISMATCH
                         else -> QuarantineReason.AMOUNT_NOT_PARSEABLE

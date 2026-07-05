@@ -59,6 +59,11 @@ class CreateTransactionFromSmsUseCase @Inject constructor(
         message: SmsMessage,
         template: SmsTemplate,
         account: AccountId,
+        /** Destination wallet for Transfer-role templates, supplied by the
+         *  review card's picker. Wins over the template's stored default.
+         *  When BOTH are absent (or invalid) the transfer is NOT created —
+         *  it returns TRANSFER_NEEDS_DESTINATION so routing can quarantine. */
+        transferDestinationOverride: AccountId? = null,
     ): Either<String, TransactionId> = dedupMutex.withLock {
         val tag = "tpl=${template.id.value} body='${message.body.take(60)}…'"
         Timber.tag(TRACE).d("CREATE → enter %s pattern='%s'", tag, template.pattern)
@@ -236,24 +241,60 @@ class CreateTransactionFromSmsUseCase @Inject constructor(
                 value = value,
                 account = account,
             )
-            WildcardRole.Transfer -> Transfer(
-                id = transactionId,
-                title = title,
-                description = description,
-                category = null,
-                time = txTime,
-                settled = true,
-                metadata = metadata,
-                tags = emptyList(),
-                fromAccount = account,
-                fromValue = value,
-                toAccount = account,
-                toValue = value,
-            )
+            WildcardRole.Transfer -> {
+                // Resolve the REAL destination: the review-card override wins,
+                // then the template's stored default. There is deliberately no
+                // fallback to the source wallet — the old `toAccount = account`
+                // default produced self-transfers that the read mapper silently
+                // dropped (invisible "ghost" rows in the transactions table).
+                val destination = transferDestinationOverride ?: template.transferToAccountId
+                if (destination == null) {
+                    Timber.tag(TRACE).w("CREATE ✗ transfer needs destination (none set) %s", tag)
+                    return "TRANSFER_NEEDS_DESTINATION:no destination wallet set".left()
+                }
+                if (destination == account) {
+                    Timber.tag(TRACE).w("CREATE ✗ transfer destination == source %s", tag)
+                    return "TRANSFER_NEEDS_DESTINATION:destination equals source wallet".left()
+                }
+                val destAcct = accountRepository.findById(destination)
+                if (destAcct == null) {
+                    Timber.tag(TRACE).w(
+                        "CREATE ✗ transfer destination account %s deleted %s",
+                        destination.value, tag,
+                    )
+                    return "TRANSFER_NEEDS_DESTINATION:destination wallet no longer exists".left()
+                }
+                Transfer(
+                    id = transactionId,
+                    title = title,
+                    description = description,
+                    category = null,
+                    time = txTime,
+                    settled = true,
+                    metadata = metadata,
+                    tags = emptyList(),
+                    fromAccount = account,
+                    fromValue = value,
+                    toAccount = destination,
+                    // Same numeric amount in the destination's asset — matches
+                    // the manual-transfer default; cross-currency users adjust
+                    // the received side on the transaction afterwards.
+                    toValue = PositiveValue(amount = positive, asset = destAcct.asset),
+                )
+            }
             else -> {
                 Timber.tag(TRACE).w("CREATE ✗ non-amount role on amount slot %s", tag)
                 return "TEMPLATE_NOT_MAPPED:non-amount role on amount slot".left()
             }
+        }
+
+        // Write-guard (FR-009): no path may ever persist a self-transfer again.
+        // Unreachable given the resolution above — kept as the final assertion
+        // because a persisted self-transfer is invisible-by-design on read and
+        // would silently corrupt the table exactly like the pre-136 ghosts.
+        if (tx is Transfer && tx.fromAccount == tx.toAccount) {
+            Timber.tag(TRACE).e("CREATE ✗ write-guard: self-transfer blocked %s", tag)
+            return "TRANSFER_NEEDS_DESTINATION:self-transfer blocked at write".left()
         }
 
         return runCatching { transactionRepository.save(tx) }

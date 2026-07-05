@@ -112,7 +112,23 @@ class TemplateMappingViewModel @Inject constructor(
                 )
             }
         }
+        // Wallet list for the optional "Transfer to" destination picker.
+        viewModelScope.launch {
+            val options = accountRepo.findAll()
+                .map { WalletOption(id = it.id, name = it.name.value) }
+                .toImmutableList()
+            state = state.copy(
+                walletOptions = options,
+                transferDestinationName = state.transferDestinationName
+                    ?: options.firstOrNull { it.id == state.transferDestinationId }?.name,
+            )
+        }
     }
+
+    /** True once the user touched the "Transfer to" row this session —
+     *  a late template re-seed must not overwrite their explicit choice
+     *  (including an explicit clear back to "ask each time"). */
+    private var transferDestinationTouched = false
 
     /**
      * Cached copy of the loaded template — kept so a late applyTemplate
@@ -204,6 +220,13 @@ class TemplateMappingViewModel @Inject constructor(
         for (slot in template.wildcardSlots) {
             if (slot.id !in pendingRoles) pendingRoles[slot.id] = slot.role
         }
+        // Seed the stored transfer destination once; never clobber an explicit
+        // in-session pick (or clear) when the raceable seed paths re-fire.
+        val seededDestination = if (transferDestinationTouched) {
+            state.transferDestinationId
+        } else {
+            state.transferDestinationId ?: template.transferToAccountId
+        }
         state = state.copy(
             templateId = template.id,
             pattern = pendingPatternTokens.joinToString(" "),
@@ -213,7 +236,20 @@ class TemplateMappingViewModel @Inject constructor(
             rolesByWildcardId = pendingRoles.toImmutableMap(),
             activeWildcard = null,
             error = null,
+            transferDestinationId = seededDestination,
+            transferDestinationName = state.walletOptions
+                .firstOrNull { it.id == seededDestination }?.name
+                ?: state.transferDestinationName,
         )
+        val unresolved = seededDestination != null && state.transferDestinationName == null
+        if (unresolved) {
+            viewModelScope.launch {
+                val resolvedName = accountRepo.findById(seededDestination!!)?.name?.value
+                if (state.transferDestinationId == seededDestination) {
+                    state = state.copy(transferDestinationName = resolvedName)
+                }
+            }
+        }
     }
 
     override fun onEvent(event: TemplateMappingEvent) {
@@ -293,6 +329,15 @@ class TemplateMappingViewModel @Inject constructor(
                 }
                 lastLiteralTappedSlotId = null
                 state = state.copy(activeWildcard = null)
+            }
+            is TemplateMappingEvent.TransferDestinationChosen -> {
+                transferDestinationTouched = true
+                state = state.copy(
+                    transferDestinationId = event.id,
+                    transferDestinationName = event.id?.let { chosen ->
+                        state.walletOptions.firstOrNull { it.id == chosen }?.name
+                    },
+                )
             }
             is TemplateMappingEvent.NameChanged -> {
                 state = state.copy(name = event.value)
@@ -603,6 +648,12 @@ class TemplateMappingViewModel @Inject constructor(
         val nameToSave = state.name.trim().ifBlank { null }
         viewModelScope.launch {
             try {
+                // The destination is applied only when the template actually
+                // carries a Transfer role — otherwise a stale pick from an
+                // earlier role experiment can't leak onto an expense template.
+                val hasTransferRole = patchedSlotsList.any {
+                    (pendingRoles[it.id] ?: it.role) == WildcardRole.Transfer
+                }
                 val result = mapTemplate(
                     templateId = templateId,
                     wildcardRoles = pendingRoles.toMap(),
@@ -612,6 +663,8 @@ class TemplateMappingViewModel @Inject constructor(
                     walletScope = walletScope,
                     confirmedLiteralPositions = confirmedLiteralPositions.toSet(),
                     allowZeroAlignment = saveAnyway,
+                    transferToAccountId = state.transferDestinationId,
+                    applyTransferDestination = hasTransferRole,
                 )
                 timber.log.Timber.d("TemplateMapping save(): mapTemplate -> $result")
                 result.fold(

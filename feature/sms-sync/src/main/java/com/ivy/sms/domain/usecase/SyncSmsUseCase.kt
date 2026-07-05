@@ -28,6 +28,7 @@ class SyncSmsUseCaseImpl @Inject constructor(
     private val senderRepo: SenderAccountLinkRepository,
     private val findMatching: FindMatchingMessagesUseCase,
     private val renormalize: RenormalizePersistedSmsDataUseCase,
+    private val repairGhostTransfers: RepairGhostTransfersUseCase,
 ) : SyncSmsUseCase {
 
     private val mutex = Mutex()
@@ -59,6 +60,14 @@ class SyncSmsUseCaseImpl @Inject constructor(
                 // DataStore version read.
                 when (val n = renormalize()) {
                     is Either.Left -> return@withLock n.value.left()
+                    is Either.Right -> Unit
+                }
+                // One-shot ghost self-transfer rescue (versioned no-op after
+                // first application). AFTER renormalization (templates must be
+                // on the normalized side before re-routing) and BEFORE the
+                // scan seeds the parser — same ordering rationale as above.
+                when (val g = repairGhostTransfers()) {
+                    is Either.Left -> return@withLock g.value.left()
                     is Either.Right -> Unit
                 }
                 when (val r = scan()) {

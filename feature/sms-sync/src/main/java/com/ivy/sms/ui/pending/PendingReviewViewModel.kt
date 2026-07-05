@@ -8,6 +8,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.ivy.base.threading.DispatchersProvider
+import com.ivy.data.model.AccountId
+import com.ivy.data.repository.AccountRepository
 import com.ivy.sms.data.PendingReviewItemRepository
 import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.data.SmsTemplateRepository
@@ -20,8 +22,10 @@ import com.ivy.sms.domain.usecase.ResolvePendingItemUseCase
 import com.ivy.sms.domain.usecase.RouteOutcome
 import com.ivy.sms.domain.usecase.RouteSmsUseCase
 import com.ivy.sms.domain.usecase.ScanInboxUseCase
+import com.ivy.sms.ui.templates.WalletOption
 import com.ivy.ui.ComposeViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
@@ -50,10 +54,22 @@ class PendingReviewViewModel @Inject constructor(
     private val blacklist: BlacklistTemplateUseCase,
     private val prefs: SmsWatermarkPreferences,
     private val scanInbox: ScanInboxUseCase,
+    private val accountRepo: AccountRepository,
     private val dispatchers: DispatchersProvider,
 ) : ComposeViewModel<PendingReviewViewState, PendingReviewEvent>() {
 
     private val expanded = mutableStateOf<Set<String>>(emptySet())
+
+    /** Wallet list for the needs-destination rows' "To" picker. */
+    private val walletOptions =
+        mutableStateOf<ImmutableList<WalletOption>>(persistentListOf())
+
+    /** Per-row in-progress destination picks / remember flags / in-flight
+     *  resolves for TRANSFER_NEEDS_DESTINATION rows. Keyed by the row id. */
+    private val chosenDestinations = mutableStateOf<Map<String, AccountId>>(emptyMap())
+    private val rememberFlags = mutableStateOf<Set<String>>(emptySet())
+    private val resolvingIds = mutableStateOf<Set<String>>(emptySet())
+    private val errorMsg = mutableStateOf<String?>(null)
 
     /**
      * Buffered "Ignore" awaiting its undo window. While set, the template's
@@ -94,6 +110,12 @@ class PendingReviewViewModel @Inject constructor(
                 .map { all -> all.filter { it.state == TemplateState.ACTIVE }.map { it.id }.toSet() }
                 .distinctUntilChanged()
                 .collect { _ -> drainPending() }
+        }
+        // Wallet list for the needs-destination rows' "To" picker.
+        viewModelScope.launch {
+            walletOptions.value = accountRepo.findAll()
+                .map { WalletOption(id = it.id, name = it.name.value) }
+                .toImmutableList()
         }
     }
 
@@ -160,6 +182,10 @@ class PendingReviewViewModel @Inject constructor(
             }
             val tpl = templateById[e.templateId] ?: return@mapNotNull null
             val rolesByPosition = tpl.wildcardSlots.associate { it.positionInPattern to it.role }
+            val needsDestination = e.quarantineReason
+                .substringBefore(':').trim() == "TRANSFER_NEEDS_DESTINATION"
+            val fromId = allLinks.value.firstOrNull { it.senderId == e.senderId }?.accountId
+            val chosenId = chosenDestinations.value[e.id]
             PendingItemRowViewState(
                 id = e.id,
                 itemId = PendingReviewItemId(java.util.UUID.fromString(e.id)),
@@ -172,6 +198,13 @@ class PendingReviewViewModel @Inject constructor(
                 reason = e.quarantineReason,
                 templateActive = tpl.state == TemplateState.ACTIVE,
                 expanded = e.id in expanded.value,
+                needsDestination = needsDestination,
+                fromAccountId = fromId,
+                fromWalletName = walletOptions.value.firstOrNull { it.id == fromId }?.name,
+                chosenDestinationId = chosenId,
+                chosenDestinationName = walletOptions.value.firstOrNull { it.id == chosenId }?.name,
+                rememberDestination = e.id in rememberFlags.value,
+                resolving = e.id in resolvingIds.value,
             )
         }.toImmutableList()
         return PendingReviewViewState(
@@ -183,6 +216,8 @@ class PendingReviewViewModel @Inject constructor(
             scanProgress = progress.value,
             pendingIgnoreTemplateId = pendingIgnoreTemplate,
             pendingIgnoreHiddenCount = hiddenByIgnore,
+            walletOptions = walletOptions.value,
+            error = errorMsg.value,
         )
     }
 
@@ -203,6 +238,62 @@ class PendingReviewViewModel @Inject constructor(
                 } else {
                     expanded.value + event.id
                 }
+            }
+            is PendingReviewEvent.ChooseDestination -> {
+                errorMsg.value = null
+                chosenDestinations.value = if (event.destinationId == null) {
+                    chosenDestinations.value - event.id
+                } else {
+                    chosenDestinations.value + (event.id to event.destinationId)
+                }
+            }
+            is PendingReviewEvent.ToggleRememberDestination -> {
+                rememberFlags.value = if (event.id in rememberFlags.value) {
+                    rememberFlags.value - event.id
+                } else {
+                    rememberFlags.value + event.id
+                }
+            }
+            is PendingReviewEvent.CreateTransfer -> createTransfer(event.id, event.itemId)
+        }
+    }
+
+    private fun createTransfer(rowId: String, itemId: PendingReviewItemId) {
+        val destination = chosenDestinations.value[rowId]
+        if (destination == null) {
+            errorMsg.value = "Pick a destination wallet first"
+            return
+        }
+        if (rowId in resolvingIds.value) return // double-tap guard
+        errorMsg.value = null
+        resolvingIds.value = resolvingIds.value + rowId
+        viewModelScope.launch {
+            try {
+                val remember = rowId in rememberFlags.value
+                val result = resolve.resolveWithDestination(
+                    itemId = itemId,
+                    destination = destination,
+                    rememberForTemplate = remember,
+                )
+                result.fold(
+                    { err ->
+                        Timber.tag("SmsTrace").w("REVIEW ✗ resolveWithDestination: %s", err)
+                        errorMsg.value = "Couldn't create the transfer — $err"
+                    },
+                    { outcome ->
+                        if (outcome !is RouteOutcome.Created) {
+                            Timber.tag("SmsTrace").w(
+                                "REVIEW ✗ resolveWithDestination outcome=%s", outcome,
+                            )
+                            errorMsg.value =
+                                "Couldn't create the transfer — check the destination wallet"
+                        }
+                        // Created: the row disappears via the reactive queue
+                        // (dismiss inside the use case) — nothing else to do.
+                    },
+                )
+            } finally {
+                resolvingIds.value = resolvingIds.value - rowId
             }
         }
     }

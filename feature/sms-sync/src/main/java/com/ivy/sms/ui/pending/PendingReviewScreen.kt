@@ -110,6 +110,17 @@ fun PendingReviewScreen(
                 )
             }
 
+            state.error?.let { msg ->
+                Text(
+                    text = msg,
+                    style = UI.typo.c.style(
+                        color = Red,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+
             if (state.items.isEmpty()) {
                 EmptyState()
                 return@Column
@@ -151,6 +162,22 @@ fun PendingReviewScreen(
                         },
                         onDismiss = {
                             viewModel.onEvent(PendingReviewEvent.Dismiss(row.itemId))
+                        },
+                        walletOptions = state.walletOptions,
+                        onChooseDestination = { destinationId ->
+                            viewModel.onEvent(
+                                PendingReviewEvent.ChooseDestination(row.id, destinationId)
+                            )
+                        },
+                        onToggleRemember = {
+                            viewModel.onEvent(
+                                PendingReviewEvent.ToggleRememberDestination(row.id)
+                            )
+                        },
+                        onCreateTransfer = {
+                            viewModel.onEvent(
+                                PendingReviewEvent.CreateTransfer(row.id, row.itemId)
+                            )
                         },
                     )
                 }
@@ -338,12 +365,18 @@ private fun EmptyState() {
 }
 
 @Composable
+@Suppress("LongMethod", "LongParameterList")
 private fun PendingItemCard(
     row: PendingItemRowViewState,
     onToggleExpand: () -> Unit,
     onMapTemplate: () -> Unit,
     onIgnoreForever: () -> Unit,
     onDismiss: () -> Unit,
+    walletOptions: kotlinx.collections.immutable.ImmutableList<com.ivy.sms.ui.templates.WalletOption> =
+        kotlinx.collections.immutable.persistentListOf(),
+    onChooseDestination: (com.ivy.data.model.AccountId?) -> Unit = {},
+    onToggleRemember: () -> Unit = {},
+    onCreateTransfer: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -399,6 +432,19 @@ private fun PendingItemCard(
             )
         }
 
+        // Needs-destination block (FR-007/FR-008): fixed From, a To picker
+        // that excludes From, the remember checkbox, and the commit CTA.
+        if (row.needsDestination) {
+            Spacer(Modifier.height(14.dp))
+            DestinationPickerBlock(
+                row = row,
+                walletOptions = walletOptions,
+                onChooseDestination = onChooseDestination,
+                onToggleRemember = onToggleRemember,
+                onCreateTransfer = onCreateTransfer,
+            )
+        }
+
         Spacer(Modifier.height(16.dp))
 
         // Two actions on the same row so the user's finger always lands on the
@@ -438,6 +484,140 @@ private fun PendingItemCard(
                 .align(Alignment.CenterHorizontally)
                 .clickable(onClick = onDismiss)
                 .padding(horizontal = 8.dp, vertical = 2.dp),
+        )
+    }
+}
+
+/**
+ * From (fixed, the sender-linked wallet) → To (picker excluding From) →
+ * "Remember for this template" → "Create transfer −amount". One pick, one
+ * tap; with remember on, this template's future messages auto-route.
+ */
+@Composable
+private fun DestinationPickerBlock(
+    row: PendingItemRowViewState,
+    walletOptions: kotlinx.collections.immutable.ImmutableList<com.ivy.sms.ui.templates.WalletOption>,
+    onChooseDestination: (com.ivy.data.model.AccountId?) -> Unit,
+    onToggleRemember: () -> Unit,
+    onCreateTransfer: () -> Unit,
+) {
+    var pickerExpanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(UI.shapes.r4)
+            .background(UI.colors.pure)
+            .padding(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "From",
+                style = UI.typo.c.style(color = UI.colors.gray, fontWeight = FontWeight.Bold),
+                modifier = Modifier.width(48.dp),
+            )
+            Text(
+                text = row.fromWalletName ?: "Not linked",
+                style = UI.typo.b2.style(
+                    color = UI.colors.pureInverse,
+                    fontWeight = FontWeight.ExtraBold,
+                ),
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { pickerExpanded = !pickerExpanded },
+        ) {
+            Text(
+                text = "To",
+                style = UI.typo.c.style(color = UI.colors.gray, fontWeight = FontWeight.Bold),
+                modifier = Modifier.width(48.dp),
+            )
+            Text(
+                text = row.chosenDestinationName ?: "Choose wallet…",
+                style = UI.typo.b2.style(
+                    color = if (row.chosenDestinationName != null) {
+                        UI.colors.pureInverse
+                    } else {
+                        Orange
+                    },
+                    fontWeight = FontWeight.ExtraBold,
+                ),
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = if (pickerExpanded) "▲" else "▼",
+                style = UI.typo.c.style(color = UI.colors.gray, fontWeight = FontWeight.Bold),
+            )
+        }
+
+        if (pickerExpanded) {
+            Spacer(Modifier.height(4.dp))
+            for (option in walletOptions) {
+                // A transfer into its own source wallet is exactly the ghost
+                // bug this flow fixes — never offer From as a destination.
+                if (option.id == row.fromAccountId) continue
+                Text(
+                    text = option.name,
+                    style = UI.typo.b2.style(
+                        color = UI.colors.pureInverse,
+                        fontWeight = if (option.id == row.chosenDestinationId) {
+                            FontWeight.ExtraBold
+                        } else {
+                            FontWeight.Medium
+                        },
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            pickerExpanded = false
+                            onChooseDestination(option.id)
+                        }
+                        .padding(vertical = 8.dp, horizontal = 48.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.clickable(onClick = onToggleRemember),
+        ) {
+            Text(
+                text = if (row.rememberDestination) "☑" else "☐",
+                style = UI.typo.b2.style(
+                    color = if (row.rememberDestination) Green else UI.colors.gray,
+                    fontWeight = FontWeight.ExtraBold,
+                ),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = "Remember for this template",
+                style = UI.typo.c.style(
+                    color = UI.colors.gray,
+                    fontWeight = FontWeight.Bold,
+                ),
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        IvyButton(
+            modifier = Modifier.fillMaxWidth(),
+            text = when {
+                row.resolving -> "Creating…"
+                row.chosenDestinationName != null -> "Create transfer → ${row.chosenDestinationName}"
+                else -> "Create transfer"
+            },
+            enabled = row.chosenDestinationId != null && !row.resolving,
+            wrapContentMode = false,
+            onClick = onCreateTransfer,
         )
     }
 }
@@ -482,6 +662,7 @@ internal fun humanizeReason(reason: String, templateActive: Boolean = false): St
         "SENDER_NOT_LINKED" -> "Sender not linked to a wallet"
         "CURRENCY_MISMATCH" -> "Currency doesn't match the wallet"
         "AUTO_ROUTE_DISABLED" -> "Held for approval — auto-import is off"
+        "TRANSFER_NEEDS_DESTINATION" -> "Transfer — needs a destination wallet"
         else -> "Needs your attention"
     }
 }

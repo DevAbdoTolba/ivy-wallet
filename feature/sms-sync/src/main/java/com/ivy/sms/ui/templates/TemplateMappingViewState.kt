@@ -1,6 +1,7 @@
 package com.ivy.sms.ui.templates
 
 import androidx.compose.runtime.Immutable
+import com.ivy.data.model.AccountId
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.WildcardId
 import com.ivy.sms.domain.model.WildcardRole
@@ -15,6 +16,12 @@ data class WildcardChip(
     val positionInPattern: Int,
     val exampleValue: String,
     val role: WildcardRole,
+)
+
+@Immutable
+data class WalletOption(
+    val id: AccountId,
+    val name: String,
 )
 
 @Immutable
@@ -63,6 +70,14 @@ data class TemplateMappingViewState(
     /** Name of the wallet this mapping session is scoped to (shown in the
      *  toolbar so the user knows which wallet the reprocess targets). */
     val walletScopeName: String? = null,
+    /** Default destination wallet for the Transfer role (FR-005). Null =
+     *  "ask each time" — matching transfers go to the review queue with a
+     *  destination picker. The row is shown only while a Transfer role is
+     *  assigned to some wildcard. */
+    val transferDestinationId: AccountId? = null,
+    val transferDestinationName: String? = null,
+    /** All wallets, for the "Transfer to" picker. */
+    val walletOptions: ImmutableList<WalletOption> = persistentListOf(),
 ) {
     val failedTotal: Int
         get() = (failedAlignment ?: 0) + (failedAmountParse ?: 0) +
@@ -107,6 +122,9 @@ sealed interface TemplateMappingEvent {
     ) : TemplateMappingEvent
     data object DismissBottomSheet : TemplateMappingEvent
     data class NameChanged(val value: String) : TemplateMappingEvent
+    /** User picked (or cleared, id = null) the template's default transfer
+     *  destination in the optional "Transfer to" row. */
+    data class TransferDestinationChosen(val id: AccountId?) : TemplateMappingEvent
     /**
      * The screen passes [explicitTemplateId] from its `produceState`-fetched
      * template so save() can proceed even when the VM's own templateId

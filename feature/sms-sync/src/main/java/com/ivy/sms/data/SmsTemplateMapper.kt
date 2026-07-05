@@ -4,6 +4,7 @@ import arrow.core.Either
 import arrow.core.raise.catch
 import arrow.core.raise.either
 import com.ivy.data.db.entity.SmsTemplateEntity
+import com.ivy.data.model.AccountId
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
 import com.ivy.sms.domain.model.TemplateState
@@ -48,6 +49,11 @@ class SmsTemplateMapper @Inject constructor(
             lastSeen = Instant.ofEpochMilli(lastSeenEpochMillis),
             matchCount = matchCount,
             name = name,
+            // Defensive parse: a corrupt UUID string degrades to "no default
+            // destination" (review path) instead of failing the whole template.
+            transferToAccountId = transferToAccountId
+                ?.let { raw -> runCatching { UUID.fromString(raw) }.getOrNull() }
+                ?.let(::AccountId),
         )
     }
 
@@ -64,6 +70,7 @@ class SmsTemplateMapper @Inject constructor(
             lastSeenEpochMillis = lastSeen.toEpochMilli(),
             matchCount = matchCount,
             name = name,
+            transferToAccountId = transferToAccountId?.value?.toString(),
         )
     }
 }

@@ -8,12 +8,15 @@ import com.ivy.data.model.LoanId
 import com.ivy.data.model.LoanItem
 import com.ivy.design.l0_system.IvyTheme
 import com.ivy.design.utils.defaultDesign
+import com.ivy.loans.loan.data.DisplayLoanItem
+import com.ivy.loans.loan.data.EntryPaymentRow
 import com.ivy.loans.loandetails.ui.LoanItemCard
 import com.ivy.ui.testing.PaparazziScreenshotTest
 import com.ivy.ui.testing.PaparazziTheme
 import com.ivy.wallet.ui.theme.Ivy
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Instant
 import java.util.UUID
 
 @RunWith(TestParameterInjector::class)
@@ -34,22 +37,54 @@ class LoanItemCardPaparazziTest(
         )
     }
 
+    private fun entry(amount: Double, title: String) = LoanItem(
+        contactId = LoanId(UUID.randomUUID()),
+        amount = amount,
+        title = title,
+        isSettled = false,
+    )
+
+    private fun payment(amount: Double, withTransaction: Boolean) = EntryPaymentRow(
+        recordId = UUID.randomUUID(),
+        amount = amount,
+        accountName = "Bank",
+        dateTime = Instant.EPOCH,
+        dateLabel = "Jun 12",
+        transactionId = if (withTransaction) UUID.randomUUID() else null,
+    )
+
+    @Composable
+    private fun Card(display: DisplayLoanItem) {
+        LoanItemCard(
+            display = display,
+            baseCurrency = "USD",
+            loanColor = Ivy,
+            onCircleTap = {},
+            onEdit = {},
+            onDelete = {},
+            onTransactionClick = {},
+        )
+    }
+
     @Test
     fun `snapshot loanItemCard - unsettled`() {
         snapshot(theme) {
             OldDesignTheme {
-                LoanItemCard(
-                    loanItem = LoanItem(
-                        contactId = LoanId(UUID.randomUUID()),
-                        amount = 12.34,
-                        title = "Coffee",
-                        isSettled = false
-                    ),
-                    baseCurrency = "USD",
-                    loanColor = Ivy,
-                    onToggleSettled = {},
-                    onEdit = {},
-                    onDelete = {}
+                Card(DisplayLoanItem(loanItem = entry(12.34, "Coffee")))
+            }
+        }
+    }
+
+    @Test
+    fun `snapshot loanItemCard - partially paid`() {
+        snapshot(theme) {
+            OldDesignTheme {
+                Card(
+                    DisplayLoanItem(
+                        loanItem = entry(1200.0, "TV installment"),
+                        paidAmount = 500.0,
+                        payments = listOf(payment(500.0, withTransaction = true)),
+                    )
                 )
             }
         }
@@ -59,18 +94,27 @@ class LoanItemCardPaparazziTest(
     fun `snapshot loanItemCard - settled`() {
         snapshot(theme) {
             OldDesignTheme {
-                LoanItemCard(
-                    loanItem = LoanItem(
-                        contactId = LoanId(UUID.randomUUID()),
-                        amount = 12.34,
-                        title = "Lunch",
-                        isSettled = true
-                    ),
-                    baseCurrency = "USD",
-                    loanColor = Ivy,
-                    onToggleSettled = {},
-                    onEdit = {},
-                    onDelete = {}
+                Card(
+                    DisplayLoanItem(
+                        loanItem = entry(12.34, "Lunch"),
+                        paidAmount = 12.34,
+                        payments = listOf(payment(12.34, withTransaction = true)),
+                    )
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `snapshot loanItemCard - legacy settled without transaction`() {
+        snapshot(theme) {
+            OldDesignTheme {
+                Card(
+                    DisplayLoanItem(
+                        loanItem = entry(800.0, "School fees"),
+                        paidAmount = 800.0,
+                        payments = listOf(payment(800.0, withTransaction = false)),
+                    )
                 )
             }
         }

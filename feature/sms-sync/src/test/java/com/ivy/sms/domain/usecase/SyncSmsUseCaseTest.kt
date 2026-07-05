@@ -28,6 +28,7 @@ class SyncSmsUseCaseTest {
     private val senderRepo = mockk<SenderAccountLinkRepository>()
     private val findMatching = mockk<FindMatchingMessagesUseCase>()
     private val renormalize = mockk<RenormalizePersistedSmsDataUseCase>()
+    private val repairGhostTransfers = mockk<RepairGhostTransfersUseCase>()
 
     private val useCase = SyncSmsUseCaseImpl(
         context = context,
@@ -35,6 +36,7 @@ class SyncSmsUseCaseTest {
         senderRepo = senderRepo,
         findMatching = findMatching,
         renormalize = renormalize,
+        repairGhostTransfers = repairGhostTransfers,
     )
 
     private val link = SenderAccountLink(
@@ -48,6 +50,8 @@ class SyncSmsUseCaseTest {
         every { context.checkPermission(any(), any(), any()) } returns
             PackageManager.PERMISSION_GRANTED
         justRun { findMatching.invalidate() }
+        // One-shot ghost repair is a versioned no-op in these scenarios.
+        io.mockk.coEvery { repairGhostTransfers() } returns arrow.core.Either.Right(Unit)
     }
 
     @Test

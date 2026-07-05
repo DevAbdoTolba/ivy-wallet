@@ -32,8 +32,10 @@ class ResolvePendingItemUseCaseTest {
     private val templateRepo = mockk<SmsTemplateRepository>()
     private val senderRepo = mockk<SenderAccountLinkRepository>()
     private val route = mockk<RouteSmsUseCase>()
+    private val prefs = mockk<com.ivy.sms.data.SmsWatermarkPreferences>(relaxed = true)
 
-    private val useCase = ResolvePendingItemUseCase(pendingRepo, templateRepo, senderRepo, route)
+    private val useCase =
+        ResolvePendingItemUseCase(pendingRepo, templateRepo, senderRepo, route, prefs)
 
     private val tplId = SmsTemplateId(UUID.randomUUID())
     private val activeTemplate = SmsTemplate(

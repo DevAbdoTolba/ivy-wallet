@@ -24,6 +24,8 @@ class LoanRepositoryTest {
             mapper = LoanItemMapper(),
             loanItemDao = dao,
             writeLoanItemDao = dao,
+            loanRecordDao = io.mockk.mockk(relaxed = true),
+            writeLoanRecordDao = io.mockk.mockk(relaxed = true),
             dispatchersProvider = TestDispatchersProvider,
         )
     }

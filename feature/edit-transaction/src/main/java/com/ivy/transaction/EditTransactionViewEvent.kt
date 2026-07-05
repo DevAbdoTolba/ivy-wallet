@@ -7,6 +7,7 @@ import com.ivy.data.model.Tag
 import com.ivy.data.model.TagId
 import com.ivy.legacy.data.EditTransactionDisplayLoan
 import com.ivy.legacy.datamodel.Account
+import com.ivy.legacy.datamodel.Loan
 import com.ivy.wallet.domain.data.CustomExchangeRateState
 import com.ivy.wallet.domain.deprecated.logic.model.CreateAccountData
 import com.ivy.wallet.domain.deprecated.logic.model.CreateCategoryData
@@ -35,7 +36,12 @@ data class EditTransactionViewState(
     val backgroundProcessingStarted: Boolean,
     val customExchangeRateState: CustomExchangeRateState,
     val tags: ImmutableList<Tag>,
-    val transactionAssociatedTags: ImmutableList<TagId>
+    val transactionAssociatedTags: ImmutableList<TagId>,
+    /** All loans, for the "Link to loan" sheet (US7). Empty until loaded. */
+    val loans: ImmutableList<Loan> = kotlinx.collections.immutable.persistentListOf(),
+    /** True when this transaction can gain a loan link: it exists (edit mode)
+     *  and carries none yet (FR-020; consumers must hide the action otherwise). */
+    val canLinkToLoan: Boolean = false,
 )
 
 sealed interface EditTransactionViewEvent {
@@ -52,6 +58,14 @@ sealed interface EditTransactionViewEvent {
         EditTransactionViewEvent
 
     data object OnPayPlannedPayment : EditTransactionViewEvent
+
+    /** "Link to loan" confirmed on the sheet (US7): adopt this transaction
+     *  into [loan]'s ledger — never creates a second transaction. */
+    data class LinkToLoan(
+        val loan: Loan,
+        val autoAllocateToEntries: Boolean,
+    ) : EditTransactionViewEvent
+
     data object Delete : EditTransactionViewEvent
     data object Duplicate : EditTransactionViewEvent
     data class CreateCategory(val data: CreateCategoryData) : EditTransactionViewEvent

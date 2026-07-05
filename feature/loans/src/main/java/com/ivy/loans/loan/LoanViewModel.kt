@@ -444,9 +444,10 @@ class LoanViewModel @Inject constructor(
 
     /**
      *  Calculates the total amount paid and the total loan amount.
-     *  Paid = settled checklist items + non-interest DECREASE loan records, so
-     *  upgraded users whose repayment history lives in loan_records keep their
-     *  progress.
+     *  Paid = the sum of non-interest DECREASE loan records ONLY (FR-017).
+     *  Settled checklist entries contribute through their records — every
+     *  pre-ledger settled entry received a synthetic record in migration
+     *  136→137, so totals carry over without the old hybrid double-count.
      *  @return A Pair containing the total amount paid and the total loan amount.
      */
     private suspend fun calculateAmountPaidAndTotalAmount(loan: Loan): Pair<Double, Double> {
@@ -458,9 +459,7 @@ class LoanViewModel @Inject constructor(
             // Non-itemized loan: keep the original loan.amount as total
             recordsPaid to loan.amount
         } else {
-            val total = items.sumOf { it.amount }
-            val paid = items.filter { it.isSettled }.sumOf { it.amount } + recordsPaid
-            paid to total
+            recordsPaid to items.sumOf { it.amount }
         }
     }
 

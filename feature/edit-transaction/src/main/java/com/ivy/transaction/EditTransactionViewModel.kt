@@ -18,6 +18,7 @@ import com.ivy.base.time.TimeConverter
 import com.ivy.base.time.TimeProvider
 import com.ivy.data.db.dao.read.LoanDao
 import com.ivy.data.db.dao.read.SettingsDao
+import com.ivy.data.db.dao.write.WriteLoanRecordDao
 import com.ivy.data.model.Category
 import com.ivy.data.model.CategoryId
 import com.ivy.data.model.Tag
@@ -33,7 +34,12 @@ import com.ivy.data.repository.mapper.TransactionMapper
 import com.ivy.domain.features.Features
 import com.ivy.legacy.data.EditTransactionDisplayLoan
 import com.ivy.legacy.datamodel.Account
+import com.ivy.legacy.datamodel.Loan
 import com.ivy.legacy.datamodel.temp.toDomain
+import com.ivy.legacy.datamodel.temp.toLegacyDomain
+import com.ivy.wallet.domain.deprecated.logic.loantrasactions.LinkAllocation
+import com.ivy.wallet.domain.deprecated.logic.loantrasactions.LinkTransactionToLoanUseCase
+import timber.log.Timber
 import com.ivy.legacy.domain.deprecated.logic.AccountCreator
 import com.ivy.legacy.utils.computationThread
 import com.ivy.legacy.utils.ioThread
@@ -86,6 +92,8 @@ class EditTransactionViewModel @Inject constructor(
     private val context: Context,
     private val toaster: Toaster,
     private val loanDao: LoanDao,
+    private val loanRecordWriter: WriteLoanRecordDao,
+    private val linkTransactionToLoan: LinkTransactionToLoanUseCase,
     private val settingsDao: SettingsDao,
     private val nav: Navigation,
     private val sharedPrefs: SharedPrefs,
@@ -117,6 +125,7 @@ class EditTransactionViewModel @Inject constructor(
     private var dateTime by mutableStateOf<Instant?>(null)
     private var dueDate by mutableStateOf<Instant?>(null)
     private var accounts by mutableStateOf<ImmutableList<Account>>(persistentListOf())
+    private var loans by mutableStateOf<ImmutableList<Loan>>(persistentListOf())
     private var categories by mutableStateOf<ImmutableList<Category>>(persistentListOf())
     private var tags by mutableStateOf<ImmutableList<Tag>>(persistentListOf())
     private var transactionAssociatedTags by mutableStateOf<ImmutableList<TagId>>(persistentListOf())
@@ -172,6 +181,12 @@ class EditTransactionViewModel @Inject constructor(
             }
             accounts = getAccounts
 
+            // Loans for the "Link to loan" sheet (US7) — loaded up-front so
+            // the sheet opens instantly with data.
+            loans = ioThread { loanDao.findAll() }
+                .map { it.toLegacyDomain() }
+                .toImmutableList()
+
             categories = sortCategories()
 
             reset()
@@ -218,7 +233,12 @@ class EditTransactionViewModel @Inject constructor(
             backgroundProcessingStarted = getBackgroundProcessingStarted(),
             customExchangeRateState = getCustomExchangeRateState(),
             tags = getTags(),
-            transactionAssociatedTags = getTransactionAssociatedTags()
+            transactionAssociatedTags = getTransactionAssociatedTags(),
+            loans = loans,
+            canLinkToLoan = editMode &&
+                loadedTransaction?.loanId == null &&
+                loadedTransaction?.loanRecordId == null &&
+                loadedTransaction?.dateTime != null,
         )
     }
 
@@ -348,6 +368,40 @@ class EditTransactionViewModel @Inject constructor(
             is EditTransactionViewEvent.SetHasChanges -> setHasChanges(event.hasChangesValue)
             is EditTransactionViewEvent.UpdateExchangeRate -> updateExchangeRate(event.exRate)
             is EditTransactionViewEvent.TagEvent -> handleTagEvent(event)
+            is EditTransactionViewEvent.LinkToLoan ->
+                linkToLoan(event.loan, event.autoAllocateToEntries)
+        }
+    }
+
+    /**
+     * US7: adopt this transaction into the loan's payment ledger. The use
+     * case enforces the iron rule (no second transaction, no balance change);
+     * afterwards the loan caption refreshes so the screen shows the link.
+     */
+    private fun linkToLoan(loan: Loan, autoAllocateToEntries: Boolean) {
+        val legacyTransaction = loadedTransaction ?: return
+        viewModelScope.launch {
+            val domainTransaction = legacyTransaction.toDomain(transactionMapper)
+            if (domainTransaction == null) {
+                Timber.w("LinkToLoan: transaction can't map to domain — save it first")
+                return@launch
+            }
+            val allocation = if (autoAllocateToEntries) {
+                LinkAllocation.AutoOldestFirst
+            } else {
+                LinkAllocation.LoanLevelOnly
+            }
+            linkTransactionToLoan(domainTransaction, loan, allocation).fold(
+                { err -> Timber.w("LinkToLoan failed: %s", err) },
+                { receipt ->
+                    // Reflect the new link locally + refresh the loan caption.
+                    loadedTransaction = legacyTransaction.copy(
+                        loanId = loan.id,
+                        loanRecordId = receipt.recordIds.first(),
+                    )
+                    displayLoanHelper = getDisplayLoanHelper(trans = loadedTransaction!!)
+                },
+            )
         }
     }
 
@@ -622,6 +676,13 @@ class EditTransactionViewModel @Inject constructor(
         viewModelScope.launch {
             ioThread {
                 loadedTransaction?.let {
+                    // FR-024: transaction and its loan payment record describe
+                    // ONE real-world event — deleting the transaction removes
+                    // the record too, so loan totals recompute instead of
+                    // keeping a phantom payment with no money behind it.
+                    it.loanRecordId?.let { recordId ->
+                        loanRecordWriter.deleteById(recordId)
+                    }
                     transactionRepo.deleteById(TransactionId(it.id))
                 }
                 closeScreen()

@@ -31,4 +31,24 @@ data class LoanDetailsScreenState(
     val isDeleteModalVisible: Boolean,
     val dateTime: Instant,
     val isLoading: Boolean = false,
+    /** Quick payment sheet (D5:B) — non-null while open. */
+    val paymentSheet: EntryPaymentSheetState? = null,
+    /** Un-settle confirmation (FR-016) — non-null while the dialog shows. */
+    val unsettleConfirm: UnsettleConfirmState? = null,
+)
+
+/** State of the tap-circle payment sheet: pre-filled with the entry's
+ *  remaining amount and the loan's default wallet. */
+data class EntryPaymentSheetState(
+    val entry: DisplayLoanItem,
+    val defaultAccount: Account?,
+    val paying: Boolean = false,
+    val error: String? = null,
+)
+
+/** Honest un-settle dialog copy: real counts from the preflight. */
+data class UnsettleConfirmState(
+    val entry: DisplayLoanItem,
+    val recordCount: Int,
+    val transactionCount: Int,
 )

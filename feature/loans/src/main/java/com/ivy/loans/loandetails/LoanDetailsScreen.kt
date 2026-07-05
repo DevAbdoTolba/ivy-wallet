@@ -59,6 +59,7 @@ import com.ivy.legacy.utils.rememberInteractionSource
 import com.ivy.legacy.utils.setStatusBarDarkTextCompat
 import com.ivy.loans.loan.FAB_BUTTON_SIZE
 import com.ivy.loans.loan.data.DisplayLoanRecord
+import com.ivy.loans.loandetails.ui.EntryPaymentSheet
 import com.ivy.loans.loandetails.ui.LoanItemCard
 import com.ivy.loans.loandetails.ui.LoanItemModal
 import com.ivy.loans.loandetails.events.DeleteLoanModalEvent
@@ -177,16 +178,14 @@ private fun BoxWithConstraintsScope.UI(
                     items = state.displayLoanItems,
                     key = { it.loanItem.id.value }
                 ) { displayLoanItem ->
+                    val nav = navigation()
                     LoanItemCard(
-                        loanItem = displayLoanItem.loanItem,
+                        display = displayLoanItem,
                         baseCurrency = state.baseCurrency,
                         loanColor = itemColor,
-                        onToggleSettled = { isSettled ->
+                        onCircleTap = {
                             onEventHandler.invoke(
-                                LoanDetailsScreenEvent.OnToggleLoanItemSettled(
-                                    displayLoanItem.loanItem.id,
-                                    isSettled
-                                )
+                                LoanDetailsScreenEvent.OnEntryCircleTap(displayLoanItem)
                             )
                         },
                         onEdit = {
@@ -197,6 +196,16 @@ private fun BoxWithConstraintsScope.UI(
                         onDelete = {
                             onEventHandler.invoke(
                                 LoanDetailsScreenEvent.OnDeleteLoanItem(displayLoanItem.loanItem.id)
+                            )
+                        },
+                        onTransactionClick = { txId ->
+                            // Jump-link (US6.2) — opens the payment's real
+                            // transaction; type is ignored for existing ids.
+                            nav.navigateTo(
+                                com.ivy.navigation.EditTransactionScreen(
+                                    initialTransactionId = txId,
+                                    type = TransactionType.EXPENSE,
+                                )
                             )
                         }
                     )
@@ -333,6 +342,51 @@ private fun BoxWithConstraintsScope.UI(
             onEventHandler.invoke(LoanDetailsScreenEvent.OnDismissLoanItemModal)
         }
     )
+
+    // Quick payment sheet (D5:B): circle tap on an open entry lands here,
+    // pre-filled with remaining amount + the loan's wallet. Confirming creates
+    // the payment record AND its real balance-affecting transaction.
+    EntryPaymentSheet(
+        sheet = state.paymentSheet,
+        baseCurrency = state.baseCurrency,
+        accounts = state.accounts,
+        loanType = state.loan?.type,
+        onConfirm = { amount, account ->
+            onEventHandler.invoke(
+                LoanDetailsScreenEvent.OnConfirmEntryPayment(
+                    amount = amount,
+                    account = account,
+                )
+            )
+        },
+        onDismiss = {
+            onEventHandler.invoke(LoanDetailsScreenEvent.OnDismissPaymentSheet)
+        }
+    )
+
+    // Un-settle confirmation (FR-016) with honest counts from the preflight.
+    val unsettle = state.unsettleConfirm
+    DeleteModal(
+        visible = unsettle != null,
+        title = "Un-settle \"${unsettle?.entry?.loanItem?.title.orEmpty()}\"?",
+        description = when {
+            unsettle == null -> ""
+            unsettle.transactionCount > 0 ->
+                "This deletes ${unsettle.recordCount} payment" +
+                    (if (unsettle.recordCount == 1) "" else "s") +
+                    " and ${unsettle.transactionCount} transaction" +
+                    (if (unsettle.transactionCount == 1) "" else "s") +
+                    " — wallet balances will be restored."
+            else ->
+                "This entry was settled before payments existed — " +
+                    "no transaction to remove, it just becomes open again."
+        },
+        dismiss = {
+            onEventHandler.invoke(LoanDetailsScreenEvent.OnDismissUnsettle)
+        }
+    ) {
+        onEventHandler.invoke(LoanDetailsScreenEvent.OnConfirmUnsettle)
+    }
 }
 
 @Composable

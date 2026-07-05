@@ -2,6 +2,7 @@ package com.ivy.data.db.entity
 
 import androidx.annotation.Keep
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.ivy.base.kotlinxserilzation.KSerializerInstant
 import com.ivy.base.kotlinxserilzation.KSerializerUUID
@@ -14,7 +15,10 @@ import java.util.UUID
 @Suppress("DataClassDefaultValues")
 @Keep
 @Serializable
-@Entity(tableName = "loan_records")
+@Entity(
+    tableName = "loan_records",
+    indices = [Index(value = ["loanItemId"])],
+)
 data class LoanRecordEntity(
     @SerialName("loanId")
     @Serializable(with = KSerializerUUID::class)
@@ -38,6 +42,12 @@ data class LoanRecordEntity(
     // This is because before issue 2740 all records were of this type implicitly.
     @SerialName("loanRecordType")
     val loanRecordType: LoanRecordType = LoanRecordType.DECREASE,
+    /** Checklist entry (`loan_items` row) this payment targets. NULL =
+     *  loan-level payment (historical semantics). An entry's paid amount and
+     *  settled state derive from the sum of its records (migration 136→137). */
+    @SerialName("loanItemId")
+    @Serializable(with = KSerializerUUID::class)
+    val loanItemId: UUID? = null,
 
     @Deprecated("Obsolete field used for cloud sync. Can't be deleted because of backwards compatibility")
     @SerialName("isSynced")

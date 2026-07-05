@@ -27,8 +27,13 @@ import com.ivy.legacy.datamodel.temp.toLegacyDomain
 import com.ivy.legacy.domain.deprecated.logic.AccountCreator
 import com.ivy.legacy.utils.computationThread
 import com.ivy.legacy.utils.ioThread
+import com.ivy.legacy.utils.formatLocal
+import com.ivy.loans.domain.EntryPaymentRequest
+import com.ivy.loans.domain.PayLoanEntryUseCase
+import com.ivy.loans.domain.UnsettleLoanEntryUseCase
 import com.ivy.loans.loan.data.DisplayLoanItem
 import com.ivy.loans.loan.data.DisplayLoanRecord
+import com.ivy.loans.loan.data.EntryPaymentRow
 import com.ivy.loans.loandetails.events.DeleteLoanModalEvent
 import com.ivy.loans.loandetails.events.LoanDetailsScreenEvent
 import com.ivy.loans.loandetails.events.LoanModalEvent
@@ -77,6 +82,8 @@ class LoanDetailsViewModel @Inject constructor(
     private val timeProvider: TimeProvider,
     private val dateTimePicker: DateTimePicker,
     private val loanRepository: LoanRepository,
+    private val payLoanEntry: PayLoanEntryUseCase,
+    private val unsettleLoanEntry: UnsettleLoanEntryUseCase,
 ) : ComposeViewModel<LoanDetailsScreenState, LoanDetailsScreenEvent>() {
 
     private val baseCurrency = mutableStateOf("")
@@ -102,13 +109,20 @@ class LoanDetailsViewModel @Inject constructor(
     private val isDeleteModalVisible = mutableStateOf(false)
     private var dateTime = mutableStateOf<Instant>(timeProvider.utcNow())
     private val isLoading = mutableStateOf(false)
+    private val paymentSheet = mutableStateOf<EntryPaymentSheetState?>(null)
+    private val unsettleConfirm = mutableStateOf<UnsettleConfirmState?>(null)
 
-    // amountPaid = settled checklist items + non-interest DECREASE records.
-    // The two components arrive from independent async sources (items flow vs
-    // records load), so each is kept separately and the sum is re-published
-    // whenever either side updates.
-    private var settledItemsAmount = 0.0
+    // FR-017: the loan's paid figure is the sum of payment RECORDS only.
+    // The old hybrid (settled items + records) double-counted the moment one
+    // real-world payment was recorded both ways; settled entries now
+    // contribute through their records (incl. the migration-137 synthetic
+    // backfill), never separately.
     private var recordsPaidAmount = 0.0
+
+    // Raw checklist entries from the items flow; combined with the records
+    // load into DisplayLoanItems (paid/settled are DERIVED from records, so
+    // the two async sources must be joined whichever arrives last).
+    private var rawLoanItems: List<LoanItem> = emptyList()
 
     // The "No items" empty state is gated on !isLoading, but the screen is
     // fed by TWO independent async pipelines: the loan-items flow and the
@@ -156,8 +170,10 @@ class LoanDetailsViewModel @Inject constructor(
         loanTotalAmount.doubleValue = 0.0
         amountPaid.doubleValue = 0.0
         loanInterestAmountPaid.doubleValue = 0.0
-        settledItemsAmount = 0.0
         recordsPaidAmount = 0.0
+        rawLoanItems = emptyList()
+        paymentSheet.value = null
+        unsettleConfirm.value = null
         selectedLoanAccount.value = null
         createLoanTransaction.value = false
         loanModalData.value = null
@@ -199,6 +215,8 @@ class LoanDetailsViewModel @Inject constructor(
             isDeleteModalVisible = isDeleteModalVisible.value,
             dateTime = dateTime.value,
             isLoading = isLoading.value,
+            paymentSheet = paymentSheet.value,
+            unsettleConfirm = unsettleConfirm.value,
         )
     }
 
@@ -328,8 +346,24 @@ class LoanDetailsViewModel @Inject constructor(
                 createAccount(event.data)
             }
 
-            is LoanDetailsScreenEvent.OnToggleLoanItemSettled -> {
-                toggleLoanItemSettled(event.id, event.isSettled)
+            is LoanDetailsScreenEvent.OnEntryCircleTap -> {
+                onEntryCircleTap(event.item)
+            }
+
+            is LoanDetailsScreenEvent.OnConfirmEntryPayment -> {
+                confirmEntryPayment(event.amount, event.account)
+            }
+
+            LoanDetailsScreenEvent.OnDismissPaymentSheet -> {
+                paymentSheet.value = null
+            }
+
+            LoanDetailsScreenEvent.OnConfirmUnsettle -> {
+                confirmUnsettle()
+            }
+
+            LoanDetailsScreenEvent.OnDismissUnsettle -> {
+                unsettleConfirm.value = null
             }
 
             LoanDetailsScreenEvent.OnAddLoanItem -> {
@@ -437,16 +471,14 @@ class LoanDetailsViewModel @Inject constructor(
         itemsJob = viewModelScope.launch {
             loanRepository.getLoanItems(LoanId(loanId)).collect { items ->
                 Timber.tag("LoanTrace").d("itemsFlow emit: loanId=$loanId count=${items.size} ids=${items.map { it.id.value }}")
-                displayLoanItems.value = items.map { DisplayLoanItem(it) }.toImmutableList()
+                rawLoanItems = items
+                rebuildDisplayItems()
 
-                if (items.isEmpty()) {
-                    loanTotalAmount.doubleValue = loan.value?.amount ?: 0.0
-                    settledItemsAmount = 0.0
+                loanTotalAmount.doubleValue = if (items.isEmpty()) {
+                    loan.value?.amount ?: 0.0
                 } else {
-                    loanTotalAmount.doubleValue = items.sumOf { it.amount }
-                    settledItemsAmount = items.filter { it.isSettled }.sumOf { it.amount }
+                    items.sumOf { it.amount }
                 }
-                amountPaid.doubleValue = settledItemsAmount + recordsPaidAmount
 
                 // First emission after (re)loading — the items side is now
                 // populated; the empty state may show only once the records
@@ -473,6 +505,7 @@ class LoanDetailsViewModel @Inject constructor(
                     it.toLegacyDomain(),
                     account = account,
                     loanRecordTransaction = trans != null,
+                    loanRecordTransactionId = trans?.id?.value,
                     loanRecordCurrencyCode = account?.currency ?: defaultCurrencyCode,
                     loanCurrencyCode = selectedLoanAccount.value?.currency
                         ?: defaultCurrencyCode
@@ -482,9 +515,14 @@ class LoanDetailsViewModel @Inject constructor(
         if (isStale(loanId)) return
         displayLoanRecords.value = records
         recordsLoaded = true
+        // Entry paid/settled/history derive from records — rejoin with the
+        // items side now that the records are (re)loaded.
+        rebuildDisplayItems()
         maybeFinishLoading()
 
-        // amountPaid and loanInterestAmountPaid calculation logic for header
+        // Loan header paid figure (FR-017): the sum of payment records ONLY.
+        // Settled entries contribute via their records (incl. the migration
+        // backfill) — never as a second, separately summed source.
         val (recordsPaid, interestPaid) = computationThread {
             var paid = 0.0
             var interest = 0.0
@@ -502,7 +540,7 @@ class LoanDetailsViewModel @Inject constructor(
         if (isStale(loanId)) return
         recordsPaidAmount = recordsPaid
         loanInterestAmountPaid.doubleValue = interestPaid
-        amountPaid.doubleValue = settledItemsAmount + recordsPaidAmount
+        amountPaid.doubleValue = recordsPaidAmount
 
         val loanTransaction = ioThread {
             transactionRepository.findLoanTransaction(loanId = loanId).let {
@@ -531,9 +569,95 @@ class LoanDetailsViewModel @Inject constructor(
         }
     }
 
-    private fun toggleLoanItemSettled(id: LoanItemId, isSettled: Boolean) {
+    /**
+     * Joins the two async sources into the derived checklist rows: paid,
+     * settled, and payment history all come from the entry's records (D1:C).
+     */
+    private fun rebuildDisplayItems() {
+        val recordsByItem = displayLoanRecords.value
+            .filter { it.loanRecord.loanItemId != null }
+            .groupBy { it.loanRecord.loanItemId }
+        displayLoanItems.value = rawLoanItems.map { item ->
+            val entryRecords = recordsByItem[item.id.value].orEmpty()
+            val paid = entryRecords
+                .filter { !it.loanRecord.interest && it.loanRecord.loanRecordType != LoanRecordType.INCREASE }
+                .sumOf { it.loanRecord.convertedAmount ?: it.loanRecord.amount }
+            DisplayLoanItem(
+                loanItem = item,
+                paidAmount = paid,
+                payments = entryRecords.map { record ->
+                    EntryPaymentRow(
+                        recordId = record.loanRecord.id,
+                        amount = record.loanRecord.convertedAmount ?: record.loanRecord.amount,
+                        accountName = record.account?.name,
+                        dateTime = record.loanRecord.dateTime,
+                        dateLabel = with(timeConverter) {
+                            record.loanRecord.dateTime.toLocalDateTime()
+                        }.formatLocal("MMM dd"),
+                        transactionId = record.loanRecordTransactionId,
+                    )
+                },
+            )
+        }.toImmutableList()
+    }
+
+    /** Circle tap (D5:B): open the payment sheet on an open entry, or the
+     *  honest un-settle confirmation on a settled one (FR-016 preflight). */
+    private fun onEntryCircleTap(item: DisplayLoanItem) {
+        if (item.settledDerived) {
+            viewModelScope.launch {
+                val pre = unsettleLoanEntry.preflight(item.loanItem.id)
+                unsettleConfirm.value = UnsettleConfirmState(
+                    entry = item,
+                    recordCount = pre.recordCount,
+                    transactionCount = pre.transactionCount,
+                )
+            }
+        } else {
+            paymentSheet.value = EntryPaymentSheetState(
+                entry = item,
+                defaultAccount = selectedLoanAccount.value,
+            )
+        }
+    }
+
+    private fun confirmEntryPayment(amount: Double, account: Account) {
+        val sheet = paymentSheet.value ?: return
+        if (sheet.paying) return // double-tap guard on top of the use case mutex
+        val localLoan = loan.value ?: return
+        paymentSheet.value = sheet.copy(paying = true, error = null)
         viewModelScope.launch {
-            loanRepository.updateSettledStatus(id, isSettled)
+            payLoanEntry(
+                EntryPaymentRequest(
+                    entry = sheet.entry.loanItem,
+                    loan = localLoan,
+                    amount = amount,
+                    account = account,
+                    dateTime = timeProvider.utcNow(),
+                ),
+            ).fold(
+                { err ->
+                    paymentSheet.value = paymentSheet.value?.copy(
+                        paying = false,
+                        error = err.substringAfter(':'),
+                    )
+                },
+                {
+                    paymentSheet.value = null
+                    load(loanId = localLoan.id)
+                },
+            )
+        }
+    }
+
+    private fun confirmUnsettle() {
+        val confirm = unsettleConfirm.value ?: return
+        val localLoan = loan.value ?: return
+        unsettleConfirm.value = null
+        viewModelScope.launch {
+            unsettleLoanEntry(confirm.entry.loanItem.id)
+                .onRight { load(loanId = localLoan.id) }
+                .onLeft { Timber.tag("LoanTrace").w("unsettle failed: %s", it) }
         }
     }
 

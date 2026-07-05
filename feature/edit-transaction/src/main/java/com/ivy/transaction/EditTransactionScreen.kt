@@ -1,6 +1,7 @@
 package com.ivy.transaction
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -115,6 +116,11 @@ fun BoxWithConstraintsScope.EditTransactionScreen(screen: EditTransactionScreen)
         dueDate = uiState.dueDate,
         amount = uiState.amount,
         loanData = uiState.displayLoanHelper,
+        loans = uiState.loans,
+        canLinkToLoan = uiState.canLinkToLoan,
+        onLinkToLoan = { loan, autoAllocate ->
+            viewModel.onEvent(EditTransactionViewEvent.LinkToLoan(loan, autoAllocate))
+        },
         backgroundProcessing = uiState.backgroundProcessingStarted,
         customExchangeRateState = uiState.customExchangeRateState,
 
@@ -231,6 +237,10 @@ private fun BoxWithConstraintsScope.UI(
     onExchangeRateChange: (Double?) -> Unit = { },
     onTagOperation: (EditTransactionViewEvent.TagEvent) -> Unit = {},
     loanData: EditTransactionDisplayLoan = EditTransactionDisplayLoan(),
+    loans: ImmutableList<com.ivy.legacy.datamodel.Loan> =
+        kotlinx.collections.immutable.persistentListOf(),
+    canLinkToLoan: Boolean = false,
+    onLinkToLoan: (com.ivy.legacy.datamodel.Loan, Boolean) -> Unit = { _, _ -> },
     backgroundProcessing: Boolean = false,
     hasChanges: Boolean = false,
 
@@ -245,6 +255,7 @@ private fun BoxWithConstraintsScope.UI(
     var amountModalShown by remember { mutableStateOf(false) }
     var exchangeRateAmountModalShown by remember { mutableStateOf(false) }
     var accountChangeModal by remember { mutableStateOf(false) }
+    var linkToLoanModalVisible by remember { mutableStateOf(false) }
     val waitModalVisible by remember(backgroundProcessing) {
         mutableStateOf(backgroundProcessing)
     }
@@ -336,6 +347,23 @@ private fun BoxWithConstraintsScope.UI(
                 style = UI.typo.nB2.style(
                     color = UI.colors.mediumInverse,
                     fontWeight = FontWeight.Normal
+                )
+            )
+        }
+
+        // US7: link an un-linked, saved transaction to a loan. Hidden the
+        // moment the transaction carries a loan link (FR-020).
+        if (canLinkToLoan) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .clickable { linkToLoanModalVisible = true },
+                text = "🔗 Link to loan",
+                style = UI.typo.nB2.style(
+                    color = UI.colors.pureInverse,
+                    fontWeight = FontWeight.Bold
                 )
             )
         }
@@ -596,6 +624,21 @@ private fun BoxWithConstraintsScope.UI(
         title = stringResource(R.string.confirm_account_change),
         description = stringResource(R.string.confirm_account_loan_change),
         visible = waitModalVisible
+    )
+
+    // US7: link this transaction to a loan — record adopts the transaction,
+    // never a second one, wallet balances untouched.
+    com.ivy.wallet.ui.theme.modal.LinkToLoanModal(
+        visible = linkToLoanModalVisible,
+        loans = loans,
+        moneyOut = transactionType != TransactionType.INCOME,
+        amount = amount,
+        baseCurrency = baseCurrency,
+        onLink = { loan, autoAllocate ->
+            linkToLoanModalVisible = false
+            onLinkToLoan(loan, autoAllocate)
+        },
+        dismiss = { linkToLoanModalVisible = false }
     )
 
     AmountModal(

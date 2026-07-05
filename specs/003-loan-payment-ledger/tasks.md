@@ -269,3 +269,21 @@ Task C: T020 unit tests grow alongside in src/test (different files)
 - Every UAT checkpoint task cites its quickstart.md section and capture.bat title
 - Tests precede implementation where they can fail meaningfully (T012→T013, T022→T023, T026/T027→T028+, T041→T042)
 - Commit after each task or tight group; stop-line at every checkpoint
+
+---
+
+## Implementation Status (2026-07-05, one-shot run)
+
+**All three projects IMPLEMENTED and committed** (B: 0adb83703, C: 7bc16f761, A: 049f47946 + test batch).
+NOT yet compiled or device-tested — the agent hands over builds per project convention.
+
+**Owner-run next (in order):**
+1. BACKUP EXPORT FIRST (migration 137 is a one-way door).
+2. `.\gradlew :app:assembleDebug` — report any compile errors back for fixes.
+3. `.\gradlew :shared:data:core:testDebugUnitTest :feature:sms-sync:testDebugUnitTest :feature:loans:testDebugUnitTest`
+4. `.\gradlew :feature:loans:recordPaparazziDebug` (first goldens for the 4 new card states), then `verifyPaparazziDebug`.
+5. Full quickstart.md UAT: lock_overlay_uat, transfer_destination_uat, ghost_repair, entry_payment_uat, link_to_loan_uat.
+
+**Open items:** T005/T011/T021/T025/T036/T040/T047 (owner UAT checkpoints); T010 (RootViewModel
+test — no app-module test infra); T044 (review-card link shortcut — deferred, reachable via
+transaction detail); remainder of T020/T027/T041 test coverage; T048–T050 polish.

@@ -20,9 +20,12 @@ import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -105,10 +108,30 @@ class RootActivity : AppCompatActivity(), RootScreen {
             }
 
             val appLocked by viewModel.appLocked.collectAsState()
-            when (appLocked) {
-                null -> { // display nothing
+            // The app UI and the lock screen are stacked in the same Box instead of swapped
+            // by a `when` branch. Locking now draws AppLockedScreen ON TOP of the live app
+            // rather than tearing the whole composition down, so no screen leaves composition
+            // and no in-progress form input is destroyed by a lock/unlock cycle.
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Underlying app — composed as soon as the lock state is known (true or false)
+                // and kept composed while locked so its state survives underneath the cover.
+                if (appLocked != null) {
+                    NavigationRoot(navigation = navigation) { screen ->
+                        IvyUI(
+                            design = appDesign(ivyContext),
+                            includeSurface = screen?.isLegacy ?: true,
+                            timeConverter = timeConverter,
+                            timeProvider = timeProvider,
+                            timeFormatter = timeFormatter,
+                        ) {
+                            IvyNavGraph(screen)
+                        }
+                    }
                 }
-                true -> {
+
+                // Opaque lock overlay on top of the live app. AppLockedScreen consumes all
+                // input, swallows back, and clears focus so nothing reaches the app beneath.
+                if (appLocked == true) {
                     IvyUI(
                         design = appDesign(ivyContext),
                         timeConverter = timeConverter,
@@ -125,20 +148,6 @@ class RootActivity : AppCompatActivity(), RootScreen {
                                 viewModel.unlockApp()
                             }
                         )
-                    }
-                }
-
-                false -> {
-                    NavigationRoot(navigation = navigation) { screen ->
-                        IvyUI(
-                            design = appDesign(ivyContext),
-                            includeSurface = screen?.isLegacy ?: true,
-                            timeConverter = timeConverter,
-                            timeProvider = timeProvider,
-                            timeFormatter = timeFormatter,
-                        ) {
-                            IvyNavGraph(screen)
-                        }
                     }
                 }
             }

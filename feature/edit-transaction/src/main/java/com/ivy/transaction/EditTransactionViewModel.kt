@@ -146,7 +146,18 @@ class EditTransactionViewModel @Inject constructor(
     private var tagSearchJob: Job? = null
     private val tagSearchDebounceTimeInMills: Long = 500
 
+    // Identity of the screen instance this VM has already initialized for. Genuine
+    // re-navigation always supplies a fresh instance; a spurious recomposition re-fire
+    // (e.g. a future lifecycle path) reuses the same instance.
+    private var startedForScreen: EditTransactionScreen? = null
+
     fun start(screen: EditTransactionScreen) {
+        // Defense-in-depth: never re-run initialization (which calls reset()) over a screen
+        // that is already populated with user input. Reference identity — not structural —
+        // so a real re-navigation to the same transaction still loads fresh.
+        if (startedForScreen === screen && loadedTransaction != null) return
+        startedForScreen = screen
+
         viewModelScope.launch {
             editMode = screen.initialTransactionId != null
 

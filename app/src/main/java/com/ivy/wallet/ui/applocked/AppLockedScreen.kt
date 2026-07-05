@@ -2,6 +2,7 @@ package com.ivy.wallet.ui.applocked
 
 import android.annotation.SuppressLint
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
@@ -21,8 +22,11 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +49,32 @@ fun BoxWithConstraintsScope.AppLockedScreen(
     onShowOSBiometricsModal: () -> Unit,
     onContinueWithoutAuthentication: () -> Unit
 ) {
+    // Swallow the back gesture while locked so the app underneath is never popped or destroyed
+    // (which would lose the in-progress screen state we are protecting).
+    BackHandler(enabled = true) { /* intentionally blocked while locked */ }
+
+    // Clear focus / dismiss the keyboard the moment the lock appears, so no IME floats over
+    // the opaque cover and no text field beneath keeps a blinking cursor.
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(Unit) {
+        focusManager.clearFocus(force = true)
+    }
+
+    // Full-size scrim that eats every pointer event. Because it fills the lock overlay, the live
+    // app beneath is fully occluded for hit-testing; taps in the lock UI still reach the button
+    // below (it is a sibling drawn on top of this scrim).
+    Spacer(
+        modifier = Modifier
+            .matchParentSize()
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                    }
+                }
+            }
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()

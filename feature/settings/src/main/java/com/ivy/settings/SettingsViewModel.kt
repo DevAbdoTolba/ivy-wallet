@@ -64,6 +64,7 @@ class SettingsViewModel @Inject constructor(
     private val name = mutableStateOf("")
     private val currentTheme = mutableStateOf<Theme>(Theme.AUTO)
     private val lockApp = mutableStateOf(false)
+    private val lockDelaySeconds = mutableIntStateOf(DEFAULT_LOCK_DELAY_SECONDS)
     private val showNotifications = mutableStateOf(true)
     private val hideCurrentBalance = mutableStateOf(false)
     private val hideIncome = mutableStateOf(false)
@@ -82,6 +83,7 @@ class SettingsViewModel @Inject constructor(
             name = getName(),
             currentTheme = getCurrentTheme(),
             lockApp = getLockApp(),
+            lockDelaySeconds = getLockDelaySeconds(),
             showNotifications = getShowNotifications(),
             hideCurrentBalance = getHideCurrentBalance(),
             treatTransfersAsIncomeExpense = getTreatTransfersAsIncomeExpense(),
@@ -97,6 +99,7 @@ class SettingsViewModel @Inject constructor(
         initializeName()
         initializeCurrentTheme()
         initializeLockApp()
+        initializeLockDelay()
         initializeShowNotifications()
         initializeHideCurrentBalance()
         initializeHideIncome()
@@ -126,6 +129,11 @@ class SettingsViewModel @Inject constructor(
 
     private fun initializeLockApp() {
         lockApp.value = sharedPrefs.getBoolean(SharedPrefs.APP_LOCK_ENABLED, false)
+    }
+
+    private fun initializeLockDelay() {
+        lockDelaySeconds.intValue =
+            sharedPrefs.getInt(SharedPrefs.LOCK_DELAY_SECONDS, DEFAULT_LOCK_DELAY_SECONDS)
     }
 
     private fun initializeShowNotifications() {
@@ -174,6 +182,11 @@ class SettingsViewModel @Inject constructor(
     }
 
     @Composable
+    private fun getLockDelaySeconds(): Int {
+        return lockDelaySeconds.intValue
+    }
+
+    @Composable
     private fun getShowNotifications(): Boolean {
         return showNotifications.value
     }
@@ -215,6 +228,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsEvent.BackupData -> exportToZip(event.rootScreen)
             SettingsEvent.SwitchTheme -> switchTheme()
             is SettingsEvent.SetLockApp -> setLockApp(event.lockApp)
+            is SettingsEvent.SetLockDelay -> setLockDelay(event.seconds)
             is SettingsEvent.SetShowNotifications -> setShowNotifications(event.showNotifications)
             is SettingsEvent.SetHideCurrentBalance -> setHideCurrentBalance(
                 event.hideCurrentBalance
@@ -327,6 +341,14 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    private fun setLockDelay(seconds: Int) {
+        lockDelaySeconds.intValue = seconds
+
+        viewModelScope.launch {
+            sharedPrefs.putInt(SharedPrefs.LOCK_DELAY_SECONDS, seconds)
+        }
+    }
+
     private fun setShowNotifications(notificationsShow: Boolean) {
         showNotifications.value = notificationsShow
 
@@ -404,5 +426,10 @@ class SettingsViewModel @Inject constructor(
             intent.data = Uri.fromParts("package", context.packageName, null)
             context.applicationContext.startActivity(intent)
         }
+    }
+
+    companion object {
+        // Mirrors RootViewModel.USER_INACTIVITY_TIME_LIMIT: the default 1-minute lock delay.
+        const val DEFAULT_LOCK_DELAY_SECONDS = 60
     }
 }

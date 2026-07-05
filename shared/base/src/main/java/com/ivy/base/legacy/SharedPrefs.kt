@@ -20,6 +20,13 @@ class SharedPrefs @Inject constructor(
 
         // ----------------------------- App Settings -----------------------------------------------
         const val APP_LOCK_ENABLED = "lock_app"
+
+        /**
+         * How long the app stays in the background before it locks, in seconds.
+         * Allowed values: 0 (Instantly), 60 (1 min), 300 (5 min), 900 (15 min).
+         * Absent key defaults to 60 to preserve the historical 1-minute behavior.
+         */
+        const val LOCK_DELAY_SECONDS = "lock_delay_seconds"
         const val START_DATE_OF_MONTH = "start_date_of_month"
         const val SHOW_NOTIFICATIONS = "show_notifications"
         const val HIDE_CURRENT_BALANCE = "hide_current_balance"

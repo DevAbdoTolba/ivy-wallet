@@ -48,8 +48,16 @@ class RootViewModel @Inject constructor(
     companion object {
         const val EXTRA_ADD_TRANSACTION_TYPE = "add_transaction_type_extra"
 
+        // Default background-lock delay in seconds when the user has not chosen one.
         const val USER_INACTIVITY_TIME_LIMIT = 60 // Time in seconds
     }
+
+    /**
+     * The user-chosen delay (seconds) before the app locks in the background. Read fresh at each
+     * timer start so a change in Settings takes effect without an app restart. 0 = Instantly.
+     */
+    private fun lockDelaySeconds(): Int =
+        sharedPrefs.getInt(SharedPrefs.LOCK_DELAY_SECONDS, USER_INACTIVITY_TIME_LIMIT)
 
     private var appLockEnabled = false
 
@@ -167,6 +175,10 @@ class RootViewModel @Inject constructor(
 
     fun unlockApp() {
         _appLocked.value = false
+        // The user is active again; restart the delay from zero so the next background cycle
+        // waits the full chosen delay instead of locking immediately (the timer is otherwise
+        // only reset on an early return, so post-lock cycles would re-lock instantly).
+        resetUserInactiveTimer()
     }
 
     private val userInactiveTime = AtomicLong(0)
@@ -176,8 +188,17 @@ class RootViewModel @Inject constructor(
     fun startUserInactiveTimeCounter() {
         if (userInactiveJob != null && userInactiveJob!!.isActive) return
 
+        val limitSeconds = lockDelaySeconds()
+        if (limitSeconds <= 0) {
+            // "Instantly": lock as soon as the app leaves the foreground, no timer.
+            if (!isAppLocked()) {
+                lockApp()
+            }
+            return
+        }
+
         userInactiveJob = viewModelScope.launch(Dispatchers.IO) {
-            while (userInactiveTime.get() < USER_INACTIVITY_TIME_LIMIT &&
+            while (userInactiveTime.get() < limitSeconds &&
                 userInactiveJob != null && !userInactiveJob?.isCancelled!!
             ) {
                 delay(1000)
@@ -193,7 +214,7 @@ class RootViewModel @Inject constructor(
     }
 
     fun checkUserInactiveTimeStatus() {
-        if (userInactiveTime.get() < USER_INACTIVITY_TIME_LIMIT) {
+        if (userInactiveTime.get() < lockDelaySeconds()) {
             if (userInactiveJob != null && userInactiveJob?.isCancelled == false) {
                 userInactiveJob?.cancel()
                 resetUserInactiveTimer()

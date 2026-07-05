@@ -258,6 +258,11 @@
     <string name="import_data">Import data</string>
     <string name="app_settings">App Settings</string>
     <string name="lock_app">Lock App</string>
+    <string name="lock_after">Lock after</string>
+    <string name="lock_delay_instantly">Instantly</string>
+    <string name="lock_delay_1_min">1 minute</string>
+    <string name="lock_delay_5_min">5 minutes</string>
+    <string name="lock_delay_15_min">15 minutes</string>
     <string name="show_notifications">Show notifications</string>
     <string name="hide_balance">Hide balance</string>
     <string name="hide_balance_description">Tap on the hidden balance to reveal it for 5s</string>

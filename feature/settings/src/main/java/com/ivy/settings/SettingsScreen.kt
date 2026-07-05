@@ -90,6 +90,7 @@ fun BoxWithConstraintsScope.SettingsScreen() {
             viewModel.onEvent(SettingsEvent.SwitchTheme)
         },
         lockApp = uiState.lockApp,
+        lockDelaySeconds = uiState.lockDelaySeconds,
         showNotifications = uiState.showNotifications,
         hideCurrentBalance = uiState.hideCurrentBalance,
         hideIncome = uiState.hideIncome,
@@ -112,6 +113,9 @@ fun BoxWithConstraintsScope.SettingsScreen() {
         },
         onSetLockApp = {
             viewModel.onEvent(SettingsEvent.SetLockApp(it))
+        },
+        onSetLockDelay = {
+            viewModel.onEvent(SettingsEvent.SetLockDelay(it))
         },
         onSetShowNotifications = {
             viewModel.onEvent(SettingsEvent.SetShowNotifications(it))
@@ -148,6 +152,7 @@ private fun BoxWithConstraintsScope.UI(
     theme: Theme,
     onSwitchTheme: () -> Unit,
     lockApp: Boolean,
+    lockDelaySeconds: Int,
     nameLocalAccount: String?,
     languageOptionVisible: Boolean,
     onSetCurrency: (String) -> Unit,
@@ -161,6 +166,7 @@ private fun BoxWithConstraintsScope.UI(
     onBackupData: () -> Unit = {},
     onExportToCSV: () -> Unit = {},
     onSetLockApp: (Boolean) -> Unit = {},
+    onSetLockDelay: (Int) -> Unit = {},
     onSetShowNotifications: (Boolean) -> Unit = {},
     onSetTreatTransfersAsIncExp: (Boolean) -> Unit = {},
     onSetHideCurrentBalance: (Boolean) -> Unit = {},
@@ -172,6 +178,7 @@ private fun BoxWithConstraintsScope.UI(
 ) {
     var currencyModalVisible by remember { mutableStateOf(false) }
     var nameModalVisible by remember { mutableStateOf(false) }
+    var lockDelayModalVisible by remember { mutableStateOf(false) }
     var chooseStartDateOfMonthVisible by remember { mutableStateOf(false) }
     var deleteCloudDataModalVisible by remember { mutableStateOf(false) }
     var deleteAllDataModalVisible by remember { mutableStateOf(false) }
@@ -334,6 +341,15 @@ private fun BoxWithConstraintsScope.UI(
                 text = stringResource(R.string.lock_app),
                 icon = R.drawable.ic_custom_fingerprint_m
             )
+
+            if (lockApp) {
+                Spacer(Modifier.height(12.dp))
+
+                LockDelayRow(
+                    lockDelaySeconds = lockDelaySeconds,
+                    onClick = { lockDelayModalVisible = true }
+                )
+            }
 
             Spacer(Modifier.height(12.dp))
 
@@ -529,6 +545,13 @@ private fun BoxWithConstraintsScope.UI(
         onSetStartDateOfMonth(it)
     }
 
+    LockDelayModal(
+        visible = lockDelayModalVisible,
+        selectedSeconds = lockDelaySeconds,
+        dismiss = { lockDelayModalVisible = false },
+        onDelaySelected = onSetLockDelay
+    )
+
     DeleteModal(
         title = stringResource(R.string.delete_all_user_data_question),
         description = stringResource(
@@ -610,6 +633,56 @@ private fun StartDateOfMonth(
         Text(
             text = startDateOfMonth.toString(),
             style = UI.typo.nB2.style(
+                fontWeight = FontWeight.ExtraBold,
+                color = UI.colors.pureInverse
+            )
+        )
+
+        Spacer(Modifier.width(32.dp))
+    }
+}
+
+@Composable
+private fun lockDelayLabel(seconds: Int): String = when (seconds) {
+    0 -> stringResource(R.string.lock_delay_instantly)
+    300 -> stringResource(R.string.lock_delay_5_min)
+    900 -> stringResource(R.string.lock_delay_15_min)
+    else -> stringResource(R.string.lock_delay_1_min)
+}
+
+@Composable
+private fun LockDelayRow(
+    lockDelaySeconds: Int,
+    onClick: () -> Unit
+) {
+    SettingsButtonRow(
+        onClick = onClick
+    ) {
+        Spacer(Modifier.width(12.dp))
+
+        IvyIconScaled(
+            icon = R.drawable.ic_custom_fingerprint_m,
+            tint = UI.colors.pureInverse,
+            iconScale = IconScale.M,
+            padding = 2.dp
+        )
+
+        Spacer(Modifier.width(8.dp))
+
+        Text(
+            modifier = Modifier.padding(vertical = 20.dp),
+            text = stringResource(R.string.lock_after),
+            style = UI.typo.b2.style(
+                color = UI.colors.pureInverse,
+                fontWeight = FontWeight.Bold
+            )
+        )
+
+        Spacer(Modifier.weight(1f))
+
+        Text(
+            text = lockDelayLabel(lockDelaySeconds),
+            style = UI.typo.b2.style(
                 fontWeight = FontWeight.ExtraBold,
                 color = UI.colors.pureInverse
             )
@@ -1180,6 +1253,7 @@ private fun Preview(theme: Theme = Theme.LIGHT) {
             theme = Theme.AUTO,
             onSwitchTheme = {},
             lockApp = false,
+            lockDelaySeconds = 60,
             currencyCode = "BGN",
             onSetCurrency = {},
             languageOptionVisible = true

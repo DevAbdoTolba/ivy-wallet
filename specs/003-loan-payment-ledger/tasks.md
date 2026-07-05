@@ -30,7 +30,7 @@ Multi-module Android Gradle project. Module roots used below:
 
 **Purpose**: Ground the plan against live code before editing (no new module, no scaffolding needed).
 
-- [ ] T001 Verify plan anchors still hold and record drift notes in specs/003-loan-payment-ledger/plan.md if any: `when (appLocked)` branch swap in app/src/main/java/com/ivy/wallet/RootActivity.kt (~99-155); `USER_INACTIVITY_TIME_LIMIT = 60` in app/src/main/java/com/ivy/wallet/RootViewModel.kt (~51); Transfer branch defaulting `toAccount = account` in feature/sms-sync/src/main/java/com/ivy/sms/domain/usecase/CreateTransactionFromSmsUseCase.kt (~239-252); `loanId/loanRecordId = null` (~204-205 same file); DB `version = 135` in shared/data/core/src/main/java/com/ivy/data/db/IvyRoomDatabase.kt; locate the QuarantineReason enum file in feature/sms-sync and the exact LoanTransactionsCore path under temp/legacy-code
+- [X] T001 Verify plan anchors still hold and record drift notes in specs/003-loan-payment-ledger/plan.md if any: `when (appLocked)` branch swap in app/src/main/java/com/ivy/wallet/RootActivity.kt (~99-155); `USER_INACTIVITY_TIME_LIMIT = 60` in app/src/main/java/com/ivy/wallet/RootViewModel.kt (~51); Transfer branch defaulting `toAccount = account` in feature/sms-sync/src/main/java/com/ivy/sms/domain/usecase/CreateTransactionFromSmsUseCase.kt (~239-252); `loanId/loanRecordId = null` (~204-205 same file); DB `version = 135` in shared/data/core/src/main/java/com/ivy/data/db/IvyRoomDatabase.kt; locate the QuarantineReason enum file in feature/sms-sync and the exact LoanTransactionsCore path under temp/legacy-code
 
 ---
 
@@ -54,9 +54,9 @@ recents shows nothing; back/touch/IME blocked while locked.
 
 ### Implementation for User Story 1
 
-- [ ] T002 [US1] Restructure lock rendering in app/src/main/java/com/ivy/wallet/RootActivity.kt: inside setContent, compose NavigationRoot + IvyNavGraph unconditionally in a root Box; when `appLocked == true` compose AppLockedScreen as last (top) child of the same Box; keep `appLocked == null` as today's blank surface; delete the `when(appLocked)` branch swap; leave onWindowFocusChanged FLAG_SECURE logic untouched (contract app-lock-overlay.md promises 1–3)
-- [ ] T003 [P] [US1] Input isolation inside app/src/main/java/com/ivy/wallet/ui/applocked/AppLockedScreen.kt: root `Modifier.pointerInput` consuming all events, `BackHandler { }` swallowing back, clear focus via LocalFocusManager + hide IME on first composition of the locked state (research R1)
-- [ ] T004 [P] [US1] Idempotent start() guard in feature/edit-transaction/src/main/java/com/ivy/transaction/EditTransactionViewModel.kt: private loaded-screen token; `start(screen)` no-ops when the same screen instance is already displayed (no `reset()` over live data); keep `LaunchedEffect(Unit)` in feature/edit-transaction/src/main/java/com/ivy/transaction/EditTransactionScreen.kt unchanged (research R3, FR-004)
+- [X] T002 [US1] Restructure lock rendering in app/src/main/java/com/ivy/wallet/RootActivity.kt: inside setContent, compose NavigationRoot + IvyNavGraph unconditionally in a root Box; when `appLocked == true` compose AppLockedScreen as last (top) child of the same Box; keep `appLocked == null` as today's blank surface; delete the `when(appLocked)` branch swap; leave onWindowFocusChanged FLAG_SECURE logic untouched (contract app-lock-overlay.md promises 1–3)
+- [X] T003 [P] [US1] Input isolation inside app/src/main/java/com/ivy/wallet/ui/applocked/AppLockedScreen.kt: root `Modifier.pointerInput` consuming all events, `BackHandler { }` swallowing back, clear focus via LocalFocusManager + hide IME on first composition of the locked state (research R1)
+- [X] T004 [P] [US1] Idempotent start() guard in feature/edit-transaction/src/main/java/com/ivy/transaction/EditTransactionViewModel.kt: private loaded-screen token; `start(screen)` no-ops when the same screen instance is already displayed (no `reset()` over live data); keep `LaunchedEffect(Unit)` in feature/edit-transaction/src/main/java/com/ivy/transaction/EditTransactionScreen.kt unchanged (research R3, FR-004)
 - [ ] T005 [US1] UAT checkpoint (owner-run): hand over `.\gradlew :app:assembleDebug` + quickstart.md § US1 steps 2–5 with `logs\capture.bat lock_overlay_uat`; record outcome in specs/003-loan-payment-ledger/checklists/requirements.md notes
 
 **Checkpoint**: US1 fully functional — the single highest-value fix ships alone if needed.
@@ -71,11 +71,11 @@ recents shows nothing; back/touch/IME blocked while locked.
 
 ### Implementation for User Story 2
 
-- [ ] T006 [P] [US2] Add `LOCK_DELAY_SECONDS` key (default 60; allowed 0|60|300|900) in shared/base/src/main/java/com/ivy/base/legacy/SharedPrefs.kt
-- [ ] T007 [US2] Read delay at each timer start in app/src/main/java/com/ivy/wallet/RootViewModel.kt: replace hardcoded `USER_INACTIVITY_TIME_LIMIT`; value 0 ⇒ lock synchronously from onPause path (no timer coroutine); keep cancel-on-quick-return semantics (contract app-lock-overlay.md settings surface)
-- [ ] T008 [US2] Settings state + `SettingsEvent.SetLockDelay` handling (read/write SharedPrefs) in feature/settings/src/main/java/com/ivy/settings/SettingsViewModel.kt
-- [ ] T009 [US2] "Lock after" row (visible only when lock enabled; labels Instantly / 1 minute / 5 minutes / 15 minutes) in feature/settings/src/main/java/com/ivy/settings/SettingsScreen.kt near the existing lock toggle (~812)
-- [ ] T010 [P] [US2] Unit test for delay semantics (0 locks immediately; 60/300/900 honored; quick return cancels) in app/src/test/java/com/ivy/wallet/RootViewModelTest.kt (create if absent, follow existing app-module test conventions)
+- [X] T006 [P] [US2] Add `LOCK_DELAY_SECONDS` key (default 60; allowed 0|60|300|900) in shared/base/src/main/java/com/ivy/base/legacy/SharedPrefs.kt
+- [X] T007 [US2] Read delay at each timer start in app/src/main/java/com/ivy/wallet/RootViewModel.kt: replace hardcoded `USER_INACTIVITY_TIME_LIMIT`; value 0 ⇒ lock synchronously from onPause path (no timer coroutine); keep cancel-on-quick-return semantics (contract app-lock-overlay.md settings surface)
+- [X] T008 [US2] Settings state + `SettingsEvent.SetLockDelay` handling (read/write SharedPrefs) in feature/settings/src/main/java/com/ivy/settings/SettingsViewModel.kt
+- [X] T009 [US2] "Lock after" row (visible only when lock enabled; labels Instantly / 1 minute / 5 minutes / 15 minutes) in feature/settings/src/main/java/com/ivy/settings/SettingsScreen.kt near the existing lock toggle (~812)
+- [ ] T010 [P] [US2] Unit test for delay semantics (0 locks immediately; 60/300/900 honored; quick return cancels) in app/src/test/java/com/ivy/wallet/RootViewModelTest.kt (create if absent, follow existing app-module test conventions) — DEFERRED: the `app` module currently has NO test sources or mockable example; RootViewModel needs 7 mocked collaborators. To be authored alongside the owner's first build (needs the testing-bundle API confirmed) rather than shipped blind. Delay behavior is covered by the T011 on-device UAT in the meantime.
 - [ ] T011 [US2] UAT checkpoint (owner-run): quickstart.md § US1/US2 full script incl. step 6, `logs\capture.bat lock_overlay_uat`; hand over `.\gradlew :app:testDebugUnitTest`
 
 **Checkpoint**: Project B complete — US1 and US2 independently verified.

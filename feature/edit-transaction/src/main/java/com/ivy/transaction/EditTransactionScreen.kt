@@ -1,7 +1,6 @@
 package com.ivy.transaction
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -69,6 +68,7 @@ import com.ivy.wallet.ui.theme.components.AddPrimaryAttributeButton
 import com.ivy.wallet.ui.theme.components.ChangeTransactionTypeModal
 import com.ivy.wallet.ui.theme.components.CustomExchangeRateCard
 import com.ivy.wallet.ui.theme.modal.DeleteModal
+import com.ivy.wallet.ui.theme.modal.LinkToLoanModal
 import com.ivy.wallet.ui.theme.modal.ModalAdd
 import com.ivy.wallet.ui.theme.modal.ModalCheck
 import com.ivy.wallet.ui.theme.modal.ModalSave
@@ -351,23 +351,6 @@ private fun BoxWithConstraintsScope.UI(
             )
         }
 
-        // US7: link an un-linked, saved transaction to a loan. Hidden the
-        // moment the transaction carries a loan link (FR-020).
-        if (canLinkToLoan) {
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                modifier = Modifier
-                    .padding(horizontal = 24.dp)
-                    .clickable { linkToLoanModalVisible = true },
-                text = "🔗 Link to loan",
-                style = UI.typo.nB2.style(
-                    color = UI.colors.pureInverse,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-        }
-
         Spacer(Modifier.height(32.dp))
 
         Category(category = category, onChooseCategory = {
@@ -451,6 +434,20 @@ private fun BoxWithConstraintsScope.UI(
                         )
                     )
                 }
+            )
+        }
+
+        // US7: link an un-linked, saved transaction (SMS-created or manual) to
+        // a loan. Same subtle "optional attribute" idiom as the planned-date
+        // row above — hidden the moment the transaction carries a loan link
+        // (FR-020). Linking is ALWAYS user-initiated: nothing auto-links.
+        if (canLinkToLoan) {
+            Spacer(Modifier.height(12.dp))
+
+            AddPrimaryAttributeButton(
+                icon = R.drawable.ic_custom_loan_s,
+                text = "Link to loan",
+                onClick = { linkToLoanModalVisible = true }
             )
         }
 
@@ -628,7 +625,7 @@ private fun BoxWithConstraintsScope.UI(
 
     // US7: link this transaction to a loan — record adopts the transaction,
     // never a second one, wallet balances untouched.
-    com.ivy.wallet.ui.theme.modal.LinkToLoanModal(
+    LinkToLoanModal(
         visible = linkToLoanModalVisible,
         loans = loans,
         moneyOut = transactionType != TransactionType.INCOME,

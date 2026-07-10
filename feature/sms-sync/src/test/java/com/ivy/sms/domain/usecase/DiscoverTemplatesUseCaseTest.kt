@@ -2,7 +2,9 @@ package com.ivy.sms.domain.usecase
 
 import arrow.core.right
 import com.ivy.sms.data.DrainParser
+import com.ivy.sms.data.SenderAccountLinkRepository
 import com.ivy.sms.data.SmsTemplateRepository
+import com.ivy.sms.domain.model.SenderAccountLink
 import com.ivy.sms.domain.model.SmsMessage
 import com.ivy.sms.domain.model.SmsTemplate
 import com.ivy.sms.domain.model.SmsTemplateId
@@ -22,8 +24,9 @@ import java.util.UUID
 class DiscoverTemplatesUseCaseTest {
 
     private val templateRepo = mockk<SmsTemplateRepository>()
+    private val senderRepo = mockk<SenderAccountLinkRepository>()
     private val parser = DrainParser()
-    private val discover = DiscoverTemplatesUseCase(parser, templateRepo)
+    private val discover = DiscoverTemplatesUseCase(parser, templateRepo, senderRepo)
 
     private val templateId = SmsTemplateId(UUID.randomUUID())
     private val slotId = WildcardId(UUID.randomUUID())
@@ -78,6 +81,9 @@ class DiscoverTemplatesUseCaseTest {
         val existing = seededTemplate(TemplateState.UNMAPPED)
         parser.rebuildFromTemplates(listOf(existing))
         coEvery { templateRepo.findById(templateId) } returns existing.right()
+        // The confident merge consults the trust gate — no ACTIVE sibling
+        // template exists, so the sender is untrusted.
+        coEvery { templateRepo.findAll() } returns emptyList<SmsTemplate>().right()
         val saved = slot<SmsTemplate>()
         coEvery { templateRepo.upsert(capture(saved)) } returns Unit.right()
 
@@ -86,13 +92,18 @@ class DiscoverTemplatesUseCaseTest {
         result.getOrNull()!!.created shouldBe false
         saved.captured.pattern shouldBe "Paid <*> fees to Cafe branch <*>"
         // Prior slot at position 1 survives with its role; the newly-emerged
-        // wildcard at position 6 gets a fresh Unmapped slot.
+        // wildcard at position 6 gets an INFERRED default ("uptown" is free
+        // text → Merchant) so the mapping screen opens pre-filled.
         val byPosition = saved.captured.wildcardSlots.associateBy { it.positionInPattern }
         byPosition.getValue(1).id shouldBe slotId
         byPosition.getValue(1).role shouldBe WildcardRole.Expense
         byPosition.getValue(1).exampleValue shouldBe "99"
-        byPosition.getValue(6).role shouldBe WildcardRole.Unmapped
+        byPosition.getValue(6).role shouldBe WildcardRole.Merchant
         byPosition.getValue(6).exampleValue shouldBe "uptown"
+        // Pre-bound Expense at position 1 means the refresh is confidently
+        // inferable — but the sender has NO other ACTIVE template, so it
+        // must stay UNMAPPED (trust gate).
+        saved.captured.state shouldBe TemplateState.UNMAPPED
     }
 
     @Test
@@ -128,5 +139,45 @@ class DiscoverTemplatesUseCaseTest {
         saved.captured.state shouldBe TemplateState.ACTIVE
         saved.captured.pattern shouldBe active.pattern
         saved.captured.matchCount shouldBe 4
+    }
+
+    @Test
+    fun confidentMerge_fromTrustedLinkedSender_autoActivates() = runTest {
+        // The automaticity core: an UNMAPPED cluster merging its second
+        // sample, from a sender that already has ONE user-approved ACTIVE
+        // template AND a wallet link. Inference is unambiguous (direction
+        // keyword + balance context) → the template activates ITSELF and
+        // transactions flow with zero questions.
+        val unmappedId = SmsTemplateId(UUID.randomUUID())
+        val unmapped = SmsTemplate(
+            id = unmappedId,
+            pattern = "Debit <*> at balance <*> end",
+            exampleBody = "Debit 100.50 at balance 900.00 end",
+            wildcardSlots = listOf(
+                WildcardSlot(WildcardId(UUID.randomUUID()), 1, "", "100.50", WildcardRole.Unmapped),
+                WildcardSlot(WildcardId(UUID.randomUUID()), 4, "", "900.00", WildcardRole.Unmapped),
+            ),
+            state = TemplateState.UNMAPPED,
+            senderIdHint = "TestBank",
+            firstSeen = Instant.EPOCH,
+            lastSeen = Instant.EPOCH,
+            matchCount = 2,
+        )
+        parser.rebuildFromTemplates(listOf(unmapped))
+        coEvery { templateRepo.findById(unmappedId) } returns unmapped.right()
+        coEvery { templateRepo.findAll() } returns
+            listOf(seededTemplate(TemplateState.ACTIVE)).right()
+        coEvery { senderRepo.findBySenderId("TestBank") } returns
+            mockk<SenderAccountLink>().right()
+        val saved = slot<SmsTemplate>()
+        coEvery { templateRepo.upsert(capture(saved)) } returns Unit.right()
+
+        val result = discover(message("Debit 55.00 at balance 800.00 end"))
+
+        result.getOrNull()!!.created shouldBe false
+        saved.captured.state shouldBe TemplateState.ACTIVE
+        val byPosition = saved.captured.wildcardSlots.associateBy { it.positionInPattern }
+        byPosition.getValue(1).role shouldBe WildcardRole.Expense
+        byPosition.getValue(4).role shouldBe WildcardRole.CurrentTotal
     }
 }

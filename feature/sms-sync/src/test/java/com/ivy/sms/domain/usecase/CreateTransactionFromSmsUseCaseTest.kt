@@ -229,6 +229,31 @@ class CreateTransactionFromSmsUseCaseTest {
     }
 
     @Test
+    fun alignment_skipsCurrencyLiteralTheBankVariantDroppedEntirely() {
+        val amountSlot = expenseSlot(1)
+        val totalSlot = WildcardSlot(
+            id = WildcardId(UUID.randomUUID()),
+            positionInPattern = 4,
+            contextSnippet = "",
+            exampleValue = "50",
+            role = WildcardRole.CurrentTotal,
+        )
+        // "جم" after the balance is a currency word some variants of the SAME
+        // bank format omit (bank-alahly card debits: ATM rows have it,
+        // merchant rows don't). Absent from the body entirely → the aligner
+        // skips the literal; present → it must match (see the adjacency test
+        // above, which stays strict).
+        val template = template("paid <*> at balance <*> جم end", listOf(amountSlot, totalSlot))
+        val message = SmsMessage("k", "TestBank", "paid 100 at balance 50 end", Instant.EPOCH)
+
+        val values = extractWildcardValues(template, message)
+
+        values shouldNotBe null
+        values!![amountSlot.id] shouldBe "100"
+        values[totalSlot.id] shouldBe "50"
+    }
+
+    @Test
     fun alignment_failsWhenFeeSlotRegionIsEmpty() {
         val feeSlot = WildcardSlot(
             id = WildcardId(UUID.randomUUID()),

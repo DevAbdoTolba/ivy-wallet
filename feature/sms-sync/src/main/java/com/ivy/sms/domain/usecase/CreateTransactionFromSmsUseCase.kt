@@ -489,6 +489,24 @@ internal fun alignForDisplay(
  *  pathological body full of repeated literals can't explode the search. */
 private const val MAX_TERMINATOR_CANDIDATES = 5
 
+/**
+ * Currency words banks include or OMIT between variants of the very same
+ * message format, Arabic and English alike — e.g. bank-alahly's card debits:
+ * ATM rows say "المتاح 721.06 جم للمزيد", merchant rows say
+ * "المتاح 260.24 للمزيد" (no جم). A pattern literal in this set is treated
+ * as OPTIONAL at alignment time: when the body lacks it the aligner skips
+ * the literal and stays adjacency-strict for everything else. Lowercase.
+ */
+private val OPTIONAL_CURRENCY_TOKENS = setOf(
+    // Arabic — Egyptian pound spellings
+    "جم", "جنيه", "جنيها", "جنيهاً", "ج.م", "ج.م.",
+    // Latin
+    "egp", "le", "l.e", "l.e.", "usd", "eur", "gbp", "sar", "aed",
+)
+
+private fun isOptionalCurrencyToken(token: String): Boolean =
+    token.lowercase() in OPTIONAL_CURRENCY_TOKENS
+
 /** Deepest-failure diagnostics. Backtracking retries the same regions, so
  *  intermediate misses must not spam logcat — the deepest reason is recorded
  *  here and logged ONCE by [extractWildcardValues] when nothing aligned. */
@@ -537,6 +555,20 @@ private fun alignFrom(
             // exactly at bodyIdx — no forward scan, no skipped body tokens.
             val bodyTok = bodyTokens.getOrNull(bodyIdx)
             if (bodyTok == null || !bodyTok.equals(ptok, ignoreCase = true)) {
+                val currencyAbsentFromRest = isOptionalCurrencyToken(ptok) &&
+                    (bodyIdx until bodyTokens.size).none {
+                        bodyTokens[it].equals(ptok, ignoreCase = true)
+                    }
+                if (currencyAbsentFromRest) {
+                    // Currency word this bank variant dropped ENTIRELY — skip
+                    // the pattern literal without consuming a body token; the
+                    // NEXT literal still has to match adjacency-strict. When
+                    // the currency occurs anywhere ahead there is NO skip: a
+                    // present literal must be honored, or we'd revive the
+                    // loose-subsequence matching adjacency-strict prevents.
+                    patternIdx++
+                    continue
+                }
                 failure.record(
                     patternIdx,
                     "literal '$ptok' at pattern[$patternIdx] != " +
@@ -574,35 +606,79 @@ private fun alignFrom(
         // The terminator may occur INSIDE the variable region (repeated
         // currency tokens are routine in this corpus), so try each occurrence
         // in order until the remainder of the pattern aligns too.
-        val terminator = patternTokens[terminatorIdx]
-        var searchFrom = bodyIdx
-        var attempts = 0
-        while (attempts < MAX_TERMINATOR_CANDIDATES) {
-            val stopAt = (searchFrom until bodyTokens.size).firstOrNull {
-                bodyTokens[it].equals(terminator, ignoreCase = true)
-            } ?: break
-            attempts++
-            val trial = Alignment()
-            if (captureRun(bodyTokens, slotByPosition, runStart, runEnd, bodyIdx, stopAt, trial, failure)) {
-                val rest = alignFrom(
-                    patternTokens = patternTokens,
-                    bodyTokens = bodyTokens,
-                    slotByPosition = slotByPosition,
-                    startPatternIdx = terminatorIdx,
-                    startBodyIdx = stopAt,
-                    failure = failure,
-                )
-                if (rest != null) {
-                    out.absorb(trial)
-                    out.absorb(rest)
-                    return out
-                }
+        //
+        // Candidate terminators: normally just the literal after the run —
+        // but when that literal is an OPTIONAL currency word (banks drop
+        // "جم"/"EGP" between variants of the same format), the literals after
+        // it are tried as terminators too, in order, exact match first.
+        val candidateTerminatorIdxs = mutableListOf<Int>()
+        var scanIdx = terminatorIdx
+        var trailingOptionalRunOffEnd = false
+        while (true) {
+            if (scanIdx >= patternTokens.size) {
+                // Every literal after the run was optional currency — the run
+                // may legitimately absorb the rest of the body (tried last).
+                trailingOptionalRunOffEnd = true
+                break
             }
-            searchFrom = stopAt + 1
+            val tok = patternTokens[scanIdx]
+            if (tok == com.ivy.sms.data.WILDCARD_TOKEN) break
+            candidateTerminatorIdxs.add(scanIdx)
+            // Extend past this literal ONLY when it is an optional currency
+            // word that is completely ABSENT from the unconsumed body. If it
+            // occurs anywhere ahead, the literal must be honored — skipping a
+            // present literal would revive the loose-subsequence matching the
+            // adjacency-strict invariant exists to prevent.
+            val absentCurrency = isOptionalCurrencyToken(tok) &&
+                (bodyIdx until bodyTokens.size).none {
+                    bodyTokens[it].equals(tok, ignoreCase = true)
+                }
+            if (!absentCurrency) break
+            scanIdx++
+        }
+
+        var attempts = 0
+        for (termIdx in candidateTerminatorIdxs) {
+            val terminator = patternTokens[termIdx]
+            var searchFrom = bodyIdx
+            var termAttempts = 0
+            while (termAttempts < MAX_TERMINATOR_CANDIDATES) {
+                val stopAt = (searchFrom until bodyTokens.size).firstOrNull {
+                    bodyTokens[it].equals(terminator, ignoreCase = true)
+                } ?: break
+                termAttempts++
+                attempts++
+                val trial = Alignment()
+                if (captureRun(bodyTokens, slotByPosition, runStart, runEnd, bodyIdx, stopAt, trial, failure)) {
+                    val rest = alignFrom(
+                        patternTokens = patternTokens,
+                        bodyTokens = bodyTokens,
+                        slotByPosition = slotByPosition,
+                        startPatternIdx = termIdx,
+                        startBodyIdx = stopAt,
+                        failure = failure,
+                    )
+                    if (rest != null) {
+                        out.absorb(trial)
+                        out.absorb(rest)
+                        return out
+                    }
+                }
+                searchFrom = stopAt + 1
+            }
+        }
+        if (trailingOptionalRunOffEnd) {
+            return if (
+                captureRun(bodyTokens, slotByPosition, runStart, runEnd, bodyIdx, bodyTokens.size, out, failure)
+            ) {
+                out
+            } else {
+                null
+            }
         }
         failure.record(
             runStart,
-            "wildcard-run terminator '$terminator' at pattern[$terminatorIdx] has no " +
+            "wildcard-run terminator '${patternTokens[terminatorIdx]}' at pattern[$terminatorIdx] has no " +
                 "aligning occurrence in body[$bodyIdx..${bodyTokens.size - 1}] " +
                 "(tried $attempts)",
         )

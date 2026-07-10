@@ -98,6 +98,7 @@ class DiscoverTemplatesUseCaseTest {
     @Test
     fun newCluster_persistsUnmappedTemplate_andReportsCreated() = runTest {
         coEvery { templateRepo.findById(any()) } returns (null as SmsTemplate?).right()
+        coEvery { templateRepo.findAll() } returns emptyList<SmsTemplate>().right()
         val saved = slot<SmsTemplate>()
         coEvery { templateRepo.upsert(capture(saved)) } returns Unit.right()
 
@@ -106,5 +107,26 @@ class DiscoverTemplatesUseCaseTest {
         result.getOrNull()!!.created shouldBe true
         saved.captured.state shouldBe TemplateState.UNMAPPED
         saved.captured.senderIdHint shouldBe "TestBank"
+    }
+
+    @Test
+    fun newDrainLeaf_alignedToFrozenTemplate_reusesIt_insteadOfReAsking() = runTest {
+        // Deep-scan re-ask bug: a variant message lands on a FRESH drain leaf
+        // (parser is empty here), but its shape aligns to an already-ACTIVE
+        // template. Discover must reuse the frozen template — never mint a
+        // second UNMAPPED row asking the user to map the same shape again.
+        val active = seededTemplate(TemplateState.ACTIVE)
+        coEvery { templateRepo.findById(any()) } returns (null as SmsTemplate?).right()
+        coEvery { templateRepo.findAll() } returns listOf(active).right()
+        val saved = slot<SmsTemplate>()
+        coEvery { templateRepo.upsert(capture(saved)) } returns Unit.right()
+
+        val result = discover(message("Paid 250 fees to Cafe branch downtown"))
+
+        result.getOrNull()!!.created shouldBe false
+        saved.captured.id shouldBe active.id
+        saved.captured.state shouldBe TemplateState.ACTIVE
+        saved.captured.pattern shouldBe active.pattern
+        saved.captured.matchCount shouldBe 4
     }
 }

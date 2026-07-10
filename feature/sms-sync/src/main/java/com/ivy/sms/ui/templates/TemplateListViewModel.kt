@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.ivy.data.model.AccountId
 import com.ivy.sms.data.PendingReviewItemRepository
@@ -31,6 +32,10 @@ import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 
+/** SavedStateHandle key for the wallet scope filter — must survive the
+ *  ViewModel-store wipe NavigationRoot performs on forward navigation. */
+private const val KEY_WALLET_FILTER = "wallet_filter"
+
 @Stable
 @HiltViewModel
 class TemplateListViewModel @Inject constructor(
@@ -43,6 +48,7 @@ class TemplateListViewModel @Inject constructor(
     private val applySyncPeriod: ApplySyncPeriodUseCase,
     private val watermarks: SmsWatermarkPreferences,
     private val appStartup: SmsSyncAppStartup,
+    private val savedStateHandle: SavedStateHandle,
 ) : ComposeViewModel<TemplateListViewState, TemplateListEvent>() {
 
     private var onTemplateOpen: ((SmsTemplateId) -> Unit)? = null
@@ -55,10 +61,20 @@ class TemplateListViewModel @Inject constructor(
      * templates — a global list here was the cross-wallet leak they
      * reported ("while in wallet Y, I saw wallet X's messages").
      */
-    private var activeWalletFilter by mutableStateOf<String?>(null)
+    private var activeWalletFilter by mutableStateOf<String?>(
+        savedStateHandle[KEY_WALLET_FILTER],
+    )
 
     fun setWalletFilter(id: String?) {
-        if (activeWalletFilter != id) activeWalletFilter = id
+        if (activeWalletFilter != id) {
+            activeWalletFilter = id
+            // NavigationRoot wipes the whole ViewModel store on every forward
+            // navigation (NavigationRoot.kt DisposableEffect), so this VM dies
+            // when the user opens a template and is recreated on back. Persist
+            // the filter in SavedStateHandle or the recreated VM starts with
+            // null and the list flashes ALL senders (the reported bug).
+            savedStateHandle[KEY_WALLET_FILTER] = id
+        }
     }
 
     // "Needs mapping" opens by default — it's the only group that requires

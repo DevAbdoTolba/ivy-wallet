@@ -65,6 +65,32 @@ class DiscoverTemplatesUseCase @Inject constructor(
             return templateRepo.upsert(updated).map { DiscoverResult(updated, created = false) }
         }
 
+        // SCAN-BACK RE-ASK FIX: the Drain tree files messages by token count +
+        // stable prefix, so a variant of an ALREADY-MAPPED format (extra
+        // merchant word, dropped currency token, reordered amount) lands on a
+        // fresh leaf and would mint a brand-new UNMAPPED template — re-asking
+        // the user for a shape they already answered. Before creating one, try
+        // ALIGNING the message against this sender's frozen templates with the
+        // exact aligner routing uses. A hit returns the frozen template:
+        // ACTIVE auto-creates the transaction, BLACKLISTED drops the message,
+        // and the user is never asked twice for the same shape.
+        val frozenMatch = templateRepo.findAll().getOrNull()
+            ?.filter { it.state != TemplateState.UNMAPPED }
+            ?.filter { it.senderIdHint.equals(message.senderId, ignoreCase = true) }
+            ?.firstOrNull { extractWildcardValues(it, message) != null }
+        if (frozenMatch != null) {
+            timber.log.Timber.tag("SmsTrace").i(
+                "DISCOVER fallback: message aligned to frozen tpl=%s state=%s (drain leaf was new)",
+                frozenMatch.id.value,
+                frozenMatch.state,
+            )
+            val updated = frozenMatch.copy(
+                lastSeen = maxOf(frozenMatch.lastSeen, msgTime),
+                matchCount = frozenMatch.matchCount + 1,
+            )
+            return templateRepo.upsert(updated).map { DiscoverResult(updated, created = false) }
+        }
+
         val slots = wildcardsFromPattern(cluster.templatePattern, cluster.exampleValues)
         val newTemplate = SmsTemplate(
             id = templateId,

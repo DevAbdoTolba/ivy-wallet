@@ -254,6 +254,10 @@ private fun BoxWithConstraintsScope.UI(
     var changeTransactionTypeModalVisible by remember { mutableStateOf(false) }
     var amountModalShown by remember { mutableStateOf(false) }
     var exchangeRateAmountModalShown by remember { mutableStateOf(false) }
+    // True while the exchange-rate modal edits the REVERSED direction
+    // ("1 USD = ? EGP") — users know that one, not the tiny 1-EGP-in-USD
+    // decimal. The entered value is stored as its reciprocal.
+    var exchangeRateReversed by remember { mutableStateOf(false) }
     var accountChangeModal by remember { mutableStateOf(false) }
     var linkToLoanModalVisible by remember { mutableStateOf(false) }
     val waitModalVisible by remember(backgroundProcessing) {
@@ -405,10 +409,15 @@ private fun BoxWithConstraintsScope.UI(
                     // Set exchangeRate to null to reset
                     onExchangeRateChange(null)
                 },
+                onReversedRateClick = {
+                    exchangeRateReversed = true
+                    exchangeRateAmountModalShown = true
+                },
                 modifier = Modifier.onGloballyPositioned { coordinates ->
                     customExchangeRatePosition = coordinates.positionInParent().y * 0.3f
                 }
             ) {
+                exchangeRateReversed = false
                 exchangeRateAmountModalShown = true
             }
         }
@@ -641,14 +650,32 @@ private fun BoxWithConstraintsScope.UI(
     AmountModal(
         id = amountModalId,
         visible = exchangeRateAmountModalShown,
-        currency = "",
-        initialAmount = customExchangeRateState.exchangeRate,
+        // Reversed mode: the user types "1 <toCurrency> = X <fromCurrency>"
+        // (e.g. 1 USD = 50 EGP) and the reciprocal is stored — the math is
+        // identical, only the input direction is humane.
+        currency = if (exchangeRateReversed) baseCurrency else "",
+        initialAmount = if (exchangeRateReversed) {
+            customExchangeRateState.exchangeRate
+                .takeIf { it > 0 }
+                ?.let { 1.0 / it }
+                ?: 0.0
+        } else {
+            customExchangeRateState.exchangeRate
+        },
         dismiss = { exchangeRateAmountModalShown = false },
         decimalCountMax = IvyCurrency.getDecimalPlaces(
-            customExchangeRateState.toCurrencyCode ?: baseCurrency
+            if (exchangeRateReversed) {
+                baseCurrency
+            } else {
+                customExchangeRateState.toCurrencyCode ?: baseCurrency
+            }
         ),
         onAmountChanged = {
-            onExchangeRateChange(it)
+            if (exchangeRateReversed) {
+                if (it > 0) onExchangeRateChange(1.0 / it)
+            } else {
+                onExchangeRateChange(it)
+            }
         }
     )
 

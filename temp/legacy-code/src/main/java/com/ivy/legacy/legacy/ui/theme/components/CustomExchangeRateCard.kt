@@ -36,6 +36,9 @@ fun CustomExchangeRateCard(
     modifier: Modifier = Modifier,
     title: String = stringResource(R.string.exchange_rate),
     onRefresh: () -> Unit = {},
+    /** When set, a tappable REVERSED-rate row ("1 USD → 50.00 EGP") appears —
+     *  users usually know that direction, not the tiny 1-EGP-in-USD decimal. */
+    onReversedRateClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     Row(
@@ -109,6 +112,43 @@ fun CustomExchangeRateCard(
                         color = Orange
                     )
                 )
+            }
+
+            if (onReversedRateClick != null && exchangeRate > 0) {
+                Spacer(Modifier.height(6.dp))
+
+                // The direction people actually know ("1 USD = 50 EGP") —
+                // tapping it opens the amount modal in reversed input mode.
+                Row(
+                    modifier = Modifier.clickable(onClick = onReversedRateClick),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "1 $toCurrencyCode",
+                        style = UI.typo.nC.style(
+                            fontWeight = FontWeight.Bold,
+                            color = UI.colors.gray
+                        )
+                    )
+                    IvyIcon(icon = R.drawable.ic_arrow_right, tint = UI.colors.gray)
+                    Text(
+                        text = (1.0 / exchangeRate)
+                            .format(IvyCurrency.getDecimalPlaces(fromCurrencyCode)) +
+                            " $fromCurrencyCode",
+                        style = UI.typo.nC.style(
+                            fontWeight = FontWeight.Bold,
+                            color = UI.colors.gray
+                        )
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "tap to set this way",
+                        style = UI.typo.c.style(
+                            fontWeight = FontWeight.Medium,
+                            color = UI.colors.gray
+                        )
+                    )
+                }
             }
         }
         IvyIcon(

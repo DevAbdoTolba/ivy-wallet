@@ -349,6 +349,7 @@ private fun BoxWithConstraintsScope.UI(
     EntryPaymentSheet(
         sheet = state.paymentSheet,
         baseCurrency = state.baseCurrency,
+        defaultCurrency = state.defaultCurrency,
         accounts = state.accounts,
         loanType = state.loan?.type,
         onConfirm = { amount, account ->
@@ -376,7 +377,7 @@ private fun BoxWithConstraintsScope.UI(
                     (if (unsettle.recordCount == 1) "" else "s") +
                     " and ${unsettle.transactionCount} transaction" +
                     (if (unsettle.transactionCount == 1) "" else "s") +
-                    " — wallet balances will be restored."
+                    ". Any other entries paid by the same transaction will reopen too. Wallet balances will be restored."
             else ->
                 "This entry was settled before payments existed — " +
                     "no transaction to remove, it just becomes open again."

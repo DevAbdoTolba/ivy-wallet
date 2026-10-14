@@ -202,6 +202,11 @@ class LoanTransactionsCore @Inject constructor(
         ioThread {
             modifiedTransaction.toDomain(transactionMapper)?.let {
                 transactionRepo.save(it)
+                loanRecordId?.let { recordId ->
+                    loanRecordDao.findById(recordId)?.let { record ->
+                        writeLoanRecordDao.save(record.copy(transactionId = it.id.value))
+                    }
+                }
             }
         }
     }
@@ -328,6 +333,10 @@ class LoanTransactionsCore @Inject constructor(
 
     suspend fun fetchAllLoanRecords(loanId: UUID) = ioThread {
         loanRecordDao.findAllByLoanId(loanId)
+    }
+
+    suspend fun fetchTransactionRecords(transactionId: UUID) = ioThread {
+        loanRecordDao.findAllByTransactionId(transactionId)
     }
 
     suspend fun fetchLoan(loanId: UUID) = ioThread {

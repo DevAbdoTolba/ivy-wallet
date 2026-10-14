@@ -15,6 +15,8 @@ import com.ivy.data.model.primitive.NotBlankTrimmedString
 import com.ivy.data.model.primitive.PositiveDouble
 import com.ivy.data.repository.AccountRepository
 import com.ivy.data.repository.TransactionRepository
+import com.ivy.data.repository.ExchangeRatesRepository
+import kotlinx.coroutines.flow.first
 import com.ivy.sms.data.PendingReviewItemRepository
 import com.ivy.sms.domain.model.SmsMessage
 import com.ivy.sms.domain.model.SmsTemplate
@@ -42,6 +44,7 @@ class CreateTransactionFromSmsUseCase @Inject constructor(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val pendingRepository: PendingReviewItemRepository,
+    private val exchangeRatesRepository: ExchangeRatesRepository,
 ) {
     /**
      * Serializes the dedup-check → save window. The guard below is
@@ -264,6 +267,24 @@ class CreateTransactionFromSmsUseCase @Inject constructor(
                     )
                     return "TRANSFER_NEEDS_DESTINATION:destination wallet no longer exists".left()
                 }
+                // The fee leaves the source wallet; it is not received by the destination.
+                var received = rawAmount.toDouble()
+                if (acct.asset != destAcct.asset) {
+                    val rates = exchangeRatesRepository.findAll().first()
+                    val direct = rates.firstOrNull { it.baseCurrency == acct.asset && it.currency == destAcct.asset }?.rate?.value
+                    val reverse = rates.firstOrNull { it.baseCurrency == destAcct.asset && it.currency == acct.asset }?.rate?.value
+                    val sharedBase = rates.firstNotNullOfOrNull { from ->
+                        if (from.currency != acct.asset) null else rates.firstOrNull {
+                            it.baseCurrency == from.baseCurrency && it.currency == destAcct.asset
+                        }?.let { it.rate.value / from.rate.value }
+                    }
+                    val rate = direct ?: reverse?.let { 1.0 / it } ?: sharedBase
+                        ?: return "TRANSFER_NEEDS_DESTINATION:set an exchange rate for these wallets first".left()
+                    received *= rate
+                }
+                if (!received.isFinite() || received <= 0.0) {
+                    return "TRANSFER_NEEDS_DESTINATION:invalid received amount or exchange rate".left()
+                }
                 Transfer(
                     id = transactionId,
                     title = title,
@@ -276,10 +297,7 @@ class CreateTransactionFromSmsUseCase @Inject constructor(
                     fromAccount = account,
                     fromValue = value,
                     toAccount = destination,
-                    // Same numeric amount in the destination's asset — matches
-                    // the manual-transfer default; cross-currency users adjust
-                    // the received side on the transaction afterwards.
-                    toValue = PositiveValue(amount = positive, asset = destAcct.asset),
+                    toValue = PositiveValue(amount = PositiveDouble.unsafe(received), asset = destAcct.asset),
                 )
             }
             else -> {

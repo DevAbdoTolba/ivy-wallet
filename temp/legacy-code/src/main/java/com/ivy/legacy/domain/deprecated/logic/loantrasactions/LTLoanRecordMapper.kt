@@ -75,6 +75,18 @@ class LTLoanRecordMapper @Inject constructor(
                 ltCore.fetchLoanRecord(transaction.loanRecordId!!) ?: return@computationThread
             val loan = ltCore.fetchLoan(transaction.loanId!!) ?: return@computationThread
 
+            val allocations = ltCore.fetchTransactionRecords(transaction.id)
+            if (allocations.size > 1) {
+                // Money edits for allocated payments are guarded at the editor. Text/date
+                // edits apply to every allocation without multiplying the payment amount.
+                ltCore.saveLoanRecords(allocations.map {
+                    it.copy(note = transaction.title, dateTime = transaction.dateTime ?: it.dateTime)
+                        .toLegacyDomain()
+                })
+                onBackgroundProcessingEnd()
+                return@computationThread
+            }
+
             val convertedAmount = ltCore.computeConvertedAmount(
                 oldLoanRecordAccountId = loanRecord.accountId,
                 oldLonRecordConvertedAmount = loanRecord.convertedAmount,

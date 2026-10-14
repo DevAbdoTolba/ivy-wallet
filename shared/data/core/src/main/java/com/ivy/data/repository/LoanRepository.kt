@@ -35,6 +35,10 @@ class LoanRepository @Inject constructor(
         }
     }
 
+    suspend fun findLoanItem(id: LoanItemId): LoanItem? = withContext(dispatchersProvider.io) {
+        loanItemDao.findById(id.value)?.let { with(mapper) { it.toDomain() }.getOrNull() }
+    }
+
     suspend fun saveLoanItem(item: LoanItem): Either<String, Unit> = either {
         withContext(dispatchersProvider.io) {
             writeLoanItemDao.save(with(mapper) { item.toEntity() })

@@ -317,7 +317,9 @@ class FakeTransactionDao : TransactionDao, WriteTransactionDao {
         items.removeIf { it.recurringRuleId == recurringRuleId }
     }
 
-    override suspend fun deleteById(id: UUID) {
+    override suspend fun deleteLoanRecordsForTransaction(id: UUID) = Unit
+
+    override suspend fun deleteTransactionRow(id: UUID) {
         items.removeIf { it.id == id }
     }
 

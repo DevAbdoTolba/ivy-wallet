@@ -4,11 +4,14 @@ import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
 import com.ivy.data.db.dao.write.WriteLoanRecordDao
+import com.ivy.data.db.dao.read.LoanRecordDao
+import com.ivy.data.db.DatabaseTransaction
 import com.ivy.data.model.LoanItemId
 import com.ivy.data.repository.LoanRepository
 import com.ivy.data.repository.TransactionRepository
 import com.ivy.legacy.utils.ioThread
 import com.ivy.wallet.domain.deprecated.logic.loantrasactions.LoanTransactionsLogic
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -40,23 +43,38 @@ class UnsettleLoanEntryUseCase @Inject constructor(
     private val writeLoanRecordDao: WriteLoanRecordDao,
     private val transactionRepository: TransactionRepository,
     private val loanTransactionsLogic: LoanTransactionsLogic,
+    private val loanRecordDao: LoanRecordDao,
+    private val databaseTransaction: DatabaseTransaction,
 ) {
 
     suspend fun preflight(entryId: LoanItemId): UnsettlePreflight {
         val records = loanRepository.recordsForEntry(entryId)
-        var transactions = 0
+        val transactions = mutableSetOf<com.ivy.data.model.TransactionId>()
+        val affectedRecords = records.map { it.id }.toMutableSet()
         for (record in records) {
-            if (transactionRepository.findLoanRecordTransaction(record.id) != null) {
-                transactions++
+            transactionRepository.findLoanRecordTransaction(record.id)?.let { transaction ->
+                transactions.add(transaction.id)
+                affectedRecords.addAll(loanRecordDao.findAllByTransactionId(transaction.id.value).map { it.id })
             }
         }
         return UnsettlePreflight(
-            recordCount = records.size,
-            transactionCount = transactions,
+            recordCount = affectedRecords.size,
+            transactionCount = transactions.size,
         )
     }
 
     suspend operator fun invoke(entryId: LoanItemId): Either<String, UnsettleReceipt> {
+        return try {
+            databaseTransaction { unsettle(entryId) }.right()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            "STORAGE_ERROR:${error.message}".left()
+        }
+    }
+
+    private suspend fun unsettle(entryId: LoanItemId): UnsettleReceipt {
+        val counts = preflight(entryId)
         val records = loanRepository.recordsForEntry(entryId)
         var transactionsDeleted = 0
         for (record in records) {
@@ -74,11 +92,11 @@ class UnsettleLoanEntryUseCase @Inject constructor(
         // Clear the legacy flag too — after this the derived state (no
         // records ⇒ paid 0 ⇒ unsettled) and the stored flag agree.
         loanRepository.updateSettledStatus(entryId, false)
-            .onLeft { return it.left() }
+            .onLeft { error(it) }
 
         return UnsettleReceipt(
-            recordsDeleted = records.size,
+            recordsDeleted = counts.recordCount,
             transactionsDeleted = transactionsDeleted,
-        ).right()
+        )
     }
 }

@@ -43,10 +43,6 @@ class ResolvePendingItemUseCase @Inject constructor(
             .firstOrNull { it.id == itemId }
             ?: return "PENDING_ITEM_NOT_FOUND".left()
 
-        if (rememberForTemplate) {
-            templateRepo.updateTransferDestination(item.template.id, destination)
-                .onLeft { return it.left() }
-        }
         // Fresh template read: picks up the remembered destination and any
         // other edit that happened since this item was enqueued.
         val template = templateRepo.findById(item.template.id).getOrNull() ?: item.template
@@ -68,6 +64,8 @@ class ResolvePendingItemUseCase @Inject constructor(
             pendingRepo.dismiss(item.id)
             prefs.incrementReviewedTotal()
             if (rememberForTemplate) {
+                templateRepo.updateTransferDestination(item.template.id, destination)
+                    .onLeft { return it.left() }
                 // Siblings quarantined for the same missing destination can
                 // convert now that the template carries a default.
                 convertViaTemplateMapping(template.id)

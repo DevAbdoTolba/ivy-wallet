@@ -4,6 +4,9 @@ import android.appwidget.AppWidgetManager
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.SecureFlagPolicy
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -132,6 +135,16 @@ class RootActivity : AppCompatActivity(), RootScreen {
                 // Opaque lock overlay on top of the live app. AppLockedScreen consumes all
                 // input, swallows back, and clears focus so nothing reaches the app beneath.
                 if (appLocked == true) {
+                    Dialog(
+                        onDismissRequest = {},
+                        properties = DialogProperties(
+                            dismissOnBackPress = false,
+                            dismissOnClickOutside = false,
+                            usePlatformDefaultWidth = false,
+                            decorFitsSystemWindows = false,
+                            securePolicy = SecureFlagPolicy.SecureOn,
+                        ),
+                    ) {
                     IvyUI(
                         design = appDesign(ivyContext),
                         timeConverter = timeConverter,
@@ -149,6 +162,7 @@ class RootActivity : AppCompatActivity(), RootScreen {
                             }
                         )
                     }
+                    }
                 }
             }
 
@@ -159,7 +173,7 @@ class RootActivity : AppCompatActivity(), RootScreen {
                 ),
                 isTrueBlack = appDesign(ivyContext).context().theme == Theme.AMOLED_DARK
             ) {
-                dateTimePicker.Content()
+                if (appLocked == false) dateTimePicker.Content()
             }
         }
     }

@@ -5,6 +5,8 @@ import com.ivy.base.model.LoanRecordType
 import com.ivy.data.model.LoanId
 import com.ivy.data.model.LoanItem
 import com.ivy.data.repository.LoanRepository
+import com.ivy.data.db.DatabaseTransaction
+import com.ivy.data.repository.TransactionRepository
 import com.ivy.data.model.LoanType
 import com.ivy.legacy.datamodel.Account
 import com.ivy.legacy.datamodel.Loan
@@ -30,6 +32,14 @@ class PayLoanEntryUseCaseTest {
     private val loanRepository = mockk<LoanRepository>()
     private val loanRecordCreator = mockk<LoanRecordCreator>()
     private val recordMapper = mockk<LTLoanRecordMapper>()
+    private val databaseTransaction = mockk<DatabaseTransaction> {
+        coEvery { invoke<Either<String, PaymentReceipt>>(any()) } coAnswers {
+            firstArg<suspend () -> Either<String, PaymentReceipt>>()()
+        }
+    }
+    private val transactionRepository = mockk<TransactionRepository> {
+        coEvery { findLoanRecordTransaction(any()) } returns mockk()
+    }
     private val loanTransactionsLogic = mockk<LoanTransactionsLogic> {
         every { LoanRecord } returns recordMapper
     }
@@ -38,6 +48,8 @@ class PayLoanEntryUseCaseTest {
         loanRepository = loanRepository,
         loanRecordCreator = loanRecordCreator,
         loanTransactionsLogic = loanTransactionsLogic,
+        databaseTransaction = databaseTransaction,
+        transactionRepository = transactionRepository,
     )
 
     private val loan = Loan(
@@ -62,6 +74,34 @@ class PayLoanEntryUseCaseTest {
         account = wallet,
         dateTime = Instant.EPOCH,
     )
+
+    init {
+        coEvery { loanRepository.findLoanItem(entry.id) } returns entry
+        coEvery { recordMapper.calculateConvertedAmount(any<CreateLoanRecordData>(), any()) } returns null
+    }
+
+    @Test
+    fun `rejects non-finite amounts before any write`() = runTest {
+        useCase(request(Double.NaN)).isLeft().shouldBeTrue()
+        useCase(request(Double.POSITIVE_INFINITY)).isLeft().shouldBeTrue()
+        coVerify(exactly = 0) { loanRecordCreator.create(any(), any(), any()) }
+    }
+
+    @Test
+    fun `currency conversion is applied before the remaining cap`() = runTest {
+        coEvery { loanRepository.sumPaidForEntry(entry.id) } returns 500.0
+        coEvery { recordMapper.calculateConvertedAmount(any<CreateLoanRecordData>(), any()) } returns 750.0
+        // 15 wallet units convert to 750 loan units, exceeding the remaining 700.
+        useCase(request(15.0)).isLeft().shouldBeTrue()
+        coVerify(exactly = 0) { loanRecordCreator.create(any(), any(), any()) }
+    }
+
+    @Test
+    fun `deleted entry cannot receive a payment from a stale sheet`() = runTest {
+        coEvery { loanRepository.findLoanItem(entry.id) } returns null
+        useCase(request(100.0)).isLeft().shouldBeTrue()
+        coVerify(exactly = 0) { loanRecordCreator.create(any(), any(), any()) }
+    }
 
     @Test
     fun `rejects a zero or negative amount`() = runTest {

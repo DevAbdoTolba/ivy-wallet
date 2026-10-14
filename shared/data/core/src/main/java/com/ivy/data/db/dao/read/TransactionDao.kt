@@ -226,7 +226,7 @@ interface TransactionDao {
         loanId: UUID
     ): TransactionEntity?
 
-    @Query("SELECT * FROM transactions WHERE isDeleted = 0 AND loanRecordId = :loanRecordId")
+    @Query("SELECT * FROM transactions WHERE isDeleted = 0 AND (loanRecordId = :loanRecordId OR id IN (SELECT transactionId FROM loan_records WHERE id = :loanRecordId)) LIMIT 1")
     suspend fun findLoanRecordTransaction(
         loanRecordId: UUID
     ): TransactionEntity?

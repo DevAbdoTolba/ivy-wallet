@@ -197,6 +197,7 @@ class LoanDetailsViewModel @Inject constructor(
 
         return LoanDetailsScreenState(
             baseCurrency = baseCurrency.value,
+            defaultCurrency = defaultCurrencyCode,
             loan = loan.value,
             displayLoanRecords = displayLoanRecords.value,
             displayLoanItems = displayLoanItems.value,
@@ -232,6 +233,10 @@ class LoanDetailsViewModel @Inject constructor(
     private fun handleLoanRecordModalEvents(event: LoanDetailsScreenEvent) {
         when (event) {
             is LoanRecordModalEvent.OnClickLoanRecord -> {
+                event.displayLoanRecord.loanRecord.transactionId?.let {
+                    nav.navigateTo(com.ivy.navigation.EditTransactionScreen(initialTransactionId = it, type = com.ivy.base.model.TransactionType.EXPENSE))
+                    return
+                }
                 loanRecordModalData.value = LoanRecordModalData(
                     loanRecord = event.displayLoanRecord.loanRecord,
                     baseCurrency = event.displayLoanRecord.loanRecordCurrencyCode,
@@ -805,11 +810,11 @@ class LoanDetailsViewModel @Inject constructor(
         viewModelScope.launch {
             TestIdlingResource.increment()
 
+            loanTransactionsLogic.LoanRecord.deleteAssociatedLoanRecordTransaction(loanRecordId = loanRecord.id)
+
             loanRecordCreator.delete(loanRecord) {
                 load(loanId = loanId)
             }
-
-            loanTransactionsLogic.LoanRecord.deleteAssociatedLoanRecordTransaction(loanRecordId = loanRecord.id)
 
             TestIdlingResource.decrement()
         }

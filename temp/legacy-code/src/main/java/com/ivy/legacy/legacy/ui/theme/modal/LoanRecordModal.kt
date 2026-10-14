@@ -513,11 +513,11 @@ private fun LoanRecordType(
 
 @Composable
 @Suppress("ParameterNaming")
-private fun AccountsRow(
+fun AccountsRow(
     accounts: List<Account>,
     selectedAccount: Account?,
     onSelectedAccountChanged: (Account) -> Unit,
-    onAddNewAccount: () -> Unit,
+    onAddNewAccount: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     childrenTestTag: String? = null,
 ) {
@@ -559,9 +559,11 @@ private fun AccountsRow(
             }
         }
 
-        item {
-            AddAccount {
-                onAddNewAccount()
+        if (onAddNewAccount != null) {
+            item {
+                AddAccount {
+                    onAddNewAccount()
+                }
             }
         }
 

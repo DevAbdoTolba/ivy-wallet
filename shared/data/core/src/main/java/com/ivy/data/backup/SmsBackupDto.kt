@@ -20,6 +20,7 @@ data class SmsTemplateBackupDto(
     @SerialName("lastSeenEpochMillis") val lastSeenEpochMillis: Long,
     @SerialName("matchCount") val matchCount: Int = 0,
     @SerialName("name") val name: String? = null,
+    @SerialName("transferToAccountId") val transferToAccountId: String? = null,
 )
 
 @Keep
@@ -43,6 +44,7 @@ internal fun SmsTemplateEntity.toBackupDto(): SmsTemplateBackupDto = SmsTemplate
     lastSeenEpochMillis = lastSeenEpochMillis,
     matchCount = matchCount,
     name = name,
+    transferToAccountId = transferToAccountId,
 )
 
 internal fun SmsTemplateBackupDto.toEntity(): SmsTemplateEntity = SmsTemplateEntity(
@@ -56,6 +58,7 @@ internal fun SmsTemplateBackupDto.toEntity(): SmsTemplateEntity = SmsTemplateEnt
     lastSeenEpochMillis = lastSeenEpochMillis,
     matchCount = matchCount,
     name = name,
+    transferToAccountId = transferToAccountId,
 )
 
 internal fun SenderAccountLinkEntity.toBackupDto(): SenderAccountLinkBackupDto = SenderAccountLinkBackupDto(

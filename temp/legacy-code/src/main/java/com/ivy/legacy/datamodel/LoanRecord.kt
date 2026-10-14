@@ -20,6 +20,7 @@ data class LoanRecord(
     val loanRecordType: LoanRecordType,
     /** Checklist entry this payment targets; null = loan-level payment. */
     val loanItemId: UUID? = null,
+    val transactionId: UUID? = null,
 
     val isSynced: Boolean = false,
     val isDeleted: Boolean = false,
@@ -36,6 +37,7 @@ data class LoanRecord(
         convertedAmount = convertedAmount,
         loanRecordType = loanRecordType,
         loanItemId = loanItemId,
+        transactionId = transactionId,
         isSynced = isSynced,
         isDeleted = isDeleted,
         id = id

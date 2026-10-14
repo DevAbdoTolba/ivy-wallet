@@ -17,6 +17,9 @@ interface WriteLoanRecordDao {
     @Query("DELETE FROM loan_records WHERE id = :id")
     suspend fun deleteById(id: UUID)
 
+    @Query("DELETE FROM loan_records WHERE transactionId = :transactionId OR id = :primaryRecordId")
+    suspend fun deleteByTransactionId(transactionId: UUID, primaryRecordId: UUID?)
+
     /** Un-settle cascade: removes every payment targeting the entry. The
      *  caller (UnsettleLoanEntryUseCase) deletes the records' transactions
      *  alongside — never call this without handling those. */

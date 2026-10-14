@@ -32,6 +32,7 @@ import com.ivy.wallet.ui.theme.modal.IvyModal
 import com.ivy.wallet.ui.theme.modal.ModalAmountSection
 import com.ivy.wallet.ui.theme.modal.ModalSet
 import com.ivy.wallet.ui.theme.modal.ModalTitle
+import com.ivy.wallet.ui.theme.modal.AccountsRow
 import com.ivy.wallet.ui.theme.modal.edit.AmountModal
 import kotlinx.collections.immutable.ImmutableList
 import java.util.UUID
@@ -46,6 +47,7 @@ import java.util.UUID
 fun BoxWithConstraintsScope.EntryPaymentSheet(
     sheet: EntryPaymentSheetState?,
     baseCurrency: String,
+    defaultCurrency: String,
     accounts: ImmutableList<Account>,
     loanType: LoanType?,
     onConfirm: (amount: Double, account: Account) -> Unit,
@@ -62,10 +64,12 @@ fun BoxWithConstraintsScope.EntryPaymentSheet(
     val modalId = remember(entry?.loanItem?.id) { UUID.randomUUID() }
 
     val remaining = entry?.remaining ?: 0.0
-    val settlesEntry = entry != null && amount >= remaining - 0.005
+    val paymentCurrency = selectedAccount?.currency ?: defaultCurrency
+    val sameCurrency = paymentCurrency == baseCurrency
+    val settlesEntry = entry != null && sameCurrency && amount >= remaining - 0.005
     val verb = if (loanType == LoanType.LEND) "Receive" else "Pay"
     val canConfirm = sheet != null && !sheet.paying &&
-        amount > 0.0 && amount <= remaining + 0.005 && selectedAccount != null
+        amount.isFinite() && amount > 0.0 && (!sameCurrency || amount <= remaining + 0.005) && selectedAccount != null
 
     IvyModal(
         id = modalId,
@@ -75,8 +79,8 @@ fun BoxWithConstraintsScope.EntryPaymentSheet(
             ModalSet(
                 label = when {
                     sheet?.paying == true -> "Saving…"
-                    settlesEntry -> "$verb ${amount.format(baseCurrency)} — settles entry"
-                    else -> "$verb ${amount.format(baseCurrency)}"
+                    settlesEntry -> "$verb ${amount.format(paymentCurrency)} $paymentCurrency — settles entry"
+                    else -> "$verb ${amount.format(paymentCurrency)} $paymentCurrency"
                 },
                 enabled = canConfirm,
             ) {
@@ -107,40 +111,32 @@ fun BoxWithConstraintsScope.EntryPaymentSheet(
 
         Spacer(Modifier.height(16.dp))
 
-        // Wallet chips — loan's wallet pre-selected; pick forced when the
-        // loan has none (spec US5 scenario 5).
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 24.dp)
-                .horizontalScroll(rememberScrollState()),
-        ) {
-            for (account in accounts) {
-                val selected = account.id == selectedAccount?.id
-                Text(
-                    text = account.name,
-                    style = UI.typo.b2.style(
-                        color = if (selected) Ivy else UI.colors.pureInverse,
-                        fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Medium,
-                    ),
-                    modifier = Modifier
-                        .clickable { selectedAccount = account }
-                        .border(
-                            width = 2.dp,
-                            color = if (selected) Ivy else UI.colors.medium,
-                            shape = UI.shapes.rFull,
-                        )
-                        .background(UI.colors.pure, UI.shapes.rFull)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-            }
+        AccountsRow(
+            accounts = accounts,
+            selectedAccount = selectedAccount,
+            onSelectedAccountChanged = { account ->
+                if (sheet?.paying != true) {
+                    val nextCurrency = account.currency ?: defaultCurrency
+                    if (nextCurrency != paymentCurrency) {
+                        amount = if (nextCurrency == baseCurrency) remaining else 0.0
+                    }
+                    selectedAccount = account
+                }
+            },
+        )
+        if (!sameCurrency) {
+            Text(
+                modifier = Modifier.padding(horizontal = 32.dp),
+                text = "Enter the amount in $paymentCurrency. The converted payment must fit the remaining $baseCurrency balance.",
+                style = UI.typo.c.style(color = UI.colors.gray),
+            )
         }
 
         Spacer(Modifier.height(8.dp))
 
         ModalAmountSection(
             label = "PAYMENT AMOUNT (EDIT FOR PARTIAL)",
-            currency = baseCurrency,
+            currency = paymentCurrency,
             amount = amount,
             amountPaddingTop = 32.dp,
             amountPaddingBottom = 24.dp,
@@ -160,7 +156,7 @@ fun BoxWithConstraintsScope.EntryPaymentSheet(
             Spacer(Modifier.height(8.dp))
         }
 
-        if (amount > remaining + 0.005) {
+        if (sameCurrency && amount > remaining + 0.005) {
             Text(
                 modifier = Modifier.padding(horizontal = 32.dp),
                 text = "Only ${remaining.format(baseCurrency)} left on this entry — " +
@@ -178,7 +174,7 @@ fun BoxWithConstraintsScope.EntryPaymentSheet(
     AmountModal(
         id = amountModalId,
         visible = amountModalVisible,
-        currency = baseCurrency,
+        currency = paymentCurrency,
         initialAmount = amount,
         dismiss = { amountModalVisible = false },
     ) { newAmount ->

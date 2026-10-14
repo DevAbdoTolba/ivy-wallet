@@ -1,6 +1,7 @@
 package com.ivy.wallet
 
 import android.content.Intent
+import android.os.SystemClock
 import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -23,14 +24,11 @@ import com.ivy.ui.R
 import com.ivy.wallet.domain.deprecated.logic.notification.TransactionReminderLogic
 import com.ivy.wallet.migrations.MigrationsManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 
 @HiltViewModel
@@ -161,7 +159,7 @@ class RootViewModel @Inject constructor(
 
     // App Lock & UserInactivity --------------------------------------------------------------------
     fun isAppLockEnabled(): Boolean {
-        return appLockEnabled
+        return sharedPrefs.getBoolean(SharedPrefs.APP_LOCK_ENABLED, false)
     }
 
     fun isAppLocked(): Boolean {
@@ -181,48 +179,36 @@ class RootViewModel @Inject constructor(
         resetUserInactiveTimer()
     }
 
-    private val userInactiveTime = AtomicLong(0)
+    private var backgroundStartedAt: Long? = null
     private var userInactiveJob: Job? = null
 
-    @Suppress("MagicNumber")
     fun startUserInactiveTimeCounter() {
-        if (userInactiveJob != null && userInactiveJob!!.isActive) return
-
-        val limitSeconds = lockDelaySeconds()
-        if (limitSeconds <= 0) {
-            // "Instantly": lock as soon as the app leaves the foreground, no timer.
-            if (!isAppLocked()) {
-                lockApp()
+        if (!isAppLockEnabled() || isAppLocked() || backgroundStartedAt != null) return
+        backgroundStartedAt = SystemClock.elapsedRealtime()
+        val delayMillis = lockDelaySeconds().coerceAtLeast(0) * 1000L
+        if (delayMillis == 0L) {
+            lockApp()
+        } else {
+            userInactiveJob = viewModelScope.launch {
+                delay(delayMillis)
+                if (backgroundStartedAt != null && isAppLockEnabled()) lockApp()
             }
-            return
-        }
-
-        userInactiveJob = viewModelScope.launch(Dispatchers.IO) {
-            while (userInactiveTime.get() < limitSeconds &&
-                userInactiveJob != null && !userInactiveJob?.isCancelled!!
-            ) {
-                delay(1000)
-                userInactiveTime.incrementAndGet()
-            }
-
-            if (!isAppLocked()) {
-                lockApp()
-            }
-
-            cancel()
         }
     }
 
     fun checkUserInactiveTimeStatus() {
-        if (userInactiveTime.get() < lockDelaySeconds()) {
-            if (userInactiveJob != null && userInactiveJob?.isCancelled == false) {
-                userInactiveJob?.cancel()
-                resetUserInactiveTimer()
-            }
+        // elapsedRealtime includes device sleep; counting coroutine ticks does not.
+        val started = backgroundStartedAt
+        if (started != null && isAppLockEnabled() &&
+            SystemClock.elapsedRealtime() - started >= lockDelaySeconds().coerceAtLeast(0) * 1000L) {
+            lockApp()
         }
+        resetUserInactiveTimer()
     }
 
     fun resetUserInactiveTimer() {
-        userInactiveTime.set(0)
+        userInactiveJob?.cancel()
+        userInactiveJob = null
+        backgroundStartedAt = null
     }
 }

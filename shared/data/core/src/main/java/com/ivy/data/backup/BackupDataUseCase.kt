@@ -87,6 +87,8 @@ class BackupDataUseCase @Inject constructor(
     private val smsTemplateWriter: WriteSmsTemplateDao,
     private val senderAccountLinkWriter: WriteSenderAccountLinkDao,
     private val dataStore: DataStore<Preferences>,
+    private val loanItemReader: com.ivy.data.db.dao.read.LoanItemDao,
+    private val loanItemWriter: com.ivy.data.db.dao.write.WriteLoanItemDao,
 ) {
 
     private val watermarkKey = longPreferencesKey("sms.watermark.epochMillis")
@@ -153,6 +155,7 @@ class BackupDataUseCase @Inject constructor(
                 categories = categories.await(),
                 loanRecords = loanRecords.await(),
                 loans = loans.await(),
+                loanItems = loans.await().flatMap { loanItemReader.findAllByContactId(it.id).first() },
                 plannedPaymentRules = plannedPaymentRules.await(),
                 settings = settings.await(),
                 transactions = transactions.await(),
@@ -317,6 +320,7 @@ class BackupDataUseCase @Inject constructor(
 
             loans.await()
             loanRecords.await()
+            completeData.loanItems?.forEach { loanItemWriter.save(it) }
 
             onProgress(0.8)
 

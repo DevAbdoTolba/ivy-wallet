@@ -35,6 +35,7 @@ data class LoanDetailsScreenState(
     val paymentSheet: EntryPaymentSheetState? = null,
     /** Un-settle confirmation (FR-016) — non-null while the dialog shows. */
     val unsettleConfirm: UnsettleConfirmState? = null,
+    val defaultCurrency: String = baseCurrency,
 )
 
 /** State of the tap-circle payment sheet: pre-filled with the entry's

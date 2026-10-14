@@ -13,6 +13,7 @@ fun LoanRecordEntity.toLegacyDomain(): LoanRecord = LoanRecord(
     convertedAmount = convertedAmount,
     loanRecordType = loanRecordType,
     loanItemId = loanItemId,
+    transactionId = transactionId,
     isSynced = isSynced,
     isDeleted = isDeleted,
     id = id

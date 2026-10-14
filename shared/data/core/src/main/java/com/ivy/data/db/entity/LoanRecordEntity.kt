@@ -17,7 +17,7 @@ import java.util.UUID
 @Serializable
 @Entity(
     tableName = "loan_records",
-    indices = [Index(value = ["loanItemId"])],
+    indices = [Index(value = ["loanItemId"]), Index(value = ["transactionId"])],
 )
 data class LoanRecordEntity(
     @SerialName("loanId")
@@ -48,6 +48,10 @@ data class LoanRecordEntity(
     @SerialName("loanItemId")
     @Serializable(with = KSerializerUUID::class)
     val loanItemId: UUID? = null,
+
+    @SerialName("transactionId")
+    @Serializable(with = KSerializerUUID::class)
+    val transactionId: UUID? = null,
 
     @Deprecated("Obsolete field used for cloud sync. Can't be deleted because of backwards compatibility")
     @SerialName("isSynced")

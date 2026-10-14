@@ -17,6 +17,7 @@ import com.ivy.base.model.TransactionType
 import com.ivy.base.time.TimeConverter
 import com.ivy.base.time.TimeProvider
 import com.ivy.data.db.dao.read.LoanDao
+import com.ivy.data.db.dao.read.LoanRecordDao
 import com.ivy.data.db.dao.read.SettingsDao
 import com.ivy.data.db.dao.write.WriteLoanRecordDao
 import com.ivy.data.model.Category
@@ -92,7 +93,7 @@ class EditTransactionViewModel @Inject constructor(
     private val context: Context,
     private val toaster: Toaster,
     private val loanDao: LoanDao,
-    private val loanRecordWriter: WriteLoanRecordDao,
+    private val loanRecordReader: LoanRecordDao,
     private val linkTransactionToLoan: LinkTransactionToLoanUseCase,
     private val settingsDao: SettingsDao,
     private val nav: Navigation,
@@ -236,6 +237,7 @@ class EditTransactionViewModel @Inject constructor(
             transactionAssociatedTags = getTransactionAssociatedTags(),
             loans = loans,
             canLinkToLoan = editMode &&
+                loadedTransaction?.type != TransactionType.TRANSFER &&
                 loadedTransaction?.loanId == null &&
                 loadedTransaction?.loanRecordId == null &&
                 loadedTransaction?.dateTime != null,
@@ -392,7 +394,7 @@ class EditTransactionViewModel @Inject constructor(
                 LinkAllocation.LoanLevelOnly
             }
             linkTransactionToLoan(domainTransaction, loan, allocation).fold(
-                { err -> Timber.w("LinkToLoan failed: %s", err) },
+                { err -> toaster.show(err.substringAfter(':')) },
                 { receipt ->
                     // Reflect the new link locally + refresh the loan caption.
                     loadedTransaction = legacyTransaction.copy(
@@ -680,9 +682,6 @@ class EditTransactionViewModel @Inject constructor(
                     // ONE real-world event — deleting the transaction removes
                     // the record too, so loan totals recompute instead of
                     // keeping a phantom payment with no money behind it.
-                    it.loanRecordId?.let { recordId ->
-                        loanRecordWriter.deleteById(recordId)
-                    }
                     transactionRepo.deleteById(TransactionId(it.id))
                 }
                 closeScreen()
@@ -697,6 +696,9 @@ class EditTransactionViewModel @Inject constructor(
                  loadedTransaction()
                     .copy(
                         id = id,
+                        loanId = null,
+                        loanRecordId = null,
+                        smsSourceDedupKey = null,
                         dateTime = timeProvider.utcNow(),
                     )
                     .toDomain(transactionMapper)
@@ -776,6 +778,21 @@ class EditTransactionViewModel @Inject constructor(
     }
 
     private suspend fun saveInternal(closeScreen: Boolean) {
+        val pending = loadedTransaction()
+        val saved = transactionRepo.findById(TransactionId(pending.id))?.toLegacyDomain()
+        if (saved != null && saved.loanRecordId != null) {
+            val allocations = ioThread { loanRecordReader.findAllByTransactionId(saved.id) }
+            val entryPayment = allocations.any { it.loanItemId != null } ||
+                ioThread { loanRecordReader.findById(saved.loanRecordId!!)?.loanItemId != null }
+            if ((entryPayment || allocations.size > 1) &&
+                (pending.amount != saved.amount || pending.accountId != saved.accountId ||
+                    pending.type != saved.type || pending.toAccountId != saved.toAccountId)) {
+                toaster.show("This payment is allocated to loan entries. Delete it and add a replacement to change its amount or wallet.")
+                loadedTransaction = saved
+                start(EditTransactionScreen(initialTransactionId = saved.id, type = saved.type))
+                return
+            }
+        }
         try {
             ioThread {
                 val amount = amount.toBigDecimal()

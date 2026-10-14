@@ -268,7 +268,7 @@ private fun BoxWithConstraintsScope.UI(
     }
 
     val amountModalId =
-        remember(screen.initialTransactionId, customExchangeRateState.exchangeRate) {
+        remember(screen.initialTransactionId, customExchangeRateState.exchangeRate, exchangeRateReversed) {
             UUID.randomUUID()
         }
 
@@ -663,18 +663,11 @@ private fun BoxWithConstraintsScope.UI(
             customExchangeRateState.exchangeRate
         },
         dismiss = { exchangeRateAmountModalShown = false },
-        decimalCountMax = IvyCurrency.getDecimalPlaces(
-            if (exchangeRateReversed) {
-                baseCurrency
-            } else {
-                customExchangeRateState.toCurrencyCode ?: baseCurrency
-            }
-        ),
+        decimalCountMax = 8,
         onAmountChanged = {
-            if (exchangeRateReversed) {
-                if (it > 0) onExchangeRateChange(1.0 / it)
-            } else {
-                onExchangeRateChange(it)
+            if (it.isFinite() && it > 0) {
+                val rate = if (exchangeRateReversed) 1.0 / it else it
+                if (rate.isFinite() && rate > 0) onExchangeRateChange(rate)
             }
         }
     )

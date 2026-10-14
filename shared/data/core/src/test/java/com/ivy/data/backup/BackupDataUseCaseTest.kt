@@ -89,6 +89,8 @@ class BackupDataUseCaseTest {
             smsTemplateWriter = mockk(relaxed = true),
             senderAccountLinkWriter = mockk(relaxed = true),
             dataStore = InMemoryPreferencesDataStore(),
+            loanItemReader = com.ivy.data.db.dao.fake.FakeLoanItemDao(),
+            loanItemWriter = com.ivy.data.db.dao.fake.FakeLoanItemDao(),
         )
     }
 

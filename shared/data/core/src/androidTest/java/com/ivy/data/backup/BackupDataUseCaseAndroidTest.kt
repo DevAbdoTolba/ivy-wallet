@@ -83,6 +83,8 @@ class BackupDataUseCaseAndroidTest {
             senderAccountLinkReader = db.readSenderAccountLinkDao,
             smsTemplateWriter = db.writeSmsTemplateDao,
             senderAccountLinkWriter = db.writeSenderAccountLinkDao,
+            loanItemReader = db.loanItemDao,
+            loanItemWriter = db.writeLoanItemDao,
             dataStore = PreferenceDataStoreFactory.create(
                 produceFile = {
                     File.createTempFile("backup-test", ".preferences_pb").apply { delete() }

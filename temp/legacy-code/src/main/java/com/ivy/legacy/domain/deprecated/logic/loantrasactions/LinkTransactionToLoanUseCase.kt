@@ -4,6 +4,7 @@ import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
 import com.ivy.base.model.LoanRecordType
+import com.ivy.data.db.DatabaseTransaction
 import com.ivy.data.db.dao.write.WriteLoanRecordDao
 import com.ivy.data.db.entity.LoanRecordEntity
 import com.ivy.data.model.Expense
@@ -16,6 +17,9 @@ import com.ivy.data.model.Transfer
 import com.ivy.data.repository.LoanRepository
 import com.ivy.data.repository.TransactionRepository
 import com.ivy.legacy.datamodel.Loan
+import com.ivy.legacy.datamodel.temp.toLegacyDomain
+import com.ivy.legacy.domain.deprecated.logic.loantrasactions.LoanTransactionsCore
+import kotlinx.coroutines.CancellationException
 import com.ivy.legacy.utils.ioThread
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -103,6 +107,8 @@ class LinkTransactionToLoanUseCase @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val loanRepository: LoanRepository,
     private val writeLoanRecordDao: WriteLoanRecordDao,
+    private val databaseTransaction: DatabaseTransaction,
+    private val core: LoanTransactionsCore,
 ) {
     private val mutex = Mutex()
 
@@ -112,13 +118,33 @@ class LinkTransactionToLoanUseCase @Inject constructor(
         loan: Loan,
         allocation: LinkAllocation,
     ): Either<String, LinkReceipt> = mutex.withLock {
+        try {
+            databaseTransaction { link(transaction, loan, allocation) }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            "STORAGE_ERROR:${error.message}".left()
+        }
+    }
+
+    private suspend fun link(
+        requestedTransaction: Transaction,
+        requestedLoan: Loan,
+        allocation: LinkAllocation,
+    ): Either<String, LinkReceipt> {
+        val transaction = transactionRepository.findById(requestedTransaction.id)
+            ?: return "VALIDATION:transaction no longer exists".left()
+        val loan = core.fetchLoan(requestedLoan.id)?.toLegacyDomain()
+            ?: return "VALIDATION:loan no longer exists".left()
         if (transaction.metadata.loanRecordId != null || transaction.metadata.loanId != null) {
             return "ALREADY_LINKED:this transaction already belongs to a loan".left()
         }
 
         val moneyOut = transaction.isMoneyOut()
-        val amount = transaction.linkAmount()
-        if (amount <= 0.0) return "VALIDATION:transaction amount must be positive".left()
+        // A wallet-to-wallet transfer has no unambiguous counterparty direction.
+        if (transaction is Transfer) return "VALIDATION:link an income or expense to a loan".left()
+        val walletAmount = transaction.linkAmount()
+        if (!walletAmount.isFinite() || walletAmount <= 0.0) return "VALIDATION:transaction amount must be positive".left()
 
         val direction = inferLoanLinkDirection(moneyOut, loan.type)
         val accountId = when (transaction) {
@@ -127,6 +153,19 @@ class LinkTransactionToLoanUseCase @Inject constructor(
             is Transfer -> transaction.fromAccount.value
         }
         val note = transaction.title?.value ?: "Linked payment"
+        val accounts = core.fetchAccounts().map { it.toLegacyDomain() }
+        if (accounts.none { it.id == accountId } ||
+            (loan.accountId != null && accounts.none { it.id == loan.accountId })) {
+            return "VALIDATION:wallet no longer exists".left()
+        }
+        val converted = core.computeConvertedAmount(
+            oldLoanRecordAccountId = null, oldLonRecordConvertedAmount = null,
+            oldLoanRecordAmount = 0.0, newLoanRecordAccountID = accountId,
+            newLoanRecordAmount = walletAmount, loanAccountId = loan.accountId,
+            accounts = accounts,
+        )
+        val amount = converted ?: walletAmount
+        if (!amount.isFinite() || amount <= 0.0) return "VALIDATION:invalid exchange rate".left()
 
         // Build the record splits. Entry allocation only applies to DECREASE
         // (a repayment can settle entries; lending more cannot).
@@ -147,7 +186,7 @@ class LinkTransactionToLoanUseCase @Inject constructor(
                     buildList {
                         if (toEntry > 0.0) add(Split(entry.id, toEntry))
                         val rest = amount - toEntry
-                        if (rest > LINK_EPSILON) add(Split(null, rest))
+                        if (rest > 0.0) add(Split(null, rest))
                     }
                 }
                 LinkAllocation.AutoOldestFirst -> {
@@ -164,7 +203,7 @@ class LinkTransactionToLoanUseCase @Inject constructor(
                             add(Split(entry.id, part))
                             left -= part
                         }
-                        if (left > LINK_EPSILON) add(Split(null, left))
+                        if (left > 0.0) add(Split(null, left))
                     }
                 }
             }
@@ -175,17 +214,22 @@ class LinkTransactionToLoanUseCase @Inject constructor(
 
         // Persist the records — plain rows, NO transaction creation anywhere.
         val recordIds = mutableListOf<UUID>()
-        for (split in splits) {
+        var allocatedWalletAmount = 0.0
+        for ((index, split) in splits.withIndex()) {
+            val part = if (index == splits.lastIndex) walletAmount - allocatedWalletAmount
+                else walletAmount * (split.amount / amount)
+            allocatedWalletAmount += part
             val entity = LoanRecordEntity(
                 loanId = loan.id,
-                amount = split.amount,
+                amount = part,
                 note = note,
                 dateTime = transaction.time,
                 interest = false,
                 accountId = accountId,
-                convertedAmount = null,
+                convertedAmount = if (converted != null) split.amount else null,
                 loanRecordType = direction,
                 loanItemId = split.entryId?.value,
+                transactionId = transaction.id.value,
             )
             ioThread { writeLoanRecordDao.save(entity) }
             recordIds.add(entity.id)
@@ -201,8 +245,7 @@ class LinkTransactionToLoanUseCase @Inject constructor(
             is Income -> transaction.copy(metadata = updatedMetadata)
             is Transfer -> transaction.copy(metadata = updatedMetadata)
         }
-        runCatching { transactionRepository.save(updated) }
-            .onFailure { return "STORAGE_ERROR:${it.message}".left() }
+        transactionRepository.save(updated)
 
         val entriesAfter = loanRepository.getLoanItems(LoanId(loan.id)).first()
         val entriesSettled = splits.mapNotNull { it.entryId }.distinct().filter { entryId ->
@@ -210,7 +253,7 @@ class LinkTransactionToLoanUseCase @Inject constructor(
             loanRepository.sumPaidForEntry(entryId) >= entry.amount - LINK_EPSILON
         }
 
-        LinkReceipt(
+        return LinkReceipt(
             recordIds = recordIds,
             direction = direction,
             entriesSettled = entriesSettled,

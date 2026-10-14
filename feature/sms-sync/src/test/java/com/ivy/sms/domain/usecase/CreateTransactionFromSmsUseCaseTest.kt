@@ -42,7 +42,8 @@ class CreateTransactionFromSmsUseCaseTest {
     private val accountRepo = mockk<AccountRepository>()
     private val transactionRepo = mockk<TransactionRepository>()
     private val pendingRepo = mockk<PendingReviewItemRepository>()
-    private val useCase = CreateTransactionFromSmsUseCase(accountRepo, transactionRepo, pendingRepo)
+    private val exchangeRatesRepo = mockk<com.ivy.data.repository.ExchangeRatesRepository>()
+    private val useCase = CreateTransactionFromSmsUseCase(accountRepo, transactionRepo, pendingRepo, exchangeRatesRepo)
 
     private val accountId = AccountId(UUID.randomUUID())
 

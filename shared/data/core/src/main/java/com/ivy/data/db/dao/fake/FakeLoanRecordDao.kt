@@ -43,10 +43,18 @@ class FakeLoanRecordDao : LoanRecordDao, WriteLoanRecordDao {
                 !it.interest &&
                 it.loanRecordType == LoanRecordType.DECREASE
         }
-        return if (paid.isEmpty()) null else paid.sumOf { it.amount }
+        return if (paid.isEmpty()) null else paid.sumOf { it.convertedAmount ?: it.amount }
+    }
+
+    override suspend fun findAllByTransactionId(transactionId: UUID): List<LoanRecordEntity> =
+        items.filter { it.transactionId == transactionId && !it.isDeleted }
+
+    override suspend fun deleteByTransactionId(transactionId: UUID, primaryRecordId: UUID?) {
+        items.removeIf { it.transactionId == transactionId || it.id == primaryRecordId }
     }
 
     override suspend fun save(value: LoanRecordEntity) {
+        items.removeIf { it.id == value.id }
         items.add(value)
     }
 

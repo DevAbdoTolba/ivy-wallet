@@ -5,6 +5,7 @@ import com.ivy.data.db.entity.AccountEntity
 import com.ivy.data.db.entity.BudgetEntity
 import com.ivy.data.db.entity.CategoryEntity
 import com.ivy.data.db.entity.LoanEntity
+import com.ivy.data.db.entity.LoanItemEntity
 import com.ivy.data.db.entity.LoanRecordEntity
 import com.ivy.data.db.entity.PlannedPaymentRuleEntity
 import com.ivy.data.db.entity.SettingsEntity
@@ -28,6 +29,8 @@ data class IvyWalletCompleteData(
     val loanRecords: List<LoanRecordEntity> = emptyList(),
     @SerialName("loans")
     val loans: List<LoanEntity> = emptyList(),
+    @SerialName("loanItems")
+    val loanItems: List<LoanItemEntity>? = null,
     @SerialName("plannedPaymentRules")
     val plannedPaymentRules: List<PlannedPaymentRuleEntity> = emptyList(),
     @SerialName("settings")

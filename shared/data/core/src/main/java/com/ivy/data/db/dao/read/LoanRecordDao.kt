@@ -31,8 +31,11 @@ interface LoanRecordDao {
      * paid/settled state (loanRecordType is stored as TEXT).
      */
     @Query(
-        "SELECT SUM(amount) FROM loan_records WHERE loanItemId = :loanItemId " +
+        "SELECT SUM(COALESCE(convertedAmount, amount)) FROM loan_records WHERE loanItemId = :loanItemId " +
             "AND isDeleted = 0 AND interest = 0 AND loanRecordType = 'DECREASE'"
     )
     suspend fun sumPaidByLoanItemId(loanItemId: UUID): Double?
+
+    @Query("SELECT * FROM loan_records WHERE transactionId = :transactionId AND isDeleted = 0")
+    suspend fun findAllByTransactionId(transactionId: UUID): List<LoanRecordEntity>
 }

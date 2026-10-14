@@ -2,6 +2,7 @@ package com.ivy.data.db.dao.write
 
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import com.ivy.data.db.entity.TransactionEntity
 import java.util.UUID
@@ -18,7 +19,16 @@ interface WriteTransactionDao {
     suspend fun deletedByRecurringRuleIdAndNoDateTime(recurringRuleId: UUID)
 
     @Query("DELETE FROM transactions WHERE id = :id")
-    suspend fun deleteById(id: UUID)
+    suspend fun deleteTransactionRow(id: UUID)
+
+    @Query("DELETE FROM loan_records WHERE transactionId = :id OR id IN (SELECT loanRecordId FROM transactions WHERE id = :id)")
+    suspend fun deleteLoanRecordsForTransaction(id: UUID)
+
+    @Transaction
+    suspend fun deleteById(id: UUID) {
+        deleteLoanRecordsForTransaction(id)
+        deleteTransactionRow(id)
+    }
 
     @Query("DELETE FROM transactions WHERE accountId = :accountId")
     suspend fun deleteAllByAccountId(accountId: UUID)
